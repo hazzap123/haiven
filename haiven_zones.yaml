@@ -1,0 +1,92 @@
+# Haiven Care Circle - Zone Configuration
+# Zones define geographic locations for tracking when care circle members arrive/leave
+# Each zone requires latitude, longitude, and radius
+#
+# Setup Instructions:
+# 1. Get coordinates from Google Maps: Right-click location → Copy coordinates
+# 2. Set appropriate radius in meters (typical: 50-100m for homes, 100-200m for work)
+# 3. Choose an icon from: https://materialdesignicons.com/
+# 4. Uncomment and configure zones below
+
+# IMPORTANT: All zones are commented out by default
+# Uncomment and add real coordinates to activate zones
+
+# Home Zone (Elderly Person's Residence)
+# This is the primary location being monitored
+# - name: "Home"
+#   latitude: 51.5074  # UPDATE: Replace with actual latitude
+#   longitude: -0.1278  # UPDATE: Replace with actual longitude
+#   radius: 100  # meters
+#   icon: mdi:home-heart
+#   passive: false  # Active tracking - will trigger automations
+
+# Primary Contact's Home
+# Track when primary contact is at their own residence
+# - name: "Primary Contact Home"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 100
+#   icon: mdi:home-account
+#   passive: false
+
+# Primary Contact's Work
+# Track when primary contact is at work (affects availability)
+# - name: "Primary Contact Work"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 150
+#   icon: mdi:briefcase
+#   passive: false
+
+# Secondary Contact's Home
+# - name: "Secondary Contact Home"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 100
+#   icon: mdi:home-account
+#   passive: false
+
+# Secondary Contact's Work
+# - name: "Secondary Contact Work"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 150
+#   icon: mdi:briefcase
+#   passive: false
+
+# Professional Carer's Home (if applicable)
+# - name: "Carer Home"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 100
+#   icon: mdi:home-account
+#   passive: false
+
+# Common Locations
+# Add other frequently visited locations (hospital, pharmacy, etc.)
+
+# - name: "Local Hospital"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 200
+#   icon: mdi:hospital-building
+#   passive: true  # Passive - won't trigger arrive/leave automations
+
+# - name: "GP Surgery"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 100
+#   icon: mdi:doctor
+#   passive: true
+
+# - name: "Pharmacy"
+#   latitude: 0.0  # UPDATE
+#   longitude: 0.0  # UPDATE
+#   radius: 75
+#   icon: mdi:pharmacy
+#   passive: true
+
+# Note: The built-in "Home" zone is automatically created by Home Assistant
+# using the coordinates in Settings → System → General
+# You may want to use that as your primary zone instead of creating a custom one
+[]

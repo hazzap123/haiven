@@ -1,0 +1,37 @@
+# Haiven Care Circle - Person Tracking Configuration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Configure person entities for location tracking
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ELDERLY PERSON (Being Cared For) - REQUIRED
+# ─────────────────────────────────────────────────────────────────────────────
+- name: "Your Person"
+  id: elderly_person  # → person.elderly_person
+  device_trackers:
+    - device_tracker.your_person_phone
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTACT 1 (Carer 1)
+# ─────────────────────────────────────────────────────────────────────────────
+- name: "Carer 1"
+  id: contact_1  # → person.contact_1
+  device_trackers:
+    - device_tracker.carer_1_phone
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTACT 2 (Carer 2)
+# ─────────────────────────────────────────────────────────────────────────────
+- name: "Carer 2"
+  id: contact_2  # → person.contact_2
+  device_trackers:
+    - device_tracker.carer_2_phone
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADDING MORE CONTACTS
+# ─────────────────────────────────────────────────────────────────────────────
+# To add contact_3, contact_4, etc:
+# 1. Add person entry here with id: contact_N
+# 2. Add corresponding input_text helpers in haiven_inputs.yaml
+# 3. Add template sensors in packages/haiven_circle_tracking.yaml
+# 4. Restart Home Assistant

@@ -1,0 +1,245 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+http:
+  cors_allowed_origins:
+    - http://localhost:5173
+    - http://localhost:5174
+    - http://localhost:3000
+
+homeassistant:
+  packages:
+    haiven_care_circle_inputs: !include packages/haiven_care_circle_inputs.yaml
+    haiven_monitoring_inputs: !include packages/haiven_monitoring_inputs.yaml
+    haiven_comms_inputs: !include packages/haiven_comms_inputs.yaml
+    haiven_sensors_3sensor: !include haiven_sensors_3sensor.yaml
+    haiven_bathroom_night: !include packages/haiven_bathroom_night.yaml
+    haiven_circle_tracking: !include packages/haiven_circle_tracking.yaml
+ 
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+person: !include haiven_persons.yaml
+zone: !include haiven_zones.yaml
+
+frontend:
+  extra_module_url:
+    - /hacsfiles/kiosk-mode/kiosk-mode.js
+
+# Haiven Elderly Care Monitoring
+
+# Shell commands for file logging
+shell_command:
+  log_activity: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO {{ location }} {{ sensor_type }} | $(date +\"%H:%M:%S\") | $(date +\"%A\")\" >> /config/activity.log"'
+  backup_activity_log: 'cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)" && git push origin main'
+  log_haiven_event: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO HAIVEN {{ event_type }} | {{ detail }} | $(date +\"%A\")\" >> /config/activity.log"'
+  # MMW sensor detailed logging
+
+# Template sensors
+template:
+  - binary_sensor:
+      - name: "Kitchen Motion"
+        unique_id: kitchen_motion_binary
+        device_class: motion
+        state: "{{ is_state('input_boolean.kitchen_motion', 'on') }}"
+
+      - name: "Extended Night Bathroom Visit"
+        unique_id: bathroom_night_visit_extended
+        device_class: problem
+        state: >
+          {{ states('sensor.bathroom_night_current_duration') | float(0) >
+             states('input_number.bathroom_night_baseline_duration') | float(10) + 10 }}
+        delay_on: "00:03:00"
+
+      - name: "Bathroom Night Visits High"
+        unique_id: bathroom_night_visits_high
+        device_class: problem
+        state: >
+          {{ states('sensor.overnight_bathroom_count') | int(0) >
+             states('input_number.bathroom_night_baseline_visits') | float(3) + 2 }}
+
+      - name: "No Return From Bathroom (Possible Fall)"
+        unique_id: bathroom_night_no_return
+        device_class: problem
+        state: >
+          {{ is_state('binary_sensor.night_window_active', 'on') and
+             is_state('input_boolean.bathroom_occupied_night', 'on') and
+             states('sensor.bathroom_night_current_duration') | float(0) >
+             states('input_number.bathroom_night_no_return_threshold') | float(20) }}
+        delay_on: "00:05:00"
+
+  - sensor:
+      - name: "Overnight Bathroom Count"
+        unique_id: overnight_bathroom_count_from_log
+        icon: mdi:toilet
+        state: >
+          {% set log = state_attr('sensor.activity_log_48h', 'log') %}
+          {% set wake = states('sensor.today_wake_time') %}
+          {% if log %}
+            {% set entries = log.split('|') %}
+            {% set count = namespace(n=0) %}
+            {% set last_mins = namespace(v=-99) %}
+            {% set wake_mins = namespace(v=9999) %}
+            {% if wake not in ['Not yet', 'unknown', 'unavailable'] and ':' in wake %}
+              {% set wake_mins.v = (wake.split(':')[0] | int) * 60 + (wake.split(':')[1] | int) %}
+            {% endif %}
+            {% for entry in entries %}
+              {% set parts = entry.strip().split(' ') %}
+              {% if parts | length >= 2 %}
+                {% set time = parts[0] %}
+                {% set loc = parts[1] %}
+                {% set st = parts[2] | default('') %}
+                {% set h = time.split(':')[0] | int %}
+                {% if h == 12 %}
+                  {% set count.n = 0 %}
+                  {% set last_mins.v = -99 %}
+                {% endif %}
+                {% set is_night = time >= '21:00' or time < '06:00' %}
+                {% if is_night and loc == 'Bathroom' and st == '(on)' %}
+                  {% set m = time.split(':')[1] | int %}
+                  {% set mins = h * 60 + m %}
+                  {% set near_wake = (mins - wake_mins.v) | abs < 15 or (mins + 1440 - wake_mins.v) | abs < 15 %}
+                  {% if not near_wake %}
+                    {% if mins - last_mins.v > 15 or last_mins.v - mins > 15 %}
+                      {% set count.n = count.n + 1 %}
+                    {% endif %}
+                    {% set last_mins.v = mins %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ count.n }}
+          {% else %}
+            unknown
+          {% endif %}
+
+      - name: "Recent Activity Summary"
+        unique_id: recent_activity_summary_from_log
+        icon: mdi:history
+        state: >
+          {% set log = state_attr('sensor.activity_log_48h', 'log') %}
+          {% if log %}
+            {% set entries = log.split('|') %}
+            {% set recent = entries[-10:] %}
+            {{ recent | join(', ') }}
+          {% else %}
+            No data
+          {% endif %}
+
+      - name: "Overnight Activity Summary"
+        unique_id: overnight_activity_summary_from_log
+        icon: mdi:weather-night
+        state: >
+          {% set log = state_attr('sensor.activity_log_48h', 'log') %}
+          {% if log %}
+            {% set entries = log.split('|') %}
+            {% set night = [] %}
+            {% for entry in entries %}
+              {% set parts = entry.strip().split(' ') %}
+              {% if parts | length >= 2 %}
+                {% set time = parts[0] %}
+                {% if time >= '21:00' or time < '06:00' %}
+                  {% set night = night + [entry.strip()] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {% if night %}
+              {{ night | join(', ') }}
+            {% else %}
+              No overnight activity recorded
+            {% endif %}
+          {% else %}
+            No data
+          {% endif %}
+
+      - name: "Bathroom Night Current Duration"
+        unique_id: bathroom_night_current_duration
+        unit_of_measurement: "min"
+        state: >
+          {% set occupied = is_state('input_boolean.bathroom_occupied_night', 'on') %}
+          {% set entry = states('input_datetime.bathroom_night_last_entry') %}
+          {% if occupied and entry not in ['unknown', 'unavailable'] %}
+            {% set now_ts = now().timestamp() %}
+            {% set entry_ts = as_timestamp(entry) %}
+            {{ ((now_ts - entry_ts) / 60) | round(1) }}
+          {% else %}
+            0
+          {% endif %}
+
+      - name: "Bathroom Night Visits Status"
+        unique_id: bathroom_night_visits_status
+        state: >
+          {% set count = states('sensor.overnight_bathroom_count')|int(0) %}
+          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
+          {% if count == 0 %}
+            No visits tonight
+          {% elif count <= baseline %}
+            {{ count }} visit{{ 's' if count > 1 else '' }} (normal)
+          {% elif count <= baseline + 1 %}
+            {{ count }} visits (slightly elevated)
+          {% else %}
+            {{ count }} visits (high - monitor)
+          {% endif %}
+        icon: >
+          {% set count = states('sensor.overnight_bathroom_count')|int %}
+          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
+          {% if count > baseline + 1 %}
+            mdi:alert-circle
+          {% else %}
+            mdi:information-outline
+          {% endif %}
+
+
+# Activity log sensor for AI agent (48h history)
+# Script outputs JSON; log data stored as attribute (state limited to 255 chars)
+command_line:
+  - sensor:
+      name: "Activity Log 48h"
+      unique_id: activity_log_48h
+      command: "/config/scripts/activity_log_json.sh"
+      scan_interval: 300
+      json_attributes:
+        - log
+      value_template: "{{ value_json.lines }} lines | {{ value_json.last }}"
+
+# Exclude large activity log attribute from recorder DB
+recorder:
+  exclude:
+    entities:
+      - sensor.activity_log_48h
+
+# Lovelace configuration
+lovelace:
+  dashboards:
+    lovelace-haiven:
+      mode: yaml
+      title: Haiven
+      icon: mdi:heart-pulse
+      show_in_sidebar: true
+      filename: lovelace/haiven_default.yaml
+
+# History Stats - Rolling averages for activity baselines
+sensor:
+  - platform: history_stats
+    name: Kitchen Triggers 7 Day Count
+    entity_id: binary_sensor.kitchen_motion
+    state: "on"
+    type: count
+    start: "{{ now() - timedelta(days=7) }}"
+    end: "{{ now() }}"
+
+  - platform: history_stats
+    name: Kitchen Triggers 24h Count
+    entity_id: binary_sensor.kitchen_motion
+    state: "on"
+    type: count
+    start: "{{ now() - timedelta(hours=24) }}"
+    end: "{{ now() }}"
+
+  - platform: history_stats
+    name: Kitchen Triggers Last Hour
+    entity_id: binary_sensor.kitchen_motion
+    state: "on"
+    type: count
+    start: "{{ now() - timedelta(hours=1) }}"
+    end: "{{ now() }}"

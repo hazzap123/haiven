@@ -1,0 +1,1916 @@
+# ============================================================================
+# DAILY SUMMARIES - Natural language updates to primary contact
+# Phrasing can be adjusted in the message templates below
+# ============================================================================
+
+- id: haiven_morning_summary
+  alias: "Haiven: Morning Summary"
+  description: >
+    06:00 AI-generated summary of overnight activity.
+    Uses conversation.process to generate natural language from sensor data.
+  triggers:
+    - trigger: time
+      at: "06:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: conversation.process
+      data:
+        agent_id: conversation.claude_conversation
+        text: >
+          Generate a morning summary notification for Mum's carers (2-3 sentences, warm tone).
+
+          Current data:
+          - Wake time today: {{ states('sensor.today_wake_time') }}
+          - Expected wake: {{ states('input_datetime.expected_wake_time') }}
+          - Overnight bathroom visits: {{ states('sensor.overnight_bathroom_count') }}
+          - Overnight activity: {{ states('sensor.overnight_activity_summary') }}
+          - Bedroom occupancy: {{ states('binary_sensor.haiven_bedroom_occupancy') }}
+          - Sensor health: {{ states('sensor.sensor_health_status') }}
+          - Home status: {{ states('binary_sensor.elderly_person_home') }}
+          - Recent activity: {{ states('sensor.recent_activity_summary') }}
+
+          Rules:
+          - If she's away from home, just say that
+          - Lead with any concerns (high bathroom visits, no bedroom activity, sensors offline)
+          - If normal, be reassuring
+          - 2-3 bathroom visits overnight is normal, 6+ is elevated, 9+ is concerning
+          - Do NOT start with "Morning" or a greeting - just the summary content
+          - Do NOT use markdown formatting
+      response_variable: ai_response
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.current_summary
+      data:
+        value: "{{ ai_response.response.speech.plain.speech }}"
+    - action: script.send_haiven_notification
+      data:
+        title: "Morning Update"
+        message: "{{ states('input_text.current_summary') }}"
+        level: time-sensitive
+  mode: single
+
+- id: haiven_afternoon_summary
+  alias: "Haiven: Afternoon Summary"
+  description: >
+    14:00 AI-generated summary of the day so far.
+  triggers:
+    - trigger: time
+      at: "14:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: conversation.process
+      data:
+        agent_id: conversation.claude_conversation
+        text: >
+          Generate a brief afternoon check-in notification for Mum's carers (1-2 sentences).
+
+          Current data:
+          - Last activity location: {{ states('sensor.activity_data') }}
+          - Last activity time: {{ states('sensor.last_activity_time') }}
+          - Rooms active today: {{ state_attr('sensor.activity_data', 'rooms_active_today') }}
+          - Deviations today: {{ states('sensor.deviation_count') }}
+          - Home status: {{ states('binary_sensor.elderly_person_home') }}
+          - Recent activity: {{ states('sensor.recent_activity_summary') }}
+          - Sensor health: {{ states('sensor.sensor_health_status') }}
+
+          Rules:
+          - Very brief - 1-2 sentences only
+          - If she's away from home, just say that
+          - Flag any concerns (long inactivity, deviations) but don't be alarmist
+          - If normal, keep it light and reassuring
+          - Do NOT start with "Afternoon" or a greeting - just the summary content
+          - Do NOT use markdown formatting
+      response_variable: ai_response
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.current_summary
+      data:
+        value: "{{ ai_response.response.speech.plain.speech }}"
+    - action: script.send_haiven_notification
+      data:
+        title: "Afternoon Update"
+        message: "{{ states('input_text.current_summary') }}"
+        level: passive
+  mode: single
+
+- id: haiven_evening_summary
+  alias: "Haiven: Evening Summary"
+  description: >
+    20:00 AI-generated end-of-day summary.
+  triggers:
+    - trigger: time
+      at: "20:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: conversation.process
+      data:
+        agent_id: conversation.claude_conversation
+        text: >
+          Generate an evening summary notification for Mum's carers (2-3 sentences, day recap).
+
+          Current data:
+          - Wake time today: {{ states('sensor.today_wake_time') }}
+          - Bedtime today: {{ states('sensor.today_bedtime') }}
+          - Activity score: {{ states('sensor.daily_activity_score') }}
+          - Deviations today: {{ states('sensor.deviation_count') }}
+          - Last activity location: {{ states('sensor.activity_data') }}
+          - Last activity time: {{ states('sensor.last_activity_time') }}
+          - Home status: {{ states('binary_sensor.elderly_person_home') }}
+          - Recent activity: {{ states('sensor.recent_activity_summary') }}
+          - Sensor health: {{ states('sensor.sensor_health_status') }}
+
+          Rules:
+          - Recap the day: wake time, activity level, bedtime if set
+          - If she's away from home, just say that
+          - Activity score: 70+ active, 40-70 quieter, <40 very quiet
+          - If bedtime not set yet, mention she's still up
+          - Flag any concerns but end on a positive note if possible
+          - 2-3 sentences
+          - Do NOT start with "Evening" or a greeting - just the summary content
+          - Do NOT use markdown formatting
+      response_variable: ai_response
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.current_summary
+      data:
+        value: "{{ ai_response.response.speech.plain.speech }}"
+    - action: script.send_haiven_notification
+      data:
+        title: "Evening Update"
+        message: "{{ states('input_text.current_summary') }}"
+        level: passive
+  mode: single
+
+- id: haiven_refresh_summary
+  alias: "Haiven: Refresh Dashboard Summary"
+  description: >
+    Refreshes the dashboard AI summary every 2h and on manual tap.
+    Does NOT send a notification — just updates the card.
+  triggers:
+    - trigger: time
+      at: "08:00:00"
+    - trigger: time
+      at: "10:00:00"
+    - trigger: time
+      at: "12:00:00"
+    - trigger: time
+      at: "16:00:00"
+    - trigger: time
+      at: "18:00:00"
+    - trigger: time
+      at: "22:00:00"
+    - trigger: state
+      entity_id: input_button.refresh_summary
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: conversation.process
+      data:
+        agent_id: conversation.claude_conversation
+        text: >
+          Generate a brief status summary for the dashboard (1-2 sentences, warm tone).
+
+          Current data:
+          - Time now: {{ now().strftime('%H:%M') }}
+          - Wake time today: {{ states('sensor.today_wake_time') }}
+          - Bed state: {{ states('input_select.bed_state') }}
+          - Last activity location: {{ states('sensor.activity_data') }}
+          - Last activity time: {{ states('sensor.last_activity_time') }}
+          - Overnight bathroom visits: {{ states('sensor.overnight_bathroom_count') }}
+          - Deviations today: {{ states('sensor.deviation_count') }}
+          - Home status: {{ states('binary_sensor.elderly_person_home') }}
+          - Recent activity: {{ states('sensor.recent_activity_summary') }}
+          - Sensor health: {{ states('sensor.sensor_health_status') }}
+
+          Rules:
+          - If she's away from home, just say that
+          - If sleeping/in bed, mention that
+          - Otherwise summarise current activity status
+          - Flag any concerns but keep it reassuring if normal
+          - Do NOT start with a greeting or time reference
+          - Do NOT use markdown formatting
+      response_variable: ai_response
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.current_summary
+      data:
+        value: "{{ ai_response.response.speech.plain.speech }}"
+  mode: single
+
+- id: haiven_backup_activity_log
+  alias: "Haiven: Backup Activity Log to Git"
+  description: Commits and pushes activity.log to GitHub three times daily for backup redundancy.
+  triggers:
+    - trigger: time
+      at: "08:00:00"
+    - trigger: time
+      at: "14:00:00"
+    - trigger: time
+      at: "20:00:00"
+  conditions: []
+  actions:
+    - action: shell_command.backup_activity_log
+    - action: logbook.log
+      data:
+        name: Haiven Log Backup
+        message: "Activity log backed up to GitHub"
+        entity_id: input_boolean.haiven_monitoring_enabled
+  mode: single
+- id: haiven_morning_activity_check
+  alias: "Haiven: Morning Activity Check"
+  description: Check if morning activity occurred within expected time + variance. Skips if person is away.
+  triggers:
+    - trigger: time_pattern
+      minutes: /15
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.manual_safe_status
+      state: "off"
+    - condition: template
+      alias: Past wake time cutoff
+      value_template: >-
+        {% set expected = states('input_datetime.expected_wake_time') %}
+        {% set variance = states('input_number.wake_time_variance_minutes') | float %}
+        {% set cutoff = today_at(expected) + timedelta(minutes=variance) %}
+        {{ now() >= cutoff }}
+    - condition: template
+      alias: Only fire once per day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_morning_activity_check', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    # Check if person is away - send different notification
+    - if:
+        - condition: template
+          alias: Person is away from home
+          value_template: >-
+            {% set entity = states('input_text.elderly_person_entity') %}
+            {% if entity and entity not in ['unknown', 'unavailable', ''] %}
+              {{ states(entity) in ['not_home', 'away'] or not is_state(entity, 'home') }}
+            {% else %}
+              false
+            {% endif %}
+      then:
+        - action: logbook.log
+          data:
+            name: Haiven Morning Check
+            message: >-
+              Skipped - {{ states('input_text.elderly_person_name') }} is away from home
+            entity_id: input_boolean.haiven_monitoring_enabled
+      else:
+        # Normal flow - check for deviations when home
+        - action: homeassistant.update_entity
+          target:
+            entity_id: sensor.deviation_count
+        - delay:
+            seconds: 5
+        - condition: numeric_state
+          entity_id: sensor.deviation_count
+          above: 0
+        - action: conversation.process
+          data:
+            agent_id: conversation.claude_conversation
+            text: >
+              Generate a morning deviation alert for Mum's carers (1-2 sentences, clear but not alarmist).
+
+              Current data:
+              - Deviation count: {{ states('sensor.deviation_count') }}
+              - Deviation message: {{ states('sensor.current_deviation_message') }}
+              - Wake time today: {{ states('sensor.today_wake_time') }}
+              - Expected wake: {{ states('input_datetime.expected_wake_time') }}
+              - Last activity: {{ states('sensor.last_activity_time') }} in {{ states('sensor.activity_data') }}
+              - Recent activity: {{ states('sensor.recent_activity_summary') }}
+              - Sensor health: {{ states('sensor.sensor_health_status') }}
+
+              Rules:
+              - Explain what's unusual in plain language
+              - Don't say "deviation detected" - describe what actually happened
+              - Be clear but not panicked
+              - 1-2 sentences only
+              - Do NOT use markdown formatting
+          response_variable: ai_response
+        - action: script.send_haiven_notification
+          data:
+            title: "Haiven Alert - Morning Activity"
+            message: "{{ ai_response.response.speech.plain.speech }}"
+            level: time-sensitive
+        - action: input_text.set_value
+          target:
+            entity_id: input_text.alerts_fired_today
+          data:
+            value: >-
+              {% set current = states('input_text.alerts_fired_today') %}
+              {{ (current ~ ',morning_activity') if current else 'morning_activity' }}
+  mode: single
+- id: haiven_no_activity_alert
+  alias: "Haiven: No Activity Alert"
+  description: Alert if no activity detected for extended period. Skips if person is away.
+  triggers:
+    - trigger: time_pattern
+      hours: /1
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.manual_safe_status
+      state: "off"
+    - condition: template
+      alias: Person is home (skip if away)
+      value_template: >-
+        {% set entity = states('input_text.elderly_person_entity') %}
+        {% if entity and entity not in ['unknown', 'unavailable', ''] %}
+          {{ is_state(entity, 'home') }}
+        {% else %}
+          true
+        {% endif %}
+    - condition: template
+      alias: Only fire once per day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_no_activity_alert', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+    - condition: template
+      alias: No activity for threshold hours
+      value_template: >-
+        {% set threshold = states('input_number.no_activity_alert_hours') | float %}
+        {% set hours = state_attr('sensor.activity_data', 'hours_since_latest') | float(0) %}
+        {{ hours > threshold }}
+  actions:
+    - action: conversation.process
+      data:
+        agent_id: conversation.claude_conversation
+        text: >
+          Generate a no-activity alert for Mum's carers (2-3 sentences, suggest checking in).
+
+          Current data:
+          - Hours since last activity: {{ state_attr('sensor.activity_data', 'hours_since_latest') | float(0) | round(1) }}
+          - Alert threshold: {{ states('input_number.no_activity_alert_hours') }} hours
+          - Last activity: {{ states('sensor.last_activity_time') }} in {{ states('sensor.activity_data') }}
+          - Bedroom presence: {{ states('binary_sensor.haiven_bedroom_occupancy') }}
+          - Recent activity: {{ states('sensor.recent_activity_summary') }}
+          - Sensor health: {{ states('sensor.sensor_health_status') }}
+
+          Rules:
+          - Be clear about how long it's been since activity
+          - Mention if bedroom sensor shows presence (might just be resting)
+          - If sensors are offline, mention that as a possible explanation
+          - Suggest a check-in call
+          - Clear but not panicked
+          - 2-3 sentences
+          - Do NOT use markdown formatting
+      response_variable: ai_response
+    - action: script.send_haiven_notification
+      data:
+        title: "Haiven Alert - No Activity"
+        message: "{{ ai_response.response.speech.plain.speech }}"
+        level: time-sensitive
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',no_activity') if current else 'no_activity' }}
+  mode: single
+- id: haiven_activity_clears_safe
+  alias: "Haiven: Activity Clears Manual Safe Flag"
+  description: Clear manual safe flag when activity is detected
+  triggers:
+    - trigger: state
+      entity_id:
+        - event.kitchen_motion
+        - binary_sensor.haiven_bedroom_occupancy
+        - binary_sensor.haiven_bathroom_motion
+  conditions:
+    - condition: state
+      entity_id: input_boolean.manual_safe_status
+      state: "on"
+  actions:
+    - delay:
+        minutes: 15
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.manual_safe_status
+  mode: restart
+- id: haiven_daily_reset
+  alias: "Haiven: Daily Reset"
+  description: Reset daily tracking flags at midnight
+  triggers:
+    - trigger: time
+      at: 00:00:00
+  conditions: []
+  actions:
+    - action: script.reset_daily_flags
+  mode: single
+- id: haiven_startup_reset
+  alias: "Haiven: Startup Reset Check"
+  description: Reset daily flags on startup if it's a new day
+  triggers:
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: template
+      alias: Only if last reset was on a different day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_daily_reset', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    - delay:
+        seconds: 30
+    - action: script.reset_daily_flags
+  mode: single
+- id: haiven_status_change
+  alias: "Haiven: Status Change Notification"
+  description: Notify when overall status reaches caution or higher
+  triggers:
+    - trigger: state
+      entity_id: sensor.elderly_care_status
+      to:
+        - caution
+        - concern
+        - critical
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.deviation_alert_sent
+      state: "off"
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: >
+          {% set s = trigger.to_state.state %}
+          {% if s == 'critical' %}🚨 Haiven - CRITICAL
+          {% elif s == 'concern' %}🔴 Haiven - Check Required
+          {% else %}⚠️ Haiven - Needs Attention{% endif %}
+        message: >
+          {{ state_attr('sensor.elderly_care_status', 'status_text') }}.
+          {{ states('sensor.current_deviation_message') }}
+          Last: {{ states('sensor.last_activity_location') }} at {{ states('sensor.last_activity_time') }}
+        level: >
+          {% set s = trigger.to_state.state %}
+          {% if s in ['critical', 'concern'] %}time-sensitive{% else %}active{% endif %}
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.deviation_alert_sent
+  mode: single
+
+- id: haiven_safe_status_expire
+  alias: "Haiven: Safe Status Auto-Expire"
+  description: Auto-turn off manual safe status after configured duration
+  triggers:
+    - trigger: state
+      entity_id: input_boolean.manual_safe_status
+      to: "on"
+  conditions: []
+  actions:
+    - delay:
+        hours: "{{ states('input_number.safe_status_duration_hours') | int(2) }}"
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.manual_safe_status
+    - action: logbook.log
+      data:
+        name: Haiven Safe Status
+        message: "Manual safe status expired after {{ states('input_number.safe_status_duration_hours') }} hours"
+        entity_id: input_boolean.manual_safe_status
+  mode: restart
+- id: haiven_log_wake_time
+  alias: "Haiven: Log Wake Time Pattern"
+  description: Log actual wake times to help adjust baselines
+  triggers:
+    - trigger: state
+      entity_id: event.kitchen_motion
+  conditions:
+    - condition: state
+      entity_id: binary_sensor.morning_window_active
+      state: "on"
+      alias: Within morning wake time window
+    - condition: template
+      alias: Only log once each morning
+      value_template: >-
+        {% set last = this.attributes.last_triggered %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    - action: logbook.log
+      data:
+        name: Haiven Wake Time Pattern
+        message: First morning activity at {{ now().strftime('%H:%M') }}
+        entity_id: sensor.today_wake_time
+  mode: single
+- id: haiven_morning_activity_confirmation
+  alias: "Haiven: Morning Activity Confirmation"
+  description: Mark the person safe when first morning kitchen activity is detected
+  triggers:
+    - trigger: state
+      entity_id: event.kitchen_motion
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: state
+      entity_id: input_boolean.manual_safe_status
+      state: "off"
+    - condition: state
+      entity_id: binary_sensor.morning_window_active
+      state: "on"
+      alias: Within morning wake time window
+    - condition: template
+      alias: Only fire once per day when motion is active
+      value_template: >-
+        {% set last = this.attributes.last_triggered %}
+        {% set to_state = trigger.to_state %}
+        {% set event_state = to_state.state if to_state else none %}
+        {% set valid_motion = event_state not in ['idle', 'unknown', 'unavailable', 'off', none] %}
+        {{ valid_motion and (last is none or as_datetime(last).date() < now().date()) }}
+  actions:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.manual_safe_status
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.actual_wake_time_today
+      data:
+        time: "{{ now().strftime('%H:%M:%S') }}"
+    - action: homeassistant.update_entity
+      target:
+        entity_id:
+          - sensor.elderly_care_status
+          - sensor.today_wake_time
+          - sensor.deviation_count
+    - action: logbook.log
+      data:
+        name: Haiven Morning Confirmation
+        message: Morning kitchen activity confirmed at {{ now().strftime('%H:%M') }}
+        entity_id: input_boolean.manual_safe_status
+    - action: script.send_haiven_notification
+      data:
+        title: "✅ Haiven - Good Morning"
+        message: "{{ states('input_text.elderly_person_name') }} is awake. First activity at {{ now().strftime('%I:%M %p') }}"
+        level: passive
+  mode: single
+- id: haiven_wake_time_catchup
+  alias: "Haiven: Wake Time Catch-Up"
+  description: >
+    Recover wake time if the primary detection missed it (e.g., integration was down).
+    Runs at 10:00 and checks if there's kitchen activity from this morning that wasn't recorded.
+  triggers:
+    - trigger: time
+      at: "10:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: template
+      alias: Wake time not yet recorded today
+      value_template: >-
+        {% set wake = states('input_datetime.actual_wake_time_today') %}
+        {{ wake in ['unknown', 'unavailable', none, '', '00:00:00'] }}
+    - condition: template
+      alias: Kitchen had activity this morning
+      value_template: >-
+        {% set kitchen_last = states.event.kitchen_motion.last_changed %}
+        {% if kitchen_last %}
+          {% set activity_date = as_datetime(kitchen_last).date() %}
+          {% set activity_hour = as_datetime(kitchen_last).hour %}
+          {# Must be from today and in morning hours (4-10) #}
+          {{ activity_date == now().date() and activity_hour >= 4 and activity_hour < 10 }}
+        {% else %}
+          false
+        {% endif %}
+  actions:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.actual_wake_time_today
+      data:
+        time: >-
+          {% set kitchen_last = states.event.kitchen_motion.last_changed %}
+          {{ as_datetime(kitchen_last).strftime('%H:%M:%S') }}
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.manual_safe_status
+    - action: homeassistant.update_entity
+      target:
+        entity_id:
+          - sensor.elderly_care_status
+          - sensor.today_wake_time
+          - sensor.deviation_count
+    - action: logbook.log
+      data:
+        name: Haiven Wake Time Catch-Up
+        message: >-
+          Wake time recovered from kitchen sensor: {{ states.event.kitchen_motion.last_changed.strftime('%H:%M') }}
+          (primary detection was missed)
+        entity_id: input_datetime.actual_wake_time_today
+    - action: script.send_haiven_notification
+      data:
+        title: "☀️ Haiven - Wake Time Recovered"
+        message: >-
+          {{ states('input_text.elderly_person_name') }}'s wake time was recovered from sensor data:
+          {{ states.event.kitchen_motion.last_changed.strftime('%I:%M %p') }}
+          (primary detection missed - possible integration issue)
+        level: passive
+  mode: single
+- id: haiven_bedtime_confirmation_v2
+  alias: "Haiven: Bedtime Confirmation V4 (Bathroom→Bedroom)"
+  description: >
+    Detect bedtime using bathroom → bedroom sequence within 17:30-21:30 window.
+    Based on 2 weeks data analysis. Ignores kitchen (dog contamination).
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.bedtime_pattern_detected
+      to: "on"
+      for:
+        minutes: 5
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: template
+      alias: Bedtime not already recorded today
+      value_template: >-
+        {% set actual_bedtime = states('input_datetime.actual_bedtime_today') %}
+        {{ actual_bedtime in ['unknown', 'unavailable', none, '', '00:00:00'] }}
+    - condition: template
+      alias: Bathroom time is in valid evening range (17:00-23:59)
+      value_template: >-
+        {% set bath_time = state_attr('binary_sensor.bedtime_pattern_detected', 'bathroom_time') %}
+        {% if bath_time and bath_time != 'unknown' and ':' in bath_time %}
+          {% set hour = bath_time.split(':')[0] | int(0) %}
+          {{ hour >= 17 and hour <= 23 }}
+        {% else %}
+          {# If no valid bathroom_time, use current time which should be in window #}
+          {% set hour = now().hour %}
+          {{ hour >= 17 and hour <= 23 }}
+        {% endif %}
+  actions:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.actual_bedtime_today
+      data:
+        time: >
+          {# Record bedtime as bathroom time (start of bedtime routine) #}
+          {% set bath_time = state_attr('binary_sensor.bedtime_pattern_detected', 'bathroom_time') %}
+          {% if bath_time and bath_time != 'unknown' %}
+            {{ bath_time }}:00
+          {% else %}
+            {{ now().strftime('%H:%M:%S') }}
+          {% endif %}
+    - action: homeassistant.update_entity
+      target:
+        entity_id:
+          - sensor.today_bedtime
+    - action: logbook.log
+      data:
+        name: Haiven Bedtime Confirmation V4
+        message: >
+          Bedtime detected at {{ states('input_datetime.actual_bedtime_today') }}
+          (bathroom → bedroom sequence)
+        entity_id: input_datetime.actual_bedtime_today
+  mode: single
+- id: haiven_log_all_activity_events
+  alias: "Haiven: Log All Activity Events"
+  description: Append every monitored activity event to activity.log
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.kitchen_motion
+      to:
+        - "on"
+        - "off"
+    - trigger: state
+      entity_id: binary_sensor.haiven_bathroom_motion
+      to:
+        - "on"
+        - "off"
+    - trigger: state
+      entity_id: binary_sensor.haiven_bedroom_occupancy
+      to:
+        - "on"
+        - "off"
+  conditions:
+    - condition: template
+      alias: Ignore unknown or unavailable states
+      value_template: >-
+        {% set to_state = trigger.to_state %}
+        {{ to_state is not none and to_state.state not in ['unknown', 'unavailable'] }}
+  actions:
+    - action: shell_command.log_activity
+      data:
+        location: >-
+          {% if 'kitchen' in trigger.entity_id %}Kitchen{% elif 'bathroom' in trigger.entity_id or 'haiven_bathroom' in trigger.entity_id %}Bathroom{% elif 'bedroom' in trigger.entity_id or 'haiven_bedroom' in trigger.entity_id %}Bedroom{% else %}Unknown{% endif %}
+        sensor_type: >-
+          {% set state = trigger.to_state.state if trigger.to_state else 'unknown' %}
+          {% if 'motion' in trigger.entity_id %}Motion ({{ state }}){% elif 'occupancy' in trigger.entity_id or 'presence' in trigger.entity_id %}Presence ({{ state }}){% else %}Sensor ({{ state }}){% endif %}
+  mode: queued
+- id: haiven_log_mum_location
+  alias: "Haiven: Log Elderly Person Location Changes"
+  description: Log when Mum arrives home or leaves to activity.log
+  triggers:
+    - trigger: state
+      entity_id: person.elderly_person
+      to: "home"
+    - trigger: state
+      entity_id: person.elderly_person
+      to: "not_home"
+  conditions:
+    - condition: template
+      alias: Ignore unknown or unavailable states
+      value_template: >-
+        {{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable'] }}
+  actions:
+    - action: shell_command.log_activity
+      data:
+        location: "Mum"
+        sensor_type: >-
+          {% if trigger.to_state.state == 'home' %}
+            Location (arrived home)
+          {% else %}
+            Location (left home)
+          {% endif %}
+  mode: queued
+- id: haiven_handle_mark_safe_action
+  alias: "Haiven: Handle Mark Safe Action"
+  description: Handle mark safe button from notification
+  triggers:
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: MARK_SAFE
+  conditions: []
+  actions:
+    - action: script.mark_safe
+  mode: single
+- id: haiven_bathroom_unusual
+  alias: "Haiven: Unusual Bathroom Activity"
+  description: Alert if bathroom visits are unusual (frequency/duration)
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bathroom_motion
+      to: "on"
+      for:
+        hours: 2
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "⚠️ Haiven Alert - Bathroom"
+        message: "Prolonged bathroom activity detected. Please check in."
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',bathroom_unusual') if current else 'bathroom_unusual' }}
+  mode: single
+- id: haiven_bathroom_night_entry
+  alias: "Haiven: Track Bathroom Night Entry"
+  description: Track bathroom visits during sleep hours (between bedtime+variance and wake-variance)
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bathroom_motion
+      to: "on"
+  conditions:
+    - condition: state
+      entity_id: binary_sensor.night_window_active
+      state: "on"
+      alias: Within night monitoring window
+  actions:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.bathroom_night_last_entry
+      data:
+        timestamp: "{{ now().timestamp() }}"
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.bathroom_occupied_night
+    - action: counter.increment
+      target:
+        entity_id: counter.bathroom_visits_night
+    - action: logbook.log
+      data:
+        name: Night Bathroom Visit
+        message: "Visit #{{ states('counter.bathroom_visits_night') }} - Entry tracked"
+        entity_id: binary_sensor.haiven_bathroom_motion
+  mode: single
+- id: haiven_bathroom_night_reset
+  alias: "Haiven: Noon Reset (Bedtime & Night Counter)"
+  description: Reset bedtime and bathroom night counter at 12:00 daily (noon-to-noon tracking for evening/night events)
+  triggers:
+    - trigger: time
+      at: "12:00:00"
+  conditions:
+    - condition: template
+      alias: Only reset once per day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_bathroom_night_reset', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    - action: counter.reset
+      target:
+        entity_id: counter.bathroom_visits_night
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bathroom_occupied_night
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.actual_bedtime_today
+      data:
+        time: "00:00:00"
+    - action: logbook.log
+      data:
+        name: "Haiven Noon Reset"
+        message: "Bedtime and night bathroom counter reset for new day"
+  mode: single
+- id: haiven_bathroom_night_exit
+  alias: "Haiven: Detect Bathroom Night Exit"
+  description: Detect exit from bathroom when bedroom motion is detected
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bedroom_occupancy
+      to: "on"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.bathroom_occupied_night
+      state: "on"
+    - condition: state
+      entity_id: binary_sensor.night_window_active
+      state: "on"
+      alias: Within night monitoring window
+  actions:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.bathroom_night_exit_time
+      data:
+        timestamp: "{{ now().timestamp() }}"
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.bathroom_occupied_night
+    - action: logbook.log
+      data:
+        name: Night Bathroom Exit
+        message: "Returned to bedroom - exit confirmed"
+        entity_id: binary_sensor.haiven_bedroom_occupancy
+  mode: single
+- id: haiven_bathroom_night_extended_alert
+  alias: "Haiven: Alert Extended Night Bathroom Visit"
+  description: Alert when bathroom visit exceeds baseline duration
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.bathroom_night_visit_extended
+      to: "on"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: "{{ states('input_text.contact_1_notification') }}"
+      data:
+        title: "⚠️ Extended Night Bathroom Visit"
+        message: >
+          {{ states('input_text.elderly_person_name') }} in bathroom for
+          {{ states('sensor.bathroom_night_current_duration') }} mins
+          (since {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }})
+        data:
+          priority: high
+          actions:
+            - action: "CHECK_IN"
+              title: "Call Now"
+            - action: "DISMISS_15"
+              title: "Check in 15min"
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',bathroom_night_extended') if current else 'bathroom_night_extended' }}
+  mode: single
+- id: haiven_bathroom_night_no_return_alert
+  alias: "Haiven: Alert No Return From Bathroom (Possible Fall)"
+  description: CRITICAL alert for possible fall or medical emergency in bathroom
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.bathroom_night_no_return
+      to: "on"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: "{{ states('input_text.contact_1_notification') }}"
+      data:
+        title: "🚨 URGENT: No Return From Bathroom"
+        message: >
+          {{ states('input_text.elderly_person_name') }} entered bathroom at
+          {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }}
+          ({{ states('sensor.bathroom_night_current_duration') }} mins ago) and has NOT returned to bedroom.
+          Possible fall or medical emergency - CHECK IMMEDIATELY!
+        data:
+          priority: critical
+          ttl: 0
+          actions:
+            - action: "CALL_NOW"
+              title: "Call Now"
+            - action: "EMERGENCY"
+              title: "Call Emergency Services"
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',bathroom_no_return') if current else 'bathroom_no_return' }}
+  mode: single
+- id: haiven_evening_activity
+  alias: "Haiven: Evening Activity Check"
+  description: Ensure there's activity before bedtime
+  triggers:
+    - trigger: time
+      at: "20:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: template
+      alias: Only fire once per day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_evening_activity_check', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+    - condition: template
+      alias: No activity in last 3 hours
+      value_template: >-
+        {% set hours = state_attr('sensor.activity_data', 'hours_since_latest') | float(0) %}
+        {{ hours > 3 }}
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "⚠️ Haiven Alert - Evening Activity"
+        message: "No activity in the last 3 hours. Last activity: {{ states('sensor.last_activity_display') }}"
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',evening_activity') if current else 'evening_activity' }}
+  mode: single
+- id: haiven_bedtime_check
+  alias: "Haiven: Bedtime Routine Check"
+  description: Alert if no bedtime activity detected
+  triggers:
+    - trigger: time_pattern
+      minutes: /15
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: template
+      alias: Past bedtime cutoff time
+      value_template: >-
+        {% set expected = states('input_datetime.expected_bedtime') %}
+        {% set variance = states('input_number.bedtime_variance_minutes') | float %}
+        {% set cutoff = today_at(expected) + timedelta(minutes=variance) %}
+        {{ now() >= cutoff }}
+    - condition: template
+      alias: Only alert if bedtime hasn't been detected yet
+      value_template: >-
+        {% set actual = states('input_datetime.actual_bedtime_today') %}
+        {{ actual in ['unknown', 'unavailable', none, '', '00:00:00'] }}
+    - condition: template
+      alias: Only fire once (not already sent)
+      value_template: >-
+        {% set last = state_attr('automation.haiven_bedtime_routine_check', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "⚠️ Haiven Alert - Bedtime"
+        message: "No bedtime detected for {{ states('input_text.elderly_person_name') }} by expected time ({{ states('input_datetime.expected_bedtime')[:5] }}) + {{ states('input_number.bedtime_variance_minutes') | int }} mins. Last activity: {{ states('sensor.last_activity_display') }}"
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',bedtime_check') if current else 'bedtime_check' }}
+  mode: single
+- id: haiven_kitchen_motion_helper
+  alias: "Haiven: Kitchen Motion Helper"
+  description: Convert Kitchen event to persistent binary state for history display
+  triggers:
+    - trigger: state
+      entity_id: event.kitchen_motion
+  conditions: []
+  actions:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.kitchen_motion
+    - delay:
+        seconds: 60
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.kitchen_motion
+  mode: restart
+# Haiven Care Circle - Location-Based Automations
+# These automations use person tracking to provide location-aware alerts
+#
+# Features:
+# - Arrival/departure notifications at home
+# - Proximity-based alert routing
+# - Distance-based escalation
+# - Location context in notifications
+
+# ============================================================================
+# ARRIVAL & DEPARTURE NOTIFICATIONS
+# ============================================================================
+
+# NOTE: The entity_id values below must match the person entities configured in:
+# - input_text.contact_1_person (default: person.contact_1)
+# - input_text.contact_2_person (default: person.contact_2)
+# Update these if you change the person entities in Settings.
+
+- id: notify_contact_arrives_home
+  alias: "Circle Tracking: Care Circle Member Arrives at Home"
+  description: "Send notification when any care circle member arrives at elderly person's home"
+  triggers:
+    - trigger: state
+      entity_id: person.contact_1  # Must match input_text.contact_1_person
+      to: "home"
+      from:
+        - "not_home"
+        - "away"
+    - trigger: state
+      entity_id: person.contact_2  # Must match input_text.contact_2_person
+      to: "home"
+      from:
+        - "not_home"
+        - "away"
+  conditions:
+    # Only notify if they were away for more than 10 minutes (avoid false triggers)
+    - condition: template
+      value_template: "{{ (now() - trigger.from_state.last_changed).total_seconds() > 600 }}"
+  actions:
+    - variables:
+        member_name: >
+          {% if trigger.entity_id == states('input_text.contact_1_person') %}
+            {{ states('input_text.contact_1_name') }}
+          {% elif trigger.entity_id == states('input_text.contact_2_person') %}
+            {{ states('input_text.contact_2_name') }}
+          {% else %}
+            Care circle member
+          {% endif %}
+    - action: logbook.log
+      data:
+        name: "Care Circle Tracking"
+        message: "{{ member_name }} has arrived at home"
+        entity_id: "{{ trigger.entity_id }}"
+    - action: persistent_notification.create
+      data:
+        title: "Care Circle Update"
+        message: "{{ member_name }} has arrived at home"
+  mode: single
+
+- id: notify_care_circle_member_leaves_home
+  alias: "Circle Tracking: Care Circle Member Leaves Home"
+  description: "Log when any care circle member leaves"
+  triggers:
+    - trigger: state
+      entity_id: person.contact_1  # Must match input_text.contact_1_person
+      from: "home"
+      to: "not_home"
+    - trigger: state
+      entity_id: person.contact_2  # Must match input_text.contact_2_person
+      from: "home"
+      to: "not_home"
+  conditions:
+    # Only log if they were home for more than 10 minutes
+    - condition: template
+      value_template: "{{ (now() - trigger.from_state.last_changed).total_seconds() > 600 }}"
+  actions:
+    - action: logbook.log
+      data:
+        name: "Care Circle Tracking"
+        message: >
+          {% if trigger.entity_id == states('input_text.contact_1_person') %}
+            {{ states('input_text.contact_1_name') }} has left home
+          {% elif trigger.entity_id == states('input_text.contact_2_person') %}
+            {{ states('input_text.contact_2_name') }} has left home
+          {% endif %}
+  mode: queued
+  max: 5
+
+# ============================================================================
+# PROXIMITY-BASED ALERTS
+# ============================================================================
+
+- id: alert_no_one_nearby_during_warning
+  alias: "Circle Tracking: Alert if No One Nearby During Warning Status"
+  description: "Escalate alert if status is warning but no care circle member is nearby"
+  triggers:
+    - trigger: state
+      entity_id: sensor.elderly_care_status
+      to:
+        - "warning"
+        - "alert"
+  conditions:
+    # No one is nearby (within 5km)
+    - condition: state
+      entity_id: binary_sensor.care_circle_member_nearby
+      state: "off"
+    # And no one is at home
+    - condition: state
+      entity_id: sensor.care_circle_member_present
+      state: "no"
+  actions:
+    - action: script.notify_care_circle
+      data:
+        title: "⚠️ URGENT: No One Nearby"
+        message: >
+          Status: {{ states('sensor.haiven_status') | title }}
+
+          No care circle members are currently nearby or at home.
+
+          Nearest person: {{ states('sensor.nearest_care_circle_member') }}
+          Distance: {{ state_attr('sensor.nearest_care_circle_member', 'distance_km') }} km
+
+          Last activity: {{ states('sensor.last_activity_display') }}
+    - action: logbook.log
+      data:
+        name: "Care Circle Alert"
+        message: "Status warning triggered with no one nearby. Nearest: {{ states('sensor.nearest_care_circle_member') }} at {{ state_attr('sensor.nearest_care_circle_member', 'distance_km') }} km"
+  mode: single
+
+- id: notify_nearest_person_during_alert
+  alias: "Circle Tracking: Priority Notify Nearest Person"
+  description: "Send alert to nearest care circle member first, then others"
+  triggers:
+    - trigger: state
+      entity_id: sensor.elderly_care_status
+      to: "alert"
+  actions:
+    # Determine who is nearest
+    - variables:
+        nearest_person: "{{ states('sensor.nearest_care_circle_member') }}"
+        nearest_distance: "{{ state_attr('sensor.nearest_care_circle_member', 'distance_km') }}"
+
+    # Send to nearest person first
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ nearest_person == 'Contact 1' }}"
+          sequence:
+            - action: "{{ states('input_text.contact_1_notification') }}"
+              data:
+                title: "🚨 ALERT: You're Closest"
+                message: >
+                  Status: ALERT
+
+                  You are the nearest care circle member ({{ nearest_distance }} km away).
+
+                  Last activity: {{ states('sensor.last_activity_display') }}
+
+                  Please check on Mum as soon as possible.
+                data:
+                  push:
+                    interruption-level: time-sensitive
+
+        - conditions:
+            - condition: template
+              value_template: "{{ nearest_person == 'Contact 2' }}"
+          sequence:
+            - action: "{{ states('input_text.contact_2_notification') }}"
+              data:
+                title: "🚨 ALERT: You're Closest"
+                message: >
+                  Status: ALERT
+
+                  You are the nearest care circle member ({{ nearest_distance }} km away).
+
+                  Last activity: {{ states('sensor.last_activity_display') }}
+
+                  Please check on Mum as soon as possible.
+                data:
+                  push:
+                    interruption-level: time-sensitive
+
+        - conditions:
+            - condition: template
+              value_template: "{{ nearest_person == 'Professional Carer' }}"
+          sequence:
+            - action: "{{ states('input_text.carer_notification') }}"
+              data:
+                title: "🚨 ALERT: You're Closest"
+                message: >
+                  Status: ALERT
+
+                  You are the nearest care circle member ({{ nearest_distance }} km away).
+
+                  Last activity: {{ states('sensor.last_activity_display') }}
+
+                  Please check on Mum as soon as possible.
+                data:
+                  push:
+                    interruption-level: time-sensitive
+
+    # Wait 2 minutes, then notify everyone else
+    - delay:
+        minutes: 2
+
+    - action: script.notify_care_circle
+      data:
+        title: "🚨 ALERT Status"
+        message: >
+          Last activity: {{ states('sensor.last_activity_display') }}
+
+          Nearest person: {{ nearest_person }} ({{ nearest_distance }} km away)
+
+  mode: single
+
+# ============================================================================
+# LOCATION CONTEXT IN EXISTING ALERTS
+# ============================================================================
+
+- id: include_location_in_morning_alert
+  alias: "Circle Tracking: Add Location Info to Morning Alert"
+  description: "Enhance morning activity alert with care circle location info"
+  triggers:
+    - trigger: state
+      entity_id: sensor.elderly_care_status
+      to: "warning"
+      for:
+        minutes: 5
+  conditions:
+    # Only during morning hours
+    - condition: time
+      after: "06:00:00"
+      before: "12:00:00"
+  actions:
+    - action: script.notify_care_circle
+      data:
+        title: "⚠️ Morning Activity Check"
+        message: >
+          No morning activity detected yet.
+
+          Expected wake time: {{ states('input_datetime.expected_wake_time') }}
+          Current time: {{ now().strftime('%H:%M') }}
+
+          {% if is_state('sensor.care_circle_member_present', 'yes') %}
+          📍 Care Circle: {{ state_attr('sensor.care_circle_member_present', 'members_present') }} currently at home
+          {% else %}
+          {% set primary_name = states('input_text.contact_1_name') %}
+          {% set primary_location = states('sensor.primary_contact_location') %}
+          {% set primary_distance = states('sensor.primary_contact_distance') %}
+          {% set secondary_name = states('input_text.contact_2_name') %}
+          {% set secondary_location = states('sensor.secondary_contact_location') %}
+          {% set secondary_distance = states('sensor.secondary_contact_distance') %}
+          {% set has_locations = (primary_location not in ['Not Configured', 'unknown', 'unavailable']) or (secondary_location not in ['Not Configured', 'unknown', 'unavailable']) %}
+          {% if has_locations %}
+          📍 Care Circle Locations:
+          {% if primary_name not in ['unknown', 'unavailable', '', none] and primary_location not in ['Not Configured', 'unknown', 'unavailable'] %}
+          • {{ primary_name }}: {{ primary_location }}{% if primary_distance not in ['unknown', 'unavailable', '', none] %} ({{ primary_distance }} km){% endif %}
+          {% endif %}
+          {% if secondary_name not in ['unknown', 'unavailable', '', none] and secondary_location not in ['Not Configured', 'unknown', 'unavailable'] %}
+          • {{ secondary_name }}: {{ secondary_location }}{% if secondary_distance not in ['unknown', 'unavailable', '', none] %} ({{ secondary_distance }} km){% endif %}
+          {% endif %}
+          {% endif %}
+          {% endif %}
+  mode: single
+
+# ============================================================================
+# DAILY LOCATION SUMMARY
+# ============================================================================
+
+- id: daily_location_summary
+  alias: "Circle Tracking: Daily Location Summary"
+  description: "Send daily summary of care circle locations and proximity"
+  triggers:
+    - trigger: time
+      at: "20:00:00" # 8 PM daily summary
+  actions:
+    - action: persistent_notification.create
+      data:
+        title: "Daily Care Circle Location Summary"
+        message: >
+          **Care Circle Status - {{ now().strftime('%A, %B %d') }}**
+
+          **Currently at Home:**
+          {% if is_state('sensor.care_circle_member_present', 'yes') %}
+          {{ state_attr('sensor.care_circle_member_present', 'members_present') }}
+          {% else %}
+          No one
+          {% endif %}
+
+          {% set primary_name = states('input_text.contact_1_name') %}
+          {% set primary_location = states('sensor.primary_contact_location') %}
+          {% set primary_distance = states('sensor.primary_contact_distance') %}
+          {% set secondary_name = states('input_text.contact_2_name') %}
+          {% set secondary_location = states('sensor.secondary_contact_location') %}
+          {% set secondary_distance = states('sensor.secondary_contact_distance') %}
+          {% set has_locations = (primary_name not in ['unknown', 'unavailable', '', none] and primary_location not in ['Not Configured', 'unknown', 'unavailable']) or (secondary_name not in ['unknown', 'unavailable', '', none] and secondary_location not in ['Not Configured', 'unknown', 'unavailable']) %}
+          {% if has_locations %}
+
+          **Locations:**
+          {% if primary_name not in ['unknown', 'unavailable', '', none] and primary_location not in ['Not Configured', 'unknown', 'unavailable'] %}
+          • {{ primary_name }}: {{ primary_location }}{% if primary_distance not in ['unknown', 'unavailable', '', none] %} ({{ primary_distance }} km){% endif %}
+          {% endif %}
+          {% if secondary_name not in ['unknown', 'unavailable', '', none] and secondary_location not in ['Not Configured', 'unknown', 'unavailable'] %}
+          • {{ secondary_name }}: {{ secondary_location }}{% if secondary_distance not in ['unknown', 'unavailable', '', none] %} ({{ secondary_distance }} km){% endif %}
+          {% endif %}
+          {% set nearest = states('sensor.nearest_care_circle_member') %}
+          {% set nearest_distance = state_attr('sensor.nearest_care_circle_member', 'distance_km') %}
+          {% if nearest not in ['unknown', 'unavailable', 'Unknown', 'No contacts configured', '', none] %}
+
+          **Nearest Person:** {{ nearest }}{% if nearest_distance not in ['unknown', 'unavailable', '', none] %} ({{ nearest_distance }} km away){% endif %}
+          {% endif %}
+          {% else %}
+
+          _📍 Location tracking not configured - enable location services on mobile devices to see member locations_
+          {% endif %}
+
+          **Status:** {{ states('sensor.elderly_care_status') | title }}
+          **Last Activity:** {{ states('sensor.last_activity_display') }}
+
+    - action: logbook.log
+      data:
+        name: "Care Circle Summary"
+        message: "Daily location summary generated. Nearest: {{ states('sensor.nearest_care_circle_member') }}"
+
+  mode: single
+# ============================================================================
+# CUSTOM ZONE NOTIFICATIONS (Examples - uncomment to enable)
+# ============================================================================
+
+# Notify when primary contact arrives at work (may not be immediately available)
+# - id: notify_primary_contact_at_work
+#   alias: "Circle Tracking: Primary Contact at Work"
+#   description: "Track when primary contact is at work"
+#   trigger:
+#     - platform: state
+#       entity_id: person.contact_1
+#       to: "primary_contact_work"  # Match zone name from haiven_zones.yaml
+#   action:
+#     - action: logbook.log
+#       data:
+#         name: "Care Circle Tracking"
+#         message: "{{ state_attr('input_text.contact_1_name', 'state') }} arrived at work - may have limited availability"
+#   mode: single
+
+# Notify when elderly person leaves home (if they have a tracker)
+# - id: alert_elderly_person_leaves_home
+#   alias: "Circle Tracking: Elderly Person Left Home"
+#   description: "Alert if elderly person leaves home unexpectedly"
+#   trigger:
+#     - platform: state
+#       entity_id: person.elderly_person
+#       from: "home"
+#       to: "not_home"
+#   action:
+#     - action: script.notify_care_circle
+#       data:
+#         title: "⚠️ Movement Alert"
+#         message: "{{ state_attr('input_text.elderly_person_name', 'state') }} has left home"
+#   mode: single
+
+# ============================================================================
+# ACTIVITY TRIGGER COUNTERS
+# ============================================================================
+
+- id: haiven_count_kitchen_trigger
+  alias: "Haiven: Count Kitchen Trigger"
+  description: Increment kitchen and total counters on kitchen motion
+  triggers:
+    - trigger: state
+      entity_id: event.kitchen_motion
+  conditions:
+    - condition: template
+      alias: Ignore unknown/unavailable states
+      value_template: >-
+        {{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable', 'idle'] }}
+  actions:
+    - action: counter.increment
+      target:
+        entity_id: counter.kitchen_triggers_today
+    - action: counter.increment
+      target:
+        entity_id: counter.total_triggers_today
+  mode: queued
+  max: 10
+
+- id: haiven_count_bedroom_trigger
+  alias: "Haiven: Count Bedroom Trigger"
+  description: Increment bedroom and total counters on bedroom occupancy on
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bedroom_occupancy
+      to: "on"
+  conditions: []
+  actions:
+    - action: counter.increment
+      target:
+        entity_id: counter.bedroom_triggers_today
+    - action: counter.increment
+      target:
+        entity_id: counter.total_triggers_today
+  mode: queued
+  max: 10
+
+- id: haiven_count_bathroom_trigger
+  alias: "Haiven: Count Bathroom Trigger"
+  description: Increment bathroom and total counters on bathroom motion on
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bathroom_motion
+      to: "on"
+  conditions: []
+  actions:
+    - action: counter.increment
+      target:
+        entity_id: counter.bathroom_triggers_today
+    - action: counter.increment
+      target:
+        entity_id: counter.total_triggers_today
+  mode: queued
+  max: 10
+
+- id: haiven_reset_daily_counters
+  alias: "Haiven: Reset Daily Counters"
+  description: Reset all activity counters at midnight
+  triggers:
+    - trigger: time
+      at: "00:00:00"
+  conditions: []
+  actions:
+    - action: counter.reset
+      target:
+        entity_id:
+          - counter.kitchen_triggers_today
+          - counter.bedroom_triggers_today
+          - counter.bathroom_triggers_today
+          - counter.total_triggers_today
+  mode: single
+
+# ============================================================================
+# PATTERN DETECTION ALERTS
+# ============================================================================
+
+- id: haiven_no_kitchen_by_noon
+  alias: "Haiven: No Kitchen Activity by Noon"
+  description: Alert if no kitchen activity detected by 12:00
+  triggers:
+    - trigger: time
+      at: "12:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: template
+      alias: No kitchen triggers today
+      value_template: >-
+        {{ states('counter.kitchen_triggers_today') | int(0) == 0 }}
+    - condition: template
+      alias: Only fire once per day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_no_kitchen_activity_by_noon', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "⚠️ Haiven Alert - No Kitchen Activity"
+        message: "No kitchen activity detected this morning (by noon). Last activity: {{ states('sensor.last_activity_display') }}"
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',no_kitchen_noon') if current else 'no_kitchen_noon' }}
+  mode: single
+
+- id: haiven_low_activity_alert
+  alias: "Haiven: Low Activity Alert"
+  description: Alert if total triggers less than 50% of expected by evening
+  triggers:
+    - trigger: time
+      at: "18:00:00"
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: template
+      alias: Triggers below 50% of baseline
+      value_template: >-
+        {% set kitchen_actual = states('counter.kitchen_triggers_today') | int(0) %}
+        {% set baseline = states('input_number.kitchen_triggers_baseline') | float(30) %}
+        {{ kitchen_actual < (baseline * 0.5) }}
+    - condition: template
+      alias: Only fire once per day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_low_activity_alert', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "⚠️ Haiven Alert - Low Activity"
+        message: >
+          Activity level unusually low today.
+          Kitchen triggers: {{ states('counter.kitchen_triggers_today') }} (expected ~{{ states('input_number.kitchen_triggers_baseline') | int }})
+          Activity status: {{ states('sensor.activity_level_status') }}
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',low_activity') if current else 'low_activity' }}
+  mode: single
+
+- id: haiven_no_room_transition
+  alias: "Haiven: No Room Transition Alert"
+  description: Alert if stuck in same room for 4+ hours during daytime
+  triggers:
+    - trigger: time_pattern
+      hours: /1
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: time
+      after: "08:00:00"
+      before: "20:00:00"
+    - condition: template
+      alias: Same room for 4+ hours
+      value_template: >-
+        {% set invalid_states = ['unknown', 'unavailable'] %}
+        {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
+        {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
+        {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+
+        {% set times = [] %}
+        {% if kitchen_last %}{% set times = times + [{'loc': 'Kitchen', 'time': kitchen_last}] %}{% endif %}
+        {% if bedroom_last %}{% set times = times + [{'loc': 'Bedroom', 'time': bedroom_last}] %}{% endif %}
+        {% if bathroom_last %}{% set times = times + [{'loc': 'Bathroom', 'time': bathroom_last}] %}{% endif %}
+
+        {% if times | length > 0 %}
+          {% set sorted_times = times | sort(attribute='time', reverse=true) %}
+          {% set latest = sorted_times[0] %}
+          {% set hours_since = ((now() - latest.time).total_seconds() / 3600) %}
+          {{ hours_since >= 4 }}
+        {% else %}
+          false
+        {% endif %}
+    - condition: template
+      alias: Only fire once every 4 hours
+      value_template: >-
+        {% set last = state_attr('automation.haiven_no_room_transition_alert', 'last_triggered') %}
+        {% if last is none %}
+          true
+        {% else %}
+          {{ (now() - as_datetime(last)).total_seconds() > 14400 }}
+        {% endif %}
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "⚠️ Haiven Alert - No Movement"
+        message: >
+          No room transition detected in 4+ hours.
+          Current location: {{ states('sensor.current_room_location') }}
+          Last transition: {{ states('sensor.last_room_transition') }}
+          Last activity: {{ states('sensor.last_activity_display') }}
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',no_room_transition') if current else 'no_room_transition' }}
+  mode: single
+
+# ============================================================================
+# HEALTH CHECK - Verify new sensors after deployment
+# ============================================================================
+
+- id: haiven_new_sensors_health_check
+  alias: "Haiven: New Sensors Health Check"
+  description: Verify activity tracking sensors are working after HA restart
+  triggers:
+    - trigger: homeassistant
+      event: start
+  conditions: []
+  actions:
+    - delay:
+        minutes: 2
+    - variables:
+        issues: >
+          {% set problems = [] %}
+          {% set invalid = ['unknown', 'unavailable'] %}
+          {# Counters #}
+          {% if states('counter.kitchen_triggers_today') in invalid %}
+            {% set problems = problems + ['kitchen_triggers_today counter'] %}
+          {% endif %}
+          {% if states('counter.bedroom_triggers_today') in invalid %}
+            {% set problems = problems + ['bedroom_triggers_today counter'] %}
+          {% endif %}
+          {% if states('counter.bathroom_triggers_today') in invalid %}
+            {% set problems = problems + ['bathroom_triggers_today counter'] %}
+          {% endif %}
+          {# New sensors #}
+          {% if states('sensor.minutes_since_kitchen_activity') in invalid %}
+            {% set problems = problems + ['minutes_since_kitchen_activity'] %}
+          {% endif %}
+          {% if states('sensor.activity_level_status') in invalid %}
+            {% set problems = problems + ['activity_level_status'] %}
+          {% endif %}
+          {% if states('sensor.current_room_location') in invalid %}
+            {% set problems = problems + ['current_room_location'] %}
+          {% endif %}
+          {% if states('sensor.daily_trigger_summary') in invalid %}
+            {% set problems = problems + ['daily_trigger_summary'] %}
+          {% endif %}
+          {# Baseline input #}
+          {% if states('input_number.kitchen_triggers_baseline') in invalid %}
+            {% set problems = problems + ['kitchen_triggers_baseline input'] %}
+          {% endif %}
+          {{ problems }}
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ issues | length > 0 }}"
+          sequence:
+            - action: script.send_haiven_notification
+              data:
+                title: "🔧 Haiven - Sensor Issues"
+                message: "Missing: {{ issues | join(', ') }}. Check YAML and reload."
+      default:
+        - action: script.send_haiven_notification
+          data:
+            title: "✅ Haiven - Sensors OK"
+            message: "Counters: K={{ states('counter.kitchen_triggers_today') }} B={{ states('counter.bedroom_triggers_today') }} Bath={{ states('counter.bathroom_triggers_today') }} | Status: {{ states('sensor.activity_level_status') }}"
+  mode: single
+# ============================================================================
+# BED STATE MACHINE - EPL Zone-Based Detection
+# ============================================================================
+
+- id: bed_state_enter_bed
+  alias: "Bed State: Enter Bed"
+  description: "Transition to in_bed when Zone 1 (bed area) activates"
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bedroom_zone_1_occupancy
+      to: "on"
+  conditions:
+    - condition: state
+      entity_id: input_select.bed_state
+      state: "not_in_bed"
+  actions:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.bed_state
+      data:
+        option: "in_bed"
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.bed_state_last_transition
+      data:
+        timestamp: "{{ now().timestamp() }}"
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.zone1_entered_time
+      data:
+        timestamp: "{{ now().timestamp() }}"
+  mode: single
+
+- id: bed_state_confirm_sleeping
+  alias: "Bed State: Confirm Sleeping"
+  description: "Transition to sleeping after settling period with still detection"
+  triggers:
+    - trigger: state
+      entity_id: input_select.bed_state
+      to: "in_bed"
+      for:
+        seconds: "{{ states('input_number.bed_settling_seconds') | int(120) }}"
+  conditions:
+    - condition: state
+      entity_id: binary_sensor.haiven_bedroom_zone_1_occupancy
+      state: "on"
+    # Prefer still target, but allow occupancy as fallback (handles dropouts)
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: binary_sensor.haiven_bedroom_still_target
+          state: "on"
+        - condition: state
+          entity_id: binary_sensor.haiven_bedroom_occupancy
+          state: "on"
+  actions:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.bed_state
+      data:
+        option: "sleeping"
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.bed_state_last_transition
+      data:
+        timestamp: "{{ now().timestamp() }}"
+  mode: single
+
+- id: bed_state_movement_detected
+  alias: "Bed State: Movement Detected"
+  description: "Transition back to in_bed when movement detected while sleeping"
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bedroom_moving_target
+      to: "on"
+  conditions:
+    - condition: state
+      entity_id: input_select.bed_state
+      state: "sleeping"
+    - condition: state
+      entity_id: binary_sensor.haiven_bedroom_zone_1_occupancy
+      state: "on"
+  actions:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.bed_state
+      data:
+        option: "in_bed"
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.bed_state_last_transition
+      data:
+        timestamp: "{{ now().timestamp() }}"
+  mode: single
+
+- id: bed_state_left_bed
+  alias: "Bed State: Left Bed"
+  description: "Transition to not_in_bed when Zone 1 (bed) off for grace period"
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_bedroom_zone_1_occupancy
+      to: "off"
+      for:
+        minutes: "{{ states('input_number.bed_left_grace_minutes') | int(5) }}"
+  conditions:
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: input_select.bed_state
+          state: "in_bed"
+        - condition: state
+          entity_id: input_select.bed_state
+          state: "sleeping"
+  actions:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.bed_state
+      data:
+        option: "not_in_bed"
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.bed_state_last_transition
+      data:
+        timestamp: "{{ now().timestamp() }}"
+  mode: single
+
+# ============================================================================
+# DATA CAPTURE - Tracking automations for behavioral dataset
+# ============================================================================
+
+- id: haiven_track_first_kitchen
+  alias: "Haiven: Track First Kitchen Time"
+  description: Record first kitchen motion of the day
+  triggers:
+    - trigger: state
+      entity_id: event.kitchen_motion
+  conditions:
+    - condition: template
+      alias: Valid motion event
+      value_template: >-
+        {{ trigger.to_state is not none and trigger.to_state.state not in ['idle', 'unknown', 'unavailable'] }}
+    - condition: template
+      alias: Not yet recorded today
+      value_template: >-
+        {% set first = states('input_datetime.first_kitchen_time_today') %}
+        {{ first in ['unknown', 'unavailable', none, '', '00:00:00'] }}
+  actions:
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.first_kitchen_time_today
+      data:
+        time: "{{ now().strftime('%H:%M:%S') }}"
+  mode: single
+
+- id: haiven_track_status_max
+  alias: "Haiven: Track Status Max Today"
+  description: Update highest severity level reached today
+  triggers:
+    - trigger: state
+      entity_id: sensor.elderly_care_status
+  conditions:
+    - condition: template
+      alias: New status is higher than current max
+      value_template: >-
+        {% set levels = {'normal': 0, 'monitoring': 1, 'caution': 2, 'concern': 3, 'critical': 4} %}
+        {% set new_level = levels.get(trigger.to_state.state, 0) %}
+        {% set current_max = levels.get(states('input_select.status_max_today'), 0) %}
+        {{ new_level > current_max }}
+  actions:
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.status_max_today
+      data:
+        option: "{{ trigger.to_state.state }}"
+  mode: single
+
+- id: haiven_upstairs_only_alert
+  alias: "Haiven: Upstairs Only Alert"
+  description: Alert when active upstairs but no kitchen activity past average wake time
+  triggers:
+    - trigger: time_pattern
+      minutes: /15
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: state
+      entity_id: sensor.morning_context
+      state: "upstairs_only"
+    - condition: template
+      alias: 60+ minutes past average wake time
+      value_template: >-
+        {% set avg = states('sensor.average_wake_time_week') %}
+        {% if avg not in ['unknown', 'unavailable', 'Calculating'] %}
+          {% set avg_parts = avg.split(':') %}
+          {% set avg_mins = (avg_parts[0] | int) * 60 + (avg_parts[1] | int) %}
+          {% set now_mins = now().hour * 60 + now().minute %}
+          {{ (now_mins - avg_mins) >= 60 }}
+        {% else %}
+          false
+        {% endif %}
+    - condition: template
+      alias: Only fire once per day
+      value_template: >-
+        {% set last = state_attr('automation.haiven_upstairs_only_alert', 'last_triggered') %}
+        {{ last is none or as_datetime(last).date() < now().date() }}
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "⚠️ Haiven - Upstairs Only"
+        message: >-
+          {{ states('input_text.elderly_person_name') }} is active upstairs but hasn't been in the kitchen yet.
+          Usually in kitchen by {{ states('sensor.average_wake_time_week') }}.
+          Last activity: {{ states('sensor.last_activity_display') }}
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: >-
+          {% set current = states('input_text.alerts_fired_today') %}
+          {{ (current ~ ',upstairs_only') if current else 'upstairs_only' }}
+  mode: single
+
+- id: haiven_weekly_trend_report
+  alias: "Haiven: Weekly Trend Report"
+  description: Send weekly trend summary on Sundays at 20:30
+  triggers:
+    - trigger: time
+      at: "20:30:00"
+  conditions:
+    - condition: template
+      alias: Only on Sundays
+      value_template: "{{ now().weekday() == 6 }}"
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+  actions:
+    - action: script.send_haiven_notification
+      data:
+        title: "📊 Haiven - Weekly Summary"
+        message: >-
+          Week ending {{ now().strftime('%d %b') }}:
+          Avg wake: {{ states('sensor.average_wake_time_week') }}
+          Avg bedtime: {{ states('sensor.average_bedtime_week') }}
+          Kitchen avg: {{ states('sensor.kitchen_triggers_daily_average') }}/day
+          Today's score: {{ states('sensor.daily_activity_score') }}%
+          Status today: {{ states('sensor.elderly_care_status') }}
+        level: passive
+  mode: single

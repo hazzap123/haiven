@@ -1,0 +1,138 @@
+# Night Bathroom Monitoring Package
+# Tracks visits between expected bedtime and wake time for frequency and duration
+
+# Input helpers for tracking
+input_datetime:
+  bathroom_night_last_entry:
+    name: Bathroom Night Last Entry
+    has_date: true
+    has_time: true
+
+  bathroom_night_exit_time:
+    name: Bathroom Night Exit Time
+    has_date: true
+    has_time: true
+
+input_boolean:
+  bathroom_occupied_night:
+    name: Bathroom Occupied (Night)
+    icon: mdi:human
+
+input_number:
+  bathroom_night_baseline_visits:
+    name: Night Bathroom Visits Baseline
+    min: 0
+    max: 10
+    step: 0.5
+    initial: 2
+    mode: box
+
+  bathroom_night_baseline_duration:
+    name: Night Bathroom Duration Baseline (mins)
+    min: 0
+    max: 30
+    step: 1
+    initial: 5
+    mode: box
+
+  bathroom_night_no_return_threshold:
+    name: No Return Alert Threshold (mins)
+    min: 10
+    max: 60
+    step: 5
+    initial: 30
+    mode: box
+
+# NOTE: bathroom_visits_night counter moved to haiven_inputs.yaml to consolidate all counters
+
+# NOTE: Automations for bathroom monitoring have been moved to automations.yaml
+# See automations with IDs: haiven_bathroom_night_entry, haiven_bathroom_night_reset,
+# haiven_bathroom_night_exit, haiven_bathroom_night_extended_alert, haiven_bathroom_night_no_return_alert
+
+# NOTE: Template sensors have been migrated to modern syntax in configuration.yaml
+# See template: section for:
+# - sensor.bathroom_night_current_duration
+# - sensor.bathroom_night_visits_status
+# - sensor.bathroom_night_time_since_entry
+
+# NOTE: Template binary_sensors have been migrated to modern syntax in configuration.yaml
+# See template: section for:
+# - binary_sensor.bathroom_night_visit_extended
+# - binary_sensor.bathroom_night_visits_high
+# - binary_sensor.bathroom_night_no_return
+
+# SQL sensor for 14-day baseline
+# Note: SQL queries use 22:00-06:00 fixed window for historical data analysis
+# This provides a reasonable estimate even if bedtime/wake time settings vary
+sql:
+  - db_url: sqlite:////config/home-assistant_v2.db
+    query: >
+      SELECT ROUND(COUNT(*) / 14.0, 1) as avg_visits
+      FROM states
+      INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
+      WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+      AND states.state = 'on'
+      AND (CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) >= 22
+           OR CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) < 6)
+      AND states.last_updated_ts > unixepoch('now', '-14 days')
+    column: avg_visits
+    name: Bathroom Night Visits 14d Avg
+    unit_of_measurement: "visits"
+
+  - db_url: sqlite:////config/home-assistant_v2.db
+    query: >
+      SELECT COALESCE(ROUND(AVG(duration), 1), 0) as avg_duration
+      FROM (
+        SELECT
+          (off_time - on_time) / 60.0 as duration
+        FROM (
+          SELECT
+            states.last_updated_ts as on_time,
+            (
+              SELECT s2.last_updated_ts
+              FROM states s2
+              INNER JOIN states_meta sm2 ON s2.metadata_id = sm2.metadata_id
+              WHERE sm2.entity_id = 'binary_sensor.haiven_bathroom_motion'
+              AND s2.state = 'off'
+              AND s2.last_updated_ts > states.last_updated_ts
+              ORDER BY s2.last_updated_ts ASC
+              LIMIT 1
+            ) as off_time
+          FROM states
+          INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
+          WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+          AND states.state = 'on'
+          AND (CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) >= 22
+               OR CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) < 6)
+          AND states.last_updated_ts > unixepoch('now', '-14 days')
+        )
+        WHERE off_time IS NOT NULL
+          AND duration > 0
+          AND duration < 60
+      )
+    column: avg_duration
+    name: Bathroom Night Duration 14d Avg
+    unit_of_measurement: "min"
+
+  # Debug sensors for monitoring
+  - db_url: sqlite:////config/home-assistant_v2.db
+    query: >
+      SELECT datetime(MAX(states.last_updated_ts), 'unixepoch', 'localtime') as newest_time
+      FROM states
+      INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
+      WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+    column: newest_time
+    name: "[Debug] Newest via last_updated_ts"
+
+  - db_url: sqlite:////config/home-assistant_v2.db
+    query: >
+      SELECT COUNT(*) as count
+      FROM states
+      INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
+      WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+      AND states.state = 'on'
+      AND (CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) >= 22
+           OR CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) < 6)
+      AND states.last_updated_ts > unixepoch('now', '-14 days')
+    column: count
+    name: "[Debug] Night ON via last_updated_ts"

@@ -1,0 +1,82 @@
+# Haiven Theme
+# Color scheme matching the Haiven elderly care monitoring app
+
+haiven:
+  # Primary Colors
+  primary-color: "#6BBD6B"              # Green - All Good status
+  accent-color: "#7FC7C7"               # Teal - Neutral actions
+  warning-color: "#F5A647"              # Orange/Amber - Warning/Deviation
+  error-color: "#E74C3C"                # Red - Alert/Emergency
+  success-color: "#6BBD6B"              # Green - Success
+  info-color: "#7FC7C7"                 # Teal - Info
+
+  # Background Colors
+  primary-background-color: "#FAFAFA"   # Off-white background
+  secondary-background-color: "#F5F5F5" # Light gray for cards
+  card-background-color: "#FFFFFF"      # White cards
+
+  # Text Colors
+  primary-text-color: "#212121"         # Dark text
+  secondary-text-color: "#757575"       # Gray text for secondary info
+  disabled-text-color: "#BDBDBD"        # Disabled text
+
+  # Sidebar
+  sidebar-background-color: "#FFFFFF"
+  sidebar-text-color: "#212121"
+  sidebar-icon-color: "#757575"
+  sidebar-selected-background-color: "#E8F5E9"  # Light green
+  sidebar-selected-icon-color: "#6BBD6B"        # Green
+  sidebar-selected-text-color: "#2E7D32"        # Dark green
+
+  # Header
+  app-header-background-color: "#FFFFFF"
+  app-header-text-color: "#212121"
+
+  # Cards
+  paper-card-background-color: "#FFFFFF"
+  ha-card-border-radius: "12px"
+  ha-card-box-shadow: "0 2px 4px rgba(0,0,0,0.1)"
+
+  # Status Colors for Entities
+  state-icon-color: "#757575"
+  state-icon-active-color: "#6BBD6B"
+  state-icon-unavailable-color: "#BDBDBD"
+
+  # Switches
+  switch-checked-button-color: "#6BBD6B"
+  switch-checked-track-color: "#A5D6A7"
+  switch-unchecked-button-color: "#BDBDBD"
+  switch-unchecked-track-color: "#E0E0E0"
+
+  # Sliders
+  slider-color: "#7FC7C7"
+  slider-secondary-color: "#B2DFDB"
+
+  # Labels & Badges
+  label-badge-red: "#E74C3C"
+  label-badge-yellow: "#F5A647"
+  label-badge-green: "#6BBD6B"
+  label-badge-blue: "#7FC7C7"
+  label-badge-grey: "#9E9E9E"
+
+  # Buttons
+  paper-item-icon-active-color: "#6BBD6B"
+  mdc-theme-primary: "#6BBD6B"
+  mdc-theme-secondary: "#7FC7C7"
+  mdc-theme-on-primary: "#FFFFFF"
+
+  # Dividers & Borders
+  divider-color: "#E0E0E0"
+  table-row-background-color: "#FAFAFA"
+  table-row-alternative-background-color: "#F5F5F5"
+
+  # Markdown
+  markdown-code-background-color: "#F5F5F5"
+
+  # Custom Haiven-specific variables
+  haiven-status-good: "#6BBD6B"
+  haiven-status-warning: "#F5A647"
+  haiven-status-alert: "#E74C3C"
+  haiven-action-button: "#7FC7C7"
+  haiven-card-background: "#FFFFFF"
+  haiven-timeline-icon: "#757575"

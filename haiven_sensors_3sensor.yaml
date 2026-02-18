@@ -1,0 +1,1565 @@
+# Haiven Elderly Care Monitoring - 3 Sensor Configuration
+#
+# Use this file as a Home Assistant package by adding the following to configuration.yaml:
+# homeassistant:
+#   packages:
+#     haiven_sensors_3sensor: !include haiven_sensors_3sensor.yaml
+template:
+  # ============================================================================
+  # FOUNDATIONAL SENSORS - Used by multiple other sensors/automations
+  # These provide centralized logic to avoid duplication
+  # ============================================================================
+
+  # Elderly Person Home Status
+  # Replaces 8+ duplicated "is person home" checks across sensors and automations
+  - binary_sensor:
+      - name: "Elderly Person Home"
+        unique_id: elderly_person_home
+        device_class: presence
+        state: >
+          {% set entity = states('input_text.elderly_person_entity') %}
+          {% if entity and entity not in ['unknown', 'unavailable', ''] %}
+            {{ is_state(entity, 'home') }}
+          {% else %}
+            true
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.elderly_person_home', 'on') %}
+            mdi:home-account
+          {% else %}
+            mdi:home-off-outline
+          {% endif %}
+
+  # Activity Data - Centralized 3-sensor activity gathering
+  # Replaces 6+ duplicated blocks that gather kitchen/bedroom/bathroom timestamps
+  - sensor:
+      - name: "Activity Data"
+        unique_id: activity_data
+        state: >
+          {# State is the current/last location #}
+          {% set invalid = ['unknown', 'unavailable'] %}
+          {% set k = states.event.kitchen_motion %}
+          {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
+          {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+          {% set times = [] %}
+          {% if k and k.state not in invalid %}
+            {% set times = times + [{'loc': 'Kitchen', 'time': k.last_changed}] %}
+          {% endif %}
+          {% if b and b.state not in invalid %}
+            {% set times = times + [{'loc': 'Bedroom', 'time': b.last_changed}] %}
+          {% endif %}
+          {% if bath and bath.state not in invalid %}
+            {% set times = times + [{'loc': 'Bathroom', 'time': bath.last_changed}] %}
+          {% endif %}
+          {% if times | length > 0 %}
+            {{ (times | sort(attribute='time', reverse=true) | first).loc }}
+          {% else %}
+            Unknown
+          {% endif %}
+        icon: mdi:map-marker
+        attributes:
+          kitchen_last: >
+            {% set s = states.event.kitchen_motion %}
+            {{ s.last_changed.isoformat() if s and s.state not in ['unknown', 'unavailable'] else none }}
+          bedroom_last: >
+            {% set s = states.binary_sensor.haiven_bedroom_occupancy %}
+            {{ s.last_changed.isoformat() if s and s.state not in ['unknown', 'unavailable'] else none }}
+          bathroom_last: >
+            {% set s = states.binary_sensor.haiven_bathroom_motion %}
+            {{ s.last_changed.isoformat() if s and s.state not in ['unknown', 'unavailable'] else none }}
+          latest_time: >
+            {% set invalid = ['unknown', 'unavailable'] %}
+            {% set k = states.event.kitchen_motion %}
+            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
+            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set times = [] %}
+            {% if k and k.state not in invalid %}{% set times = times + [k.last_changed] %}{% endif %}
+            {% if b and b.state not in invalid %}{% set times = times + [b.last_changed] %}{% endif %}
+            {% if bath and bath.state not in invalid %}{% set times = times + [bath.last_changed] %}{% endif %}
+            {% if times | length > 0 %}
+              {{ (times | max).isoformat() }}
+            {% else %}
+              unknown
+            {% endif %}
+          minutes_since_latest: >
+            {% set invalid = ['unknown', 'unavailable'] %}
+            {% set k = states.event.kitchen_motion %}
+            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
+            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set times = [] %}
+            {% if k and k.state not in invalid %}{% set times = times + [k.last_changed] %}{% endif %}
+            {% if b and b.state not in invalid %}{% set times = times + [b.last_changed] %}{% endif %}
+            {% if bath and bath.state not in invalid %}{% set times = times + [bath.last_changed] %}{% endif %}
+            {% if times | length > 0 %}
+              {{ ((now() - (times | max)).total_seconds() / 60) | int }}
+            {% else %}
+              unknown
+            {% endif %}
+          hours_since_latest: >
+            {% set mins = state_attr('sensor.activity_data', 'minutes_since_latest') %}
+            {% if mins and mins != 'unknown' %}
+              {{ (mins | float / 60) | round(1) }}
+            {% else %}
+              unknown
+            {% endif %}
+          previous_location: >
+            {% set invalid = ['unknown', 'unavailable'] %}
+            {% set k = states.event.kitchen_motion %}
+            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
+            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set times = [] %}
+            {% if k and k.state not in invalid %}
+              {% set times = times + [{'loc': 'Kitchen', 'time': k.last_changed}] %}
+            {% endif %}
+            {% if b and b.state not in invalid %}
+              {% set times = times + [{'loc': 'Bedroom', 'time': b.last_changed}] %}
+            {% endif %}
+            {% if bath and bath.state not in invalid %}
+              {% set times = times + [{'loc': 'Bathroom', 'time': bath.last_changed}] %}
+            {% endif %}
+            {% if times | length >= 2 %}
+              {{ (times | sort(attribute='time', reverse=true))[1].loc }}
+            {% else %}
+              Unknown
+            {% endif %}
+          transition: >
+            {% set prev = state_attr('sensor.activity_data', 'previous_location') %}
+            {% set curr = states('sensor.activity_data') %}
+            {% if prev and prev != 'Unknown' and curr and curr != 'Unknown' %}
+              {{ prev }} → {{ curr }}
+            {% elif curr and curr != 'Unknown' %}
+              → {{ curr }}
+            {% else %}
+              Unknown
+            {% endif %}
+          rooms_active_today: >
+            {% set invalid = ['unknown', 'unavailable'] %}
+            {% set k = states.event.kitchen_motion %}
+            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
+            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set count = 0 %}
+            {% if k and k.state not in invalid and k.last_changed.date() == now().date() %}
+              {% set count = count + 1 %}
+            {% endif %}
+            {% if b and b.state not in invalid and b.last_changed.date() == now().date() %}
+              {% set count = count + 1 %}
+            {% endif %}
+            {% if bath and bath.state not in invalid and bath.last_changed.date() == now().date() %}
+              {% set count = count + 1 %}
+            {% endif %}
+            {{ count }}
+
+  # ============================================================================
+  # ROOM TRANSITION TIMEOUT - Detects if person left one room but didn't appear
+  # in another (potential "fell between rooms" scenario)
+  # ============================================================================
+  - binary_sensor:
+      - name: "Room Transition Timeout"
+        unique_id: room_transition_timeout
+        device_class: problem
+        state: >
+          {# Only check if device tracker is configured and confirms HOME #}
+          {% set person_entity = states('input_text.elderly_person_entity') %}
+          {% set person_state = states(person_entity) if person_entity and person_entity not in ['unknown', 'unavailable', ''] else 'unknown' %}
+
+          {% if person_state not in ['home'] %}
+            {# Person away, unknown, or no tracker configured - skip check #}
+            false
+          {% elif states('input_select.bed_state') in ['in_bed', 'sleeping'] %}
+            {# In bed - no room transitions expected #}
+            false
+          {% else %}
+            {# If someone is currently detected in any room, no transition concern #}
+            {# This prevents false positives from bedroom presence staying "on" #}
+            {# (last_changed grows stale while occupancy is continuously on) #}
+            {% set bedroom_active = is_state('binary_sensor.haiven_bedroom_occupancy', 'on') %}
+            {% set bathroom_active = is_state('binary_sensor.haiven_bathroom_motion', 'on') %}
+            {% if bedroom_active or bathroom_active %}
+              false
+            {% else %}
+              {% set timeout = states('input_number.transition_timeout_mins') | int(15) %}
+              {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+              {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+              {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+              {% set latest_mins = [kitchen_mins, bedroom_mins, bathroom_mins] | min %}
+
+              {# All rooms quiet for longer than transition timeout #}
+              {{ latest_mins > timeout }}
+            {% endif %}
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.room_transition_timeout', 'on') %}
+            mdi:alert-rhombus
+          {% else %}
+            mdi:swap-horizontal
+          {% endif %}
+        attributes:
+          device_tracker_status: >
+            {% set person_entity = states('input_text.elderly_person_entity') %}
+            {% if not person_entity or person_entity in ['unknown', 'unavailable', ''] %}
+              not_configured
+            {% else %}
+              {{ states(person_entity) }}
+            {% endif %}
+          minutes_since_any_activity: >
+            {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+            {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+            {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+            {{ [kitchen_mins, bedroom_mins, bathroom_mins] | min }}
+          last_active_room: "{{ states('sensor.activity_data') }}"
+          transition_timeout_mins: "{{ states('input_number.transition_timeout_mins') | int(15) }}"
+
+  # ============================================================================
+  # MORNING CONTEXT - Contextual morning status for upstairs-only detection
+  # ============================================================================
+  - sensor:
+      - name: "Morning Context"
+        unique_id: morning_context
+        state: >
+          {% set wake = states('input_datetime.actual_wake_time_today') %}
+          {% set has_woken = wake not in ['unknown', 'unavailable', none, '', '00:00:00'] %}
+          {% set bed = states('input_select.bed_state') %}
+          {% set kitchen_today = states('counter.kitchen_triggers_today') | int(0) %}
+          {% set bedroom_active = is_state('binary_sensor.haiven_bedroom_occupancy', 'on') %}
+          {% set bathroom_active = is_state('binary_sensor.haiven_bathroom_motion', 'on') %}
+          {% set had_any_activity = false %}
+          {% set invalid = ['unknown', 'unavailable'] %}
+          {% set k = states.event.kitchen_motion %}
+          {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
+          {% set ba = states.binary_sensor.haiven_bathroom_motion %}
+          {% if (k and k.state not in invalid and k.last_changed.date() == now().date()) or
+                (b and b.state not in invalid and b.last_changed.date() == now().date()) or
+                (ba and ba.state not in invalid and ba.last_changed.date() == now().date()) %}
+            {% set had_any_activity = true %}
+          {% endif %}
+          {% set avg_wake = states('sensor.average_wake_time_week') %}
+          {% set past_avg = false %}
+          {% if avg_wake not in ['unknown', 'unavailable', 'Calculating'] %}
+            {% set avg_parts = avg_wake.split(':') %}
+            {% set avg_mins = (avg_parts[0] | int) * 60 + (avg_parts[1] | int) %}
+            {% set now_mins = now().hour * 60 + now().minute %}
+            {% set past_avg = now_mins > avg_mins %}
+          {% endif %}
+          {% if bed in ['in_bed', 'sleeping'] and not has_woken %}
+            still_in_bed
+          {% elif not past_avg and not has_woken %}
+            pre_wake
+          {% elif bed == 'not_in_bed' and kitchen_today == 0 and had_any_activity and past_avg %}
+            upstairs_only
+          {% else %}
+            normal
+          {% endif %}
+        icon: >
+          {% set s = states('sensor.morning_context') %}
+          {% if s == 'upstairs_only' %}mdi:stairs-up
+          {% elif s == 'still_in_bed' %}mdi:sleep
+          {% elif s == 'pre_wake' %}mdi:weather-night
+          {% else %}mdi:check-circle{% endif %}
+        attributes:
+          message: >
+            {% set s = states('sensor.morning_context') %}
+            {% set avg_wake = states('sensor.average_wake_time_week') %}
+            {% if s == 'upstairs_only' %}
+              Active upstairs · usually in kitchen by {{ avg_wake | default('--:--') }}
+            {% elif s == 'still_in_bed' %}
+              Still in bed
+            {% elif s == 'pre_wake' %}
+              Before usual wake time
+            {% else %}
+              Normal morning
+            {% endif %}
+          kitchen_triggers_today: "{{ states('counter.kitchen_triggers_today') | int(0) }}"
+          avg_wake_time: "{{ states('sensor.average_wake_time_week') }}"
+
+  # ============================================================================
+  # STATUS SEVERITY SCORE - Weighted scoring for 5-level status
+  # ============================================================================
+  - sensor:
+      - name: "Status Severity Score"
+        unique_id: status_severity_score
+        state: >
+          {# Skip scoring if manually marked safe #}
+          {% if is_state('input_boolean.manual_safe_status', 'on') %}
+            0
+          {# Skip scoring if person is away #}
+          {% elif is_state('binary_sensor.elderly_person_home', 'off') %}
+            0
+          {% else %}
+            {% set score = 0 %}
+
+            {# Get configurable thresholds #}
+            {% set thresh_monitoring = states('input_number.status_gap_monitoring_mins') | int(60) %}
+            {% set thresh_caution = states('input_number.status_gap_caution_mins') | int(120) %}
+            {% set thresh_concern = states('input_number.status_gap_concern_mins') | int(180) %}
+            {% set thresh_critical = states('input_number.status_gap_critical_mins') | int(240) %}
+
+            {# Check for any activity today #}
+            {% set invalid_states = ['unknown', 'unavailable'] %}
+            {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
+            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+
+            {% set had_activity_today = false %}
+            {% if kitchen_last and as_datetime(kitchen_last).date() == now().date() %}
+              {% set had_activity_today = true %}
+            {% endif %}
+            {% if bedroom_last and as_datetime(bedroom_last).date() == now().date() %}
+              {% set had_activity_today = true %}
+            {% endif %}
+            {% if bathroom_last and as_datetime(bathroom_last).date() == now().date() %}
+              {% set had_activity_today = true %}
+            {% endif %}
+
+            {# Wake time deviation scoring #}
+            {% set wake_expected = states('input_datetime.expected_wake_time') %}
+            {% set variance = states('input_number.wake_time_variance_minutes') | int(60) %}
+            {% if wake_expected not in invalid_states %}
+              {% set morning_cutoff = today_at(wake_expected) + timedelta(minutes=variance) %}
+              {% if now() > morning_cutoff and not had_activity_today %}
+                {% set mins_late = ((now() - morning_cutoff).total_seconds() / 60) | int %}
+                {% if mins_late > 60 %}
+                  {% set score = score + 25 %}
+                {% elif mins_late > 0 %}
+                  {% set score = score + 10 %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+
+            {# Inactivity scoring using configurable thresholds #}
+            {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+            {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+            {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+            {% set latest_mins = [kitchen_mins, bedroom_mins, bathroom_mins] | min %}
+
+            {% if latest_mins >= thresh_critical %}
+              {% set score = score + 75 %}
+            {% elif latest_mins >= thresh_concern %}
+              {% set score = score + 50 %}
+            {% elif latest_mins >= thresh_caution %}
+              {% set score = score + 25 %}
+            {% elif latest_mins >= thresh_monitoring %}
+              {% set score = score + 10 %}
+            {% endif %}
+
+            {# Room transition timeout scoring - only if device tracker confirms home #}
+            {% if is_state('binary_sensor.room_transition_timeout', 'on') %}
+              {% set score = score + 30 %}
+            {% endif %}
+
+            {# Upstairs-only scoring: awake, has activity, but no kitchen triggers #}
+            {% if states('sensor.morning_context') == 'upstairs_only' %}
+              {% set avg_wake = states('sensor.average_wake_time_week') %}
+              {% if avg_wake not in ['unknown', 'unavailable', 'Calculating'] %}
+                {% set avg_parts = avg_wake.split(':') %}
+                {% set avg_mins = (avg_parts[0] | int) * 60 + (avg_parts[1] | int) %}
+                {% set now_mins = now().hour * 60 + now().minute %}
+                {% set mins_past = now_mins - avg_mins %}
+                {% if mins_past > 120 %}
+                  {% set score = score + 30 %}
+                {% elif mins_past > 60 %}
+                  {% set score = score + 15 %}
+                {% elif mins_past > 0 %}
+                  {% set score = score + 5 %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+
+            {{ score }}
+          {% endif %}
+        unit_of_measurement: ""
+        icon: mdi:gauge
+        attributes:
+          gap_thresholds: >
+            monitoring: {{ states('input_number.status_gap_monitoring_mins') | int(60) }}min,
+            caution: {{ states('input_number.status_gap_caution_mins') | int(120) }}min,
+            concern: {{ states('input_number.status_gap_concern_mins') | int(180) }}min,
+            critical: {{ states('input_number.status_gap_critical_mins') | int(240) }}min
+          transition_timeout_active: "{{ is_state('binary_sensor.room_transition_timeout', 'on') }}"
+          manual_safe_active: "{{ is_state('input_boolean.manual_safe_status', 'on') }}"
+          minutes_since_activity: >
+            {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+            {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+            {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+            {{ [kitchen_mins, bedroom_mins, bathroom_mins] | min }}
+
+  # Main Status Sensor - 5-Level Hierarchy
+  - sensor:
+      - name: "Elderly Care Status"
+        unique_id: elderly_care_status
+        state: >
+          {% if is_state('binary_sensor.elderly_person_home', 'off') %}
+            away
+          {% else %}
+            {% set score = states('sensor.status_severity_score') | int(0) %}
+            {% if score >= 75 %}critical
+            {% elif score >= 50 %}concern
+            {% elif score >= 25 %}caution
+            {% elif score >= 10 %}monitoring
+            {% else %}normal{% endif %}
+          {% endif %}
+        icon: >
+          {% set s = states('sensor.elderly_care_status') %}
+          {% if s == 'normal' %}mdi:check-circle
+          {% elif s == 'monitoring' %}mdi:information
+          {% elif s == 'caution' %}mdi:alert
+          {% elif s == 'concern' %}mdi:alert-circle
+          {% elif s == 'critical' %}mdi:alert-octagon
+          {% else %}mdi:home-export-outline{% endif %}
+        attributes:
+          status_text: >
+            {% set s = states('sensor.elderly_care_status') %}
+            {% if s == 'normal' %}Routine Normal
+            {% elif s == 'monitoring' %}Monitoring
+            {% elif s == 'caution' %}Needs Attention
+            {% elif s == 'concern' %}Check Required
+            {% elif s == 'critical' %}Immediate Attention
+            {% else %}Away{% endif %}
+          severity_score: "{{ states('sensor.status_severity_score') | int(0) }}"
+          color: >
+            {% set s = states('sensor.elderly_care_status') %}
+            {% if s == 'normal' %}#6BBD6B
+            {% elif s == 'monitoring' %}#26A69A
+            {% elif s == 'caution' %}#F5A647
+            {% elif s == 'concern' %}#E74C3C
+            {% elif s == 'critical' %}#B71C1C
+            {% else %}#9E9E9E{% endif %}
+          level: >
+            {% set s = states('sensor.elderly_care_status') %}
+            {% if s == 'normal' %}0
+            {% elif s == 'monitoring' %}1
+            {% elif s == 'caution' %}2
+            {% elif s == 'concern' %}3
+            {% elif s == 'critical' %}4
+            {% else %}0{% endif %}
+  
+  # Last Activity Location - Uses activity_data foundational sensor
+  - sensor:
+      - name: "Last Activity Location"
+        unique_id: last_activity_location
+        state: "{{ states('sensor.activity_data') }}"
+        icon: mdi:map-marker
+
+  # Last Activity Time - Uses activity_data foundational sensor
+  - sensor:
+      - name: "Last Activity Time"
+        unique_id: last_activity_time
+        state: >
+          {% set latest = state_attr('sensor.activity_data', 'latest_time') %}
+          {% if latest and latest != 'unknown' %}
+            {{ relative_time(as_datetime(latest)) }} ago
+          {% else %}
+            Unknown
+          {% endif %}
+        icon: mdi:clock
+  
+  # Combined Display
+  - sensor:
+      - name: "Last Activity Display"
+        unique_id: last_activity_display
+        state: "{{ states('sensor.last_activity_location') }}, {{ states('sensor.last_activity_time') }}"
+        icon: mdi:history
+  
+  # Deviation Counter - Uses elderly_person_home but direct sensor refs for timing
+  # Returns 0 when person is away from home
+  # NOTE: Does NOT depend on sensor.activity_data to avoid feedback loops
+  - sensor:
+      - name: "Deviation Count"
+        unique_id: deviation_count
+        state: >
+          {# Skip deviation counting if person is away - uses foundational sensor #}
+          {% if is_state('binary_sensor.elderly_person_home', 'off') %}
+            0
+          {% else %}
+            {% set count = 0 %}
+            {% set invalid_states = ['unknown', 'unavailable'] %}
+
+            {# Gather sensor timestamps directly (not via activity_data to avoid feedback) #}
+            {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
+            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+
+            {# Check morning activity deviation #}
+            {% set now_time = now() %}
+            {% set expected_wake = states('input_datetime.expected_wake_time') %}
+            {% set variance_minutes = states('input_number.wake_time_variance_minutes') | float(60) %}
+            {% set morning_cutoff = today_at(expected_wake) + timedelta(minutes=variance_minutes) %}
+
+            {# Check if any morning activity detected today #}
+            {% set morning_activity = false %}
+            {% if kitchen_last and as_datetime(kitchen_last).date() == now().date() %}
+              {% set morning_activity = true %}
+            {% endif %}
+            {% if bedroom_last and as_datetime(bedroom_last).date() == now().date() %}
+              {% set morning_activity = true %}
+            {% endif %}
+            {% if bathroom_last and as_datetime(bathroom_last).date() == now().date() %}
+              {% set morning_activity = true %}
+            {% endif %}
+
+            {% if now_time > morning_cutoff and not morning_activity %}
+              {% set count = count + 1 %}
+            {% endif %}
+
+            {# Check last activity time - direct calculation #}
+            {% set times = [] %}
+            {% if kitchen_last %}{% set times = times + [kitchen_last] %}{% endif %}
+            {% if bedroom_last %}{% set times = times + [bedroom_last] %}{% endif %}
+            {% if bathroom_last %}{% set times = times + [bathroom_last] %}{% endif %}
+
+            {% if times | length > 0 %}
+              {% set latest_activity = times | max %}
+              {% set hours_since = (now() - latest_activity).total_seconds() / 3600 %}
+              {% set no_activity_threshold = states('input_number.no_activity_alert_hours') | float(4) %}
+
+              {% if hours_since > no_activity_threshold %}
+                {% set count = count + 1 %}
+              {% endif %}
+            {% else %}
+              {% set count = count + 1 %}
+            {% endif %}
+
+            {{ count }}
+          {% endif %}
+        icon: mdi:counter
+        attributes:
+          person_away: "{{ is_state('binary_sensor.elderly_person_home', 'off') }}"
+  
+  # Current Deviation Message - Direct sensor refs to avoid feedback loops
+  # NOTE: Does NOT depend on sensor.activity_data
+  - sensor:
+      - name: "Current Deviation Message"
+        unique_id: current_deviation_message
+        state: >
+          {% set messages = [] %}
+          {% set invalid_states = ['unknown', 'unavailable'] %}
+
+          {# Gather sensor timestamps directly #}
+          {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
+          {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
+          {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+
+          {# Check morning activity #}
+          {% set now_time = now() %}
+          {% set expected_wake = states('input_datetime.expected_wake_time') %}
+          {% set variance_minutes = states('input_number.wake_time_variance_minutes') | float(60) %}
+          {% set morning_cutoff = today_at(expected_wake) + timedelta(minutes=variance_minutes) %}
+
+          {% set morning_activity = false %}
+          {% if kitchen_last and as_datetime(kitchen_last).date() == now().date() %}
+            {% set morning_activity = true %}
+          {% endif %}
+          {% if bedroom_last and as_datetime(bedroom_last).date() == now().date() %}
+            {% set morning_activity = true %}
+          {% endif %}
+          {% if bathroom_last and as_datetime(bathroom_last).date() == now().date() %}
+            {% set morning_activity = true %}
+          {% endif %}
+
+          {% if now_time > morning_cutoff and not morning_activity %}
+            {% set messages = messages + ['No morning activity detected by expected time (' + expected_wake + ') + ' + (variance_minutes | int | string) + ' mins'] %}
+          {% endif %}
+
+          {# Check last activity time - direct calculation #}
+          {% set times = [] %}
+          {% if kitchen_last %}{% set times = times + [kitchen_last] %}{% endif %}
+          {% if bedroom_last %}{% set times = times + [bedroom_last] %}{% endif %}
+          {% if bathroom_last %}{% set times = times + [bathroom_last] %}{% endif %}
+
+          {% set no_activity_threshold = states('input_number.no_activity_alert_hours') | float(4) %}
+
+          {% if times | length > 0 %}
+            {% set latest_activity = times | max %}
+            {% set hours_since = (now() - latest_activity).total_seconds() / 3600 %}
+            {% if hours_since > no_activity_threshold %}
+              {% set messages = messages + ['No activity detected in any room for over ' + (hours_since | round(1) | string) + ' hours'] %}
+            {% endif %}
+          {% else %}
+            {% set messages = messages + ['No sensor activity detected today'] %}
+          {% endif %}
+
+          {% if messages | length > 0 %}
+            {{ messages | join('; ') }}
+          {% else %}
+            None
+          {% endif %}
+        icon: mdi:message-alert
+  
+  # Today's Wake Time
+  - sensor:
+      - name: "Today Wake Time"
+        unique_id: today_wake_time
+        state: >
+          {# Read from persistent input_datetime helper #}
+          {% set actual_wake = states('input_datetime.actual_wake_time_today') %}
+          {% if actual_wake not in ['unknown', 'unavailable', none, '', '00:00:00'] %}
+            {{ actual_wake[:5] }}
+          {% else %}
+            Not yet
+          {% endif %}
+        icon: mdi:alarm
+        attributes:
+          expected: "{{ states('input_datetime.expected_wake_time') }}"
+          deviation_minutes: >
+            {# Calculate deviation from expected wake time #}
+            {% set actual_wake = states('input_datetime.actual_wake_time_today') %}
+            {% set expected_wake = states('input_datetime.expected_wake_time') %}
+
+            {% if actual_wake not in ['unknown', 'unavailable', none, '', '00:00:00'] and expected_wake not in ['unknown', 'unavailable', none, ''] %}
+              {% set actual_parts = actual_wake.split(':') %}
+              {% set expected_parts = expected_wake.split(':') %}
+              {% set actual_minutes = (actual_parts[0] | int * 60) + (actual_parts[1] | int) %}
+              {% set expected_minutes = (expected_parts[0] | int * 60) + (expected_parts[1] | int) %}
+              {% set diff = actual_minutes - expected_minutes %}
+              {{ diff }}
+            {% else %}
+              0
+            {% endif %}
+  
+  - sensor:
+      - name: "Today Wake Minutes"
+        unique_id: today_wake_minutes
+        unit_of_measurement: min
+        device_class: duration
+        state_class: measurement
+        state: >
+          {% set wake = states('sensor.today_wake_time') %}
+          {% if wake is string and wake | length == 5 and wake[2] == ':' %}
+            {% set parts = wake.split(':') %}
+            {% set hours = parts[0] | int(0) %}
+            {% set minutes = parts[1] | int(0) %}
+            {{ (hours * 60 + minutes) | int(0) }}
+          {% else %}
+            {{ none }}
+          {% endif %}
+        attributes:
+          source: sensor.today_wake_time
+        icon: mdi:alarm
+
+  - sensor:
+      - name: "Average Wake Time Week"
+        unique_id: average_wake_time_week
+        state: >
+          {% set avg = states('sensor.average_wake_minutes_week') %}
+          {% if avg not in ['unknown', 'unavailable', none] %}
+            {% set total = avg | float(0) | round(0) | int %}
+            {% if total > 0 %}
+              {% set hours = (total // 60) %}
+              {% set minutes = (total % 60) %}
+              {{ '%02d:%02d' | format(hours, minutes) }}
+            {% else %}
+              Calculating
+            {% endif %}
+          {% else %}
+            Calculating
+          {% endif %}
+        attributes:
+          window: 7 days
+          samples_collected: "{{ state_attr('sensor.average_wake_minutes_week', 'count') | int(0) }}"
+          source: sensor.average_wake_minutes_week
+        icon: mdi:alarm-multiple
+
+  # Today's Bedtime
+  - sensor:
+      - name: "Today Bedtime"
+        unique_id: today_bedtime
+        state: >
+          {# Read from persistent input_datetime helper #}
+          {% set actual_bedtime = states('input_datetime.actual_bedtime_today') %}
+          {% if actual_bedtime not in ['unknown', 'unavailable', none, '', '00:00:00'] %}
+            {{ actual_bedtime[:5] }}
+          {% else %}
+            Not yet
+          {% endif %}
+        icon: mdi:bed-clock
+        attributes:
+          expected: "{{ states('input_datetime.expected_bedtime') }}"
+          deviation_minutes: >
+            {# Calculate deviation from expected bedtime #}
+            {% set actual_bedtime = states('input_datetime.actual_bedtime_today') %}
+            {% set expected_bedtime = states('input_datetime.expected_bedtime') %}
+
+            {% if actual_bedtime not in ['unknown', 'unavailable', none, '', '00:00:00'] and expected_bedtime not in ['unknown', 'unavailable', none, ''] %}
+              {% set actual_parts = actual_bedtime.split(':') %}
+              {% set expected_parts = expected_bedtime.split(':') %}
+              {% set actual_minutes = (actual_parts[0] | int * 60) + (actual_parts[1] | int) %}
+              {% set expected_minutes = (expected_parts[0] | int * 60) + (expected_parts[1] | int) %}
+              {% set diff = actual_minutes - expected_minutes %}
+              {{ diff }}
+            {% else %}
+              0
+            {% endif %}
+
+  - sensor:
+      - name: "Today Bedtime Minutes"
+        unique_id: today_bedtime_minutes
+        unit_of_measurement: min
+        device_class: duration
+        state_class: measurement
+        state: >
+          {% set bedtime = states('sensor.today_bedtime') %}
+          {% if bedtime is string and bedtime | length == 5 and bedtime[2] == ':' %}
+            {% set parts = bedtime.split(':') %}
+            {% set hours = parts[0] | int(0) %}
+            {% set minutes = parts[1] | int(0) %}
+            {# Only accept bedtimes in valid evening range (17:00-23:59) #}
+            {# This prevents corrupted data from polluting the statistics sensor #}
+            {% if hours >= 17 and hours <= 23 %}
+              {{ (hours * 60 + minutes) | int(0) }}
+            {% else %}
+              {{ none }}
+            {% endif %}
+          {% else %}
+            {{ none }}
+          {% endif %}
+        attributes:
+          source: sensor.today_bedtime
+          valid_range: "17:00-23:59"
+        icon: mdi:bed-clock
+
+  - sensor:
+      - name: "Average Bedtime Week"
+        unique_id: average_bedtime_week
+        state: >
+          {% set avg = states('sensor.average_bedtime_minutes_week') %}
+          {% if avg not in ['unknown', 'unavailable', none] %}
+            {% set total = avg | float(0) | round(0) | int %}
+            {% if total > 0 %}
+              {% set hours = (total // 60) %}
+              {% set minutes = (total % 60) %}
+              {{ '%02d:%02d' | format(hours, minutes) }}
+            {% else %}
+              18:45
+            {% endif %}
+          {% else %}
+            18:45
+          {% endif %}
+        attributes:
+          window: 7 days
+          samples_collected: "{{ state_attr('sensor.average_bedtime_minutes_week', 'count') | int(0) }}"
+          source: sensor.average_bedtime_minutes_week
+          using_fallback: "{{ states('sensor.average_bedtime_minutes_week') in ['unknown', 'unavailable', none] or (states('sensor.average_bedtime_minutes_week') | float(0) | round(0) | int) == 0 }}"
+        icon: mdi:bed-clock
+
+  # Combined Display Sensors for Dashboard
+  - sensor:
+      - name: "Wake Time Display"
+        unique_id: wake_time_display
+        state: >
+          {% set actual = states('sensor.today_wake_time') %}
+          {% set avg = states('sensor.average_wake_time_week') %}
+          {% if actual not in ['unknown', 'unavailable', 'Not yet'] %}
+            {{ actual }} (avg. {{ avg }})
+          {% else %}
+            Not yet (avg. {{ avg }})
+          {% endif %}
+        icon: mdi:alarm
+
+  - sensor:
+      - name: "Bedtime Display"
+        unique_id: bedtime_display
+        state: >
+          {% set actual = states('sensor.today_bedtime') %}
+          {% set avg = states('sensor.average_bedtime_week') %}
+          {% if actual not in ['unknown', 'unavailable', 'Not yet'] %}
+            {{ actual }} (avg. {{ avg }})
+          {% else %}
+            Not yet (avg. {{ avg }})
+          {% endif %}
+        icon: mdi:bed-clock
+
+  # Sensor Health Check - 3 Sensors
+  - sensor:
+      - name: "Sensor Health Status"
+        unique_id: sensor_health_status
+        state: >
+          {% set kitchen = 'event.kitchen_motion' %}
+          {% set bedroom = 'binary_sensor.haiven_bedroom_occupancy' %}
+          {% set bathroom = 'binary_sensor.haiven_bathroom_motion' %}
+  
+          {% set kitchen_ok = states(kitchen) not in ['unknown', 'unavailable'] %}
+          {% set bedroom_ok = states(bedroom) not in ['unknown', 'unavailable'] %}
+          {% set bathroom_ok = states(bathroom) not in ['unknown', 'unavailable'] %}
+  
+          {% set online_count = 0 %}
+          {% if kitchen_ok %}{% set online_count = online_count + 1 %}{% endif %}
+          {% if bedroom_ok %}{% set online_count = online_count + 1 %}{% endif %}
+          {% if bathroom_ok %}{% set online_count = online_count + 1 %}{% endif %}
+  
+          {% if online_count == 3 %}
+            All online
+          {% elif online_count == 2 %}
+            1 offline: check
+          {% elif online_count == 1 %}
+            2 offline: check
+          {% else %}
+            All offline: check
+          {% endif %}
+        icon: >
+          {% set kitchen = 'event.kitchen_motion' %}
+          {% set bedroom = 'binary_sensor.haiven_bedroom_occupancy' %}
+          {% set bathroom = 'binary_sensor.haiven_bathroom_motion' %}
+  
+          {% set kitchen_ok = states(kitchen) not in ['unknown', 'unavailable'] %}
+          {% set bedroom_ok = states(bedroom) not in ['unknown', 'unavailable'] %}
+          {% set bathroom_ok = states(bathroom) not in ['unknown', 'unavailable'] %}
+  
+          {% set online_count = 0 %}
+          {% if kitchen_ok %}{% set online_count = online_count + 1 %}{% endif %}
+          {% if bedroom_ok %}{% set online_count = online_count + 1 %}{% endif %}
+          {% if bathroom_ok %}{% set online_count = online_count + 1 %}{% endif %}
+  
+          {% if online_count == 3 %}
+            mdi:check-circle
+          {% elif online_count >= 2 %}
+            mdi:alert
+          {% else %}
+            mdi:alert-circle
+          {% endif %}
+        attributes:
+          kitchen_status: "{{ states('event.kitchen_motion') }}"
+          kitchen_last: "{{ relative_time(states.event.kitchen_motion.last_changed) }} ago"
+          bedroom_status: "{{ states('binary_sensor.haiven_bedroom_occupancy') }}"
+          bedroom_last: "{{ relative_time(states.binary_sensor.haiven_bedroom_occupancy.last_changed) }} ago"
+          bathroom_status: "{{ states('binary_sensor.haiven_bathroom_motion') }}"
+          bathroom_last: "{{ relative_time(states.binary_sensor.haiven_bathroom_motion.last_changed) }} ago"
+          bathroom_battery: "{{ states('sensor.haiven_bathroom_battery') }}%"
+
+  # Room Activity Summary
+  - sensor:
+      - name: "Room Activity Summary"
+        unique_id: room_activity_summary
+        state: >
+          {% set kitchen = states.event.kitchen_motion.last_changed %}
+          {% set bedroom = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+          {% set bathroom = states.binary_sensor.haiven_bathroom_motion.last_changed %}
+  
+          {% set summary = [] %}
+          {% if kitchen and as_datetime(kitchen).date() == now().date() %}
+            {% set summary = summary + ['Kitchen: ' + relative_time(kitchen)] %}
+          {% endif %}
+          {% if bedroom and as_datetime(bedroom).date() == now().date() %}
+            {% set summary = summary + ['Bedroom: ' + relative_time(bedroom)] %}
+          {% endif %}
+          {% if bathroom and as_datetime(bathroom).date() == now().date() %}
+            {% set summary = summary + ['Bathroom: ' + relative_time(bathroom)] %}
+          {% endif %}
+  
+          {% if summary | length > 0 %}
+            {{ summary | join(' | ') }}
+          {% else %}
+            No activity today
+          {% endif %}
+        icon: mdi:home-analytics
+
+  # ============================================================================
+  # TIME WINDOW SENSORS - Consolidated logic for reuse across automations
+  # ============================================================================
+
+  # Night Monitoring Window Active
+  # Used by: bathroom night entry/exit tracking, no-return-from-bathroom alert
+  - binary_sensor:
+      - name: "Night Window Active"
+        unique_id: night_window_active
+        device_class: running
+        state: >
+          {% set bedtime_base = states('input_datetime.expected_bedtime') %}
+          {% set bedtime_var = states('input_number.bedtime_variance_minutes') | float(30) %}
+          {% set wake_base = states('input_datetime.expected_wake_time') %}
+          {% set wake_var = states('input_number.wake_time_variance_minutes') | float(30) %}
+          {% if bedtime_base not in ['unknown', 'unavailable'] and wake_base not in ['unknown', 'unavailable'] %}
+            {% set monitor_start = today_at(bedtime_base) + timedelta(minutes=bedtime_var) %}
+            {% set monitor_end = today_at(wake_base) - timedelta(minutes=wake_var) %}
+            {% if monitor_start < monitor_end %}
+              {{ now() >= monitor_start and now() < monitor_end }}
+            {% else %}
+              {{ now() >= monitor_start or now() < monitor_end }}
+            {% endif %}
+          {% else %}
+            {{ now().hour >= 22 or now().hour < 6 }}
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.night_window_active', 'on') %}
+            mdi:weather-night
+          {% else %}
+            mdi:white-balance-sunny
+          {% endif %}
+        attributes:
+          monitor_start: >
+            {% set bedtime_base = states('input_datetime.expected_bedtime') %}
+            {% set bedtime_var = states('input_number.bedtime_variance_minutes') | float(30) %}
+            {% if bedtime_base not in ['unknown', 'unavailable'] %}
+              {{ (today_at(bedtime_base) + timedelta(minutes=bedtime_var)).strftime('%H:%M') }}
+            {% else %}
+              22:00
+            {% endif %}
+          monitor_end: >
+            {% set wake_base = states('input_datetime.expected_wake_time') %}
+            {% set wake_var = states('input_number.wake_time_variance_minutes') | float(30) %}
+            {% if wake_base not in ['unknown', 'unavailable'] %}
+              {{ (today_at(wake_base) - timedelta(minutes=wake_var)).strftime('%H:%M') }}
+            {% else %}
+              06:00
+            {% endif %}
+
+      # Morning Activity Window Active
+      # Used by: wake time detection, morning activity confirmation
+      - name: "Morning Window Active"
+        unique_id: morning_window_active
+        device_class: running
+        state: >
+          {% set expected = states('input_datetime.expected_wake_time') %}
+          {% set variance = states('input_number.wake_time_variance_minutes') | float(60) %}
+          {% if expected not in ['unknown', 'unavailable'] %}
+            {% set earliest = today_at('04:00:00') %}
+            {% set latest = today_at(expected) + timedelta(minutes=variance + 120) %}
+            {{ now() >= earliest and now() <= latest }}
+          {% else %}
+            {{ now().hour >= 4 and now().hour <= 10 }}
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.morning_window_active', 'on') %}
+            mdi:weather-sunset-up
+          {% else %}
+            mdi:weather-sunny
+          {% endif %}
+        attributes:
+          window_start: "04:00"
+          window_end: >
+            {% set expected = states('input_datetime.expected_wake_time') %}
+            {% set variance = states('input_number.wake_time_variance_minutes') | float(60) %}
+            {% if expected not in ['unknown', 'unavailable'] %}
+              {{ (today_at(expected) + timedelta(minutes=variance + 120)).strftime('%H:%M') }}
+            {% else %}
+              10:00
+            {% endif %}
+
+  # Bedtime Pattern Detection - V4 Logic (Bathroom → Bedroom sequence)
+  # Based on 2 weeks of data analysis: bedtime is 17:30-21:30, bathroom then bedroom within 30 mins
+  # Ignores kitchen entirely (contaminated by dog activity)
+  - binary_sensor:
+      - name: "Bedtime Pattern Detected"
+        unique_id: bedtime_pattern_detected
+        device_class: occupancy
+        state: >
+          {% set now_hour = now().hour %}
+          {% set now_min = now().minute %}
+
+          {# Time window: 17:30 - 21:30 (based on historical data: bedtimes 17:48-19:31) #}
+          {% set in_window = (now_hour == 17 and now_min >= 30) or (18 <= now_hour <= 21) %}
+
+          {% if not in_window %}
+            false
+          {% else %}
+            {# Get sensor timestamps #}
+            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+
+            {# 1. Bathroom had activity in current evening window (after 17:30 today) #}
+            {% set today_1730 = now().replace(hour=17, minute=30, second=0, microsecond=0) %}
+            {% set bathroom_in_window = bathroom_last >= today_1730 %}
+
+            {# 2. Bedroom activity came AFTER bathroom #}
+            {% set bedroom_after_bathroom = bedroom_last > bathroom_last %}
+
+            {# 3. Bedroom activity within 30 mins of bathroom (the transition) #}
+            {% set mins_between = ((bedroom_last - bathroom_last).total_seconds() / 60) | int %}
+            {% set bedroom_within_30 = mins_between >= 0 and mins_between <= 30 %}
+
+            {# 4. Bedroom is currently active or was very recently (within 15 mins) #}
+            {% set bedroom_mins_ago = ((now() - bedroom_last).total_seconds() / 60) | int %}
+            {% set bedroom_recent = bedroom_mins_ago < 15 %}
+
+            {# Pattern: Bathroom in window → Bedroom within 30 mins → Bedroom still recent #}
+            {{ bathroom_in_window and bedroom_after_bathroom and bedroom_within_30 and bedroom_recent }}
+          {% endif %}
+        icon: >
+          {% if is_state('binary_sensor.bedtime_pattern_detected', 'on') %}
+            mdi:sleep
+          {% else %}
+            mdi:sleep-off
+          {% endif %}
+        attributes:
+          bathroom_time: >
+            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
+            {{ bathroom_last.strftime('%H:%M') if bathroom_last else 'unknown' }}
+          bedroom_time: >
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {{ bedroom_last.strftime('%H:%M') if bedroom_last else 'unknown' }}
+          mins_bathroom_to_bedroom: >
+            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {{ ((bedroom_last - bathroom_last).total_seconds() / 60) | int if bedroom_last > bathroom_last else -1 }}
+          bedroom_minutes_ago: >
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {{ ((now() - bedroom_last).total_seconds() / 60) | int }}
+          detection_window_active: >
+            {% set now_hour = now().hour %}
+            {% set now_min = now().minute %}
+            {{ (now_hour == 17 and now_min >= 30) or (18 <= now_hour <= 21) }}
+
+  # EPL Derived: still/moving target from LD2450 speed data
+  # LD2450 doesn't have native still/moving (that's LD2410).
+  # Derived from Target 1 speed + active state. Thresholds tuneable via input_number.
+  - binary_sensor:
+      - name: "Haiven Bedroom Still Target"
+        unique_id: haiven_bedroom_still_target
+        device_class: occupancy
+        state: >
+          {% set active = is_state('binary_sensor.haiven_bedroom_target_1_active', 'on') %}
+          {% set speed = states('sensor.haiven_bedroom_target_1_speed') %}
+          {% set threshold = states('input_number.epl_still_speed_threshold') | float(0.05) %}
+          {% if active and speed not in ['unknown', 'unavailable'] %}
+            {{ speed | float(0) | abs <= threshold }}
+          {% else %}
+            false
+          {% endif %}
+        icon: mdi:motion-sensor-off
+
+      - name: "Haiven Bedroom Moving Target"
+        unique_id: haiven_bedroom_moving_target
+        device_class: motion
+        state: >
+          {% set active = is_state('binary_sensor.haiven_bedroom_target_1_active', 'on') %}
+          {% set speed = states('sensor.haiven_bedroom_target_1_speed') %}
+          {% set threshold = states('input_number.epl_moving_speed_threshold') | float(0.15) %}
+          {% if active and speed not in ['unknown', 'unavailable'] %}
+            {{ speed | float(0) | abs >= threshold }}
+          {% else %}
+            false
+          {% endif %}
+        icon: mdi:motion-sensor
+
+  # ============================================================================
+  # BED STATE DETECTION - State Machine with EPL Zones
+  # ============================================================================
+
+  - sensor:
+      - name: "Bed Status"
+        unique_id: bed_status_display
+        state: >
+          {% set state = states('input_select.bed_state') %}
+          {% if state == 'not_in_bed' %}
+            Not In Bed
+          {% elif state == 'in_bed' %}
+            In Bed
+          {% elif state == 'sleeping' %}
+            Sleeping
+          {% else %}
+            Unknown
+          {% endif %}
+        icon: >
+          {% set state = states('input_select.bed_state') %}
+          {% if state == 'sleeping' %}
+            mdi:sleep
+          {% elif state == 'in_bed' %}
+            mdi:bed
+          {% else %}
+            mdi:bed-empty
+          {% endif %}
+        attributes:
+          state_code: "{{ states('input_select.bed_state') }}"
+          time_in_state: >
+            {% set last = states('input_datetime.bed_state_last_transition') %}
+            {% if last not in ['unknown', 'unavailable'] %}
+              {{ relative_time(as_datetime(last)) }}
+            {% else %}
+              unknown
+            {% endif %}
+          zone1_bed: "{{ states('binary_sensor.haiven_bedroom_zone_1_occupancy') }}"
+          zone2_room: "{{ states('binary_sensor.haiven_bedroom_zone_2_occupancy') }}"
+          still_target: "{{ states('binary_sensor.haiven_bedroom_still_target') }}"
+          moving_target: "{{ states('binary_sensor.haiven_bedroom_moving_target') }}"
+
+      - name: "Time In Bed Minutes"
+        unique_id: time_in_bed_minutes
+        unit_of_measurement: "min"
+        state: >
+          {% set in_bed_states = ['in_bed', 'sleeping'] %}
+          {% set current_state = states('input_select.bed_state') %}
+          {% set entered = states('input_datetime.zone1_entered_time') %}
+          {% if current_state in in_bed_states and entered not in ['unknown', 'unavailable'] %}
+            {{ ((now() - as_datetime(entered)).total_seconds() / 60) | round(0) }}
+          {% else %}
+            0
+          {% endif %}
+        icon: mdi:timer-sand
+
+  - binary_sensor:
+      - name: "In Bed"
+        unique_id: in_bed_binary
+        device_class: occupancy
+        state: >
+          {% set in_bed_states = ['in_bed', 'sleeping'] %}
+          {{ states('input_select.bed_state') in in_bed_states }}
+        icon: >
+          {% if is_state('binary_sensor.in_bed', 'on') %}
+            mdi:bed
+          {% else %}
+            mdi:bed-empty
+          {% endif %}
+
+  # Daily Activity Score (0-100) - Uses foundational sensors
+  # Returns 100 when person is away (not counting home activity while out)
+  - sensor:
+      - name: "Daily Activity Score"
+        unique_id: daily_activity_score
+        unit_of_measurement: "%"
+        state: >
+          {# Check if person is away - uses foundational sensor #}
+          {% if is_state('binary_sensor.elderly_person_home', 'off') %}
+            100
+          {% else %}
+            {% set score = 0 %}
+            {% set invalid_states = ['unknown', 'unavailable'] %}
+
+            {# 1. Wake timing - up to 25 points #}
+            {% set wake = states('input_datetime.actual_wake_time_today') %}
+            {% set expected_wake = states('input_datetime.expected_wake_time') %}
+            {% set wake_variance = states('input_number.wake_time_variance_minutes') | float(60) %}
+            {% if wake not in invalid_states + ['00:00:00'] and expected_wake not in invalid_states %}
+              {% set wake_parts = wake.split(':') %}
+              {% set expected_parts = expected_wake.split(':') %}
+              {% set wake_mins = (wake_parts[0] | int) * 60 + (wake_parts[1] | int) %}
+              {% set expected_mins = (expected_parts[0] | int) * 60 + (expected_parts[1] | int) %}
+              {% set diff = (wake_mins - expected_mins) | abs %}
+              {% if diff <= wake_variance %}
+                {% set score = score + 25 %}
+              {% elif diff <= wake_variance * 2 %}
+                {% set score = score + 12 %}
+              {% endif %}
+            {% endif %}
+
+            {# 2. Recent activity - up to 25 points - uses activity_data #}
+            {% set mins_since = state_attr('sensor.activity_data', 'minutes_since_latest') %}
+            {% if mins_since and mins_since != 'unknown' %}
+              {% set mins_since = mins_since | int %}
+              {% if mins_since <= 30 %}
+                {% set score = score + 25 %}
+              {% elif mins_since <= 60 %}
+                {% set score = score + 17 %}
+              {% elif mins_since <= 120 %}
+                {% set score = score + 8 %}
+              {% endif %}
+            {% endif %}
+
+            {# 3. Room variety today - up to 20 points - uses activity_data #}
+            {% set rooms_active = state_attr('sensor.activity_data', 'rooms_active_today') | int(0) %}
+            {% if rooms_active >= 3 %}
+              {% set score = score + 20 %}
+            {% elif rooms_active == 2 %}
+              {% set score = score + 12 %}
+            {% elif rooms_active == 1 %}
+              {% set score = score + 5 %}
+            {% endif %}
+
+            {# 4. Trigger frequency - up to 15 points #}
+            {% set kitchen_actual = states('counter.kitchen_triggers_today') | int(0) %}
+            {% set dynamic_avg = states('sensor.kitchen_triggers_daily_average') | float(0) %}
+            {% set baseline = dynamic_avg if dynamic_avg > 0 else 100 %}
+            {% set hour = now().hour %}
+            {% if hour < 8 %}
+              {% set expected = baseline * 0.1 %}
+            {% elif hour < 12 %}
+              {% set expected = baseline * 0.4 %}
+            {% elif hour < 18 %}
+              {% set expected = baseline * 0.75 %}
+            {% else %}
+              {% set expected = baseline %}
+            {% endif %}
+            {% if expected > 0 %}
+              {% set ratio = kitchen_actual / expected %}
+              {% if ratio >= 0.8 %}
+                {% set score = score + 15 %}
+              {% elif ratio >= 0.5 %}
+                {% set score = score + 8 %}
+              {% elif ratio >= 0.25 %}
+                {% set score = score + 3 %}
+              {% endif %}
+            {% endif %}
+
+            {# 5. No deviations - up to 15 points #}
+            {% set deviations = states('sensor.deviation_count') | int(0) %}
+            {% if deviations == 0 %}
+              {% set score = score + 15 %}
+            {% elif deviations == 1 %}
+              {% set score = score + 5 %}
+            {% endif %}
+
+            {{ score }}
+          {% endif %}
+        icon: mdi:chart-line
+        attributes:
+          score_label: >
+            {% if is_state('binary_sensor.elderly_person_home', 'off') %}
+              Away
+            {% else %}
+              {% set score = states('sensor.daily_activity_score') | int(0) %}
+              {% if score >= 80 %}
+                Excellent
+              {% elif score >= 60 %}
+                Good
+              {% elif score >= 40 %}
+                Fair
+              {% elif score >= 20 %}
+                Low
+              {% else %}
+                Concerning
+              {% endif %}
+            {% endif %}
+          person_away: "{{ is_state('binary_sensor.elderly_person_home', 'off') }}"
+          breakdown: >
+            Wake timing: up to 25, Recent activity: up to 25, Room variety: up to 20, Trigger frequency: up to 15, No deviations: up to 15
+
+  # ============================================================================
+  # SYSTEM HEALTH - Activity Tracking Status
+  # ============================================================================
+
+  - sensor:
+      - name: "Activity Tracking Status"
+        unique_id: activity_tracking_status
+        state: >
+          {% set invalid = ['unknown', 'unavailable'] %}
+          {% set issues = 0 %}
+          {# Check counters #}
+          {% if states('counter.kitchen_triggers_today') in invalid %}{% set issues = issues + 1 %}{% endif %}
+          {% if states('counter.bedroom_triggers_today') in invalid %}{% set issues = issues + 1 %}{% endif %}
+          {% if states('counter.bathroom_triggers_today') in invalid %}{% set issues = issues + 1 %}{% endif %}
+          {# Check key sensors #}
+          {% if states('sensor.activity_level_status') in invalid %}{% set issues = issues + 1 %}{% endif %}
+          {% if states('sensor.current_room_location') in invalid %}{% set issues = issues + 1 %}{% endif %}
+          {# Check baseline #}
+          {% if states('input_number.kitchen_triggers_baseline') in invalid %}{% set issues = issues + 1 %}{% endif %}
+          {% if issues == 0 %}
+            All online
+          {% else %}
+            {{ issues }} issue{{ 's' if issues > 1 else '' }}
+          {% endif %}
+        icon: >
+          {% if is_state('sensor.activity_tracking_status', 'All online') %}
+            mdi:check-circle
+          {% else %}
+            mdi:alert-circle
+          {% endif %}
+        attributes:
+          counters_ok: >
+            {% set invalid = ['unknown', 'unavailable'] %}
+            {{ states('counter.kitchen_triggers_today') not in invalid and
+               states('counter.bedroom_triggers_today') not in invalid and
+               states('counter.bathroom_triggers_today') not in invalid }}
+          sensors_ok: >
+            {% set invalid = ['unknown', 'unavailable'] %}
+            {{ states('sensor.activity_level_status') not in invalid and
+               states('sensor.current_room_location') not in invalid }}
+          kitchen_triggers: "{{ states('counter.kitchen_triggers_today') }}"
+          bedroom_triggers: "{{ states('counter.bedroom_triggers_today') }}"
+          bathroom_triggers: "{{ states('counter.bathroom_triggers_today') }}"
+
+  # ============================================================================
+  # ACTIVITY BASELINE - Rolling 7-day average
+  # ============================================================================
+
+  - sensor:
+      - name: "Kitchen Triggers Daily Average"
+        unique_id: kitchen_triggers_daily_average
+        unit_of_measurement: "triggers"
+        state: >
+          {% set count_7d = states('sensor.kitchen_triggers_7_day_count') | float(0) %}
+          {% if count_7d > 0 %}
+            {{ (count_7d / 7) | round(0) }}
+          {% else %}
+            100
+          {% endif %}
+        icon: mdi:chart-line-variant
+        attributes:
+          last_24h: "{{ states('sensor.kitchen_triggers_24h_count') | int(0) }}"
+          last_7d_total: "{{ states('sensor.kitchen_triggers_7_day_count') | int(0) }}"
+          comparison: >
+            {% set today = states('counter.kitchen_triggers_today') | int(0) %}
+            {% set avg = states('sensor.kitchen_triggers_daily_average') | float(100) %}
+            {% set hour = now().hour %}
+            {% if hour < 8 %}{% set expected = avg * 0.1 %}
+            {% elif hour < 12 %}{% set expected = avg * 0.4 %}
+            {% elif hour < 18 %}{% set expected = avg * 0.75 %}
+            {% else %}{% set expected = avg %}{% endif %}
+            {% if expected > 0 %}
+              {% set pct = (today / expected) * 100 %}
+              {% if pct >= 100 %}Above average
+              {% elif pct >= 80 %}On track
+              {% elif pct >= 50 %}Below average
+              {% else %}Low{% endif %}
+            {% else %}Calculating{% endif %}
+
+      # Cumulative expected by this point in the day
+      # Active period: 6am - 8pm (14 hours), linear distribution
+      - name: "Kitchen Expected By Now"
+        unique_id: kitchen_expected_by_now
+        unit_of_measurement: "triggers"
+        state: >
+          {% set daily_avg = states('sensor.kitchen_triggers_daily_average') | float(100) %}
+          {% set hour = now().hour %}
+          {% set minute = now().minute %}
+          {% set start_hour = 6 %}
+          {% set end_hour = 20 %}
+          {% set active_hours = end_hour - start_hour %}
+
+          {% if hour < start_hour %}
+            0
+          {% elif hour >= end_hour %}
+            {{ daily_avg | round(0) }}
+          {% else %}
+            {% set hours_elapsed = (hour - start_hour) + (minute / 60) %}
+            {{ ((hours_elapsed / active_hours) * daily_avg) | round(0) }}
+          {% endif %}
+        icon: mdi:target
+
+      - name: "Kitchen Progress Status"
+        unique_id: kitchen_progress_status
+        state: >
+          {% set actual = states('counter.kitchen_triggers_today') | int(0) %}
+          {% set expected = states('sensor.kitchen_expected_by_now') | float(1) %}
+          {% set hour = now().hour %}
+
+          {% if hour < 6 %}
+            --
+          {% elif expected <= 0 %}
+            --
+          {% else %}
+            {% set ratio = actual / expected %}
+            {% if ratio >= 0.6 %}
+              Normal
+            {% else %}
+              Check In
+            {% endif %}
+          {% endif %}
+        icon: >
+          {% if is_state('sensor.kitchen_progress_status', 'Normal') %}
+            mdi:check-circle
+          {% elif is_state('sensor.kitchen_progress_status', 'Check In') %}
+            mdi:alert
+          {% else %}
+            mdi:clock-outline
+          {% endif %}
+        attributes:
+          actual: "{{ states('counter.kitchen_triggers_today') | int(0) }}"
+          expected_by_now: "{{ states('sensor.kitchen_expected_by_now') | int(0) }}"
+          daily_average: "{{ states('sensor.kitchen_triggers_daily_average') | int(100) }}"
+
+  # ============================================================================
+  # ACTIVITY TIMING SENSORS - Minutes Since Activity
+  # ============================================================================
+
+  - sensor:
+      - name: "Minutes Since Kitchen Activity"
+        unique_id: minutes_since_kitchen_activity
+        unit_of_measurement: "min"
+        state: >
+          {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in ['unknown', 'unavailable'] else none %}
+          {% if kitchen_last %}
+            {{ ((now() - kitchen_last).total_seconds() / 60) | int }}
+          {% else %}
+            unknown
+          {% endif %}
+        icon: mdi:silverware-fork-knife
+
+      - name: "Minutes Since Bedroom Activity"
+        unique_id: minutes_since_bedroom_activity
+        unit_of_measurement: "min"
+        state: >
+          {# If occupancy is currently ON, someone is actively there — report 0 #}
+          {% if is_state('binary_sensor.haiven_bedroom_occupancy', 'on') %}
+            0
+          {% else %}
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in ['unknown', 'unavailable'] else none %}
+            {% if bedroom_last %}
+              {{ ((now() - bedroom_last).total_seconds() / 60) | int }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% endif %}
+        icon: mdi:bed
+
+      - name: "Minutes Since Bathroom Activity"
+        unique_id: minutes_since_bathroom_activity
+        unit_of_measurement: "min"
+        state: >
+          {# If motion is currently ON, someone is actively there — report 0 #}
+          {% if is_state('binary_sensor.haiven_bathroom_motion', 'on') %}
+            0
+          {% else %}
+            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in ['unknown', 'unavailable'] else none %}
+            {% if bathroom_last %}
+              {{ ((now() - bathroom_last).total_seconds() / 60) | int }}
+            {% else %}
+              unknown
+            {% endif %}
+          {% endif %}
+        icon: mdi:shower
+
+  # ============================================================================
+  # ACTIVITY PATTERN SENSORS
+  # ============================================================================
+
+  - sensor:
+      - name: "Average Activity Gap"
+        unique_id: average_activity_gap
+        unit_of_measurement: "min"
+        state: >
+          {% set total = states('counter.total_triggers_today') | int(0) %}
+          {% if total > 1 %}
+            {# Calculate minutes since midnight #}
+            {% set mins_today = now().hour * 60 + now().minute %}
+            {% set avg_gap = (mins_today / total) | round(0) %}
+            {{ avg_gap }}
+          {% elif total == 1 %}
+            {{ (now().hour * 60 + now().minute) }}
+          {% else %}
+            unknown
+          {% endif %}
+        icon: mdi:timer-outline
+        attributes:
+          triggers_today: "{{ states('counter.total_triggers_today') }}"
+          interpretation: >
+            {% set avg = states('sensor.average_activity_gap') | int(0) %}
+            {% if avg == 0 or avg == 'unknown' %}
+              No data
+            {% elif avg <= 15 %}
+              Very Active
+            {% elif avg <= 30 %}
+              Normal
+            {% elif avg <= 60 %}
+              Quiet
+            {% else %}
+              Low Activity
+            {% endif %}
+
+      # Current Room Location - Uses activity_data foundational sensor
+      - name: "Current Room Location"
+        unique_id: current_room_location
+        state: "{{ states('sensor.activity_data') }}"
+        icon: mdi:map-marker
+        attributes:
+          time_in_room: >
+            {% set latest = state_attr('sensor.activity_data', 'latest_time') %}
+            {% if latest and latest != 'unknown' %}
+              {{ relative_time(as_datetime(latest)) }}
+            {% else %}
+              unknown
+            {% endif %}
+
+      # Last Room Transition - Uses activity_data foundational sensor
+      - name: "Last Room Transition"
+        unique_id: last_room_transition
+        state: "{{ state_attr('sensor.activity_data', 'transition') }}"
+        icon: mdi:arrow-right-bold
+        attributes:
+          transition_time: >
+            {% set latest = state_attr('sensor.activity_data', 'latest_time') %}
+            {% if latest and latest != 'unknown' %}
+              {{ as_datetime(latest).strftime('%H:%M') }}
+            {% else %}
+              unknown
+            {% endif %}
+
+      - name: "Activity Level Status"
+        unique_id: activity_level_status
+        state: >
+          {# Don't evaluate before wake — no activity expected while sleeping #}
+          {% set wake = states('input_datetime.actual_wake_time_today') %}
+          {% set expected_wake = states('input_datetime.expected_wake_time') %}
+          {% set has_woken = wake not in ['unknown', 'unavailable', none, '', '00:00:00'] %}
+
+          {% if not has_woken %}
+            {# Wake not recorded yet — only evaluate after expected wake + variance #}
+            {% set variance = states('input_number.wake_time_variance_minutes') | float(60) %}
+            {% if expected_wake not in ['unknown', 'unavailable', none, ''] %}
+              {% set cutoff = today_at(expected_wake) + timedelta(minutes=variance) %}
+              {% if now() < cutoff %}
+                Normal
+              {% else %}
+                Very Low
+              {% endif %}
+            {% else %}
+              Normal
+            {% endif %}
+          {% else %}
+            {# Wake recorded — evaluate based on hours since wake #}
+            {% set kitchen_actual = states('counter.kitchen_triggers_today') | int(0) %}
+            {% set dynamic_avg = states('sensor.kitchen_triggers_daily_average') | float(0) %}
+            {% set baseline = dynamic_avg if dynamic_avg > 0 else 100 %}
+            {% set wake_parts = wake.split(':') %}
+            {% set wake_hour = wake_parts[0] | int %}
+            {% set hours_awake = now().hour - wake_hour %}
+
+            {# Adjust expected based on hours since wake #}
+            {% if hours_awake < 2 %}
+              {% set expected = baseline * 0.15 %}
+            {% elif hours_awake < 6 %}
+              {% set expected = baseline * 0.4 %}
+            {% elif hours_awake < 10 %}
+              {% set expected = baseline * 0.75 %}
+            {% else %}
+              {% set expected = baseline %}
+            {% endif %}
+
+            {% if expected == 0 %}
+              Normal
+            {% else %}
+              {% set ratio = kitchen_actual / expected %}
+              {% if ratio >= 0.8 %}
+                Normal
+              {% elif ratio >= 0.5 %}
+                Low
+              {% else %}
+                Very Low
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        icon: >
+          {% if is_state('sensor.activity_level_status', 'Normal') %}
+            mdi:check-circle
+          {% elif is_state('sensor.activity_level_status', 'Low') %}
+            mdi:alert
+          {% else %}
+            mdi:alert-circle
+          {% endif %}
+        attributes:
+          kitchen_triggers: "{{ states('counter.kitchen_triggers_today') }}"
+          baseline: "{{ states('sensor.kitchen_triggers_daily_average') | float(100) }}"
+          last_24h: "{{ states('sensor.kitchen_triggers_24h_count') | int(0) }}"
+          percentage: >
+            {% set kitchen_actual = states('counter.kitchen_triggers_today') | int(0) %}
+            {% set dynamic_avg = states('sensor.kitchen_triggers_daily_average') | float(0) %}
+            {% set baseline = dynamic_avg if dynamic_avg > 0 else 100 %}
+            {% if baseline > 0 %}
+              {{ ((kitchen_actual / baseline) * 100) | round(0) }}%
+            {% else %}
+              0%
+            {% endif %}
+
+      - name: "Daily Trigger Summary"
+        unique_id: daily_trigger_summary
+        state: >
+          Kitchen: {{ states('counter.kitchen_triggers_today') }} | Bedroom: {{ states('counter.bedroom_triggers_today') }} | Bath: {{ states('counter.bathroom_triggers_today') }}
+        icon: mdi:chart-bar
+        attributes:
+          kitchen: "{{ states('counter.kitchen_triggers_today') }}"
+          bedroom: "{{ states('counter.bedroom_triggers_today') }}"
+          bathroom: "{{ states('counter.bathroom_triggers_today') }}"
+          total: "{{ states('counter.total_triggers_today') }}"
+
+sensor:
+  - platform: statistics
+    name: Average Wake Minutes Week
+    entity_id: sensor.today_wake_minutes
+    state_characteristic: mean
+    sampling_size: 30  # ~2 state changes/day × 7 days = 14, plus buffer
+    max_age:
+      days: 7
+
+  - platform: statistics
+    name: Average Bedtime Minutes Week
+    entity_id: sensor.today_bedtime_minutes
+    state_characteristic: mean
+    sampling_size: 30
+    max_age:
+      days: 7

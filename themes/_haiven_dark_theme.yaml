@@ -1,0 +1,103 @@
+# =============================================================================
+# HAIVEN DARK THEME
+# =============================================================================
+#
+# INSTALLATION:
+# Option A - Add to existing themes.yaml:
+#   Copy this content into your existing themes.yaml file
+#
+# Option B - Include as separate file:
+#   frontend:
+#     themes: !include_dir_merge_named themes/
+#   Then save this as config/themes/haiven.yaml
+#
+# ACTIVATION:
+#   Profile → Theme → Select "Haiven Dark"
+#
+# =============================================================================
+
+haiven_dark:
+  # Primary colours
+  primary-color: "#3B82F6"
+  accent-color: "#10B981"
+  
+  # Background
+  primary-background-color: "#0F172A"
+  secondary-background-color: "#1E293B"
+  card-background-color: "#1E293B"
+  ha-card-background: "#1E293B"
+  
+  # Text
+  primary-text-color: "#F8FAFC"
+  secondary-text-color: "#94A3B8"
+  text-primary-color: "#F8FAFC"
+  disabled-text-color: "#64748B"
+  
+  # Header
+  app-header-background-color: "#0F172A"
+  app-header-text-color: "#F8FAFC"
+  
+  # Sidebar
+  sidebar-background-color: "#0F172A"
+  sidebar-text-color: "#F8FAFC"
+  sidebar-selected-background-color: "#1E293B"
+  sidebar-selected-icon-color: "#3B82F6"
+  
+  # Cards
+  ha-card-border-radius: "20px"
+  ha-card-box-shadow: "0 4px 6px -1px rgba(0, 0, 0, 0.3)"
+  
+  # Dividers
+  divider-color: "#334155"
+  
+  # States
+  state-icon-color: "#94A3B8"
+  state-icon-active-color: "#3B82F6"
+  
+  # Inputs
+  input-fill-color: "#334155"
+  input-ink-color: "#F8FAFC"
+  input-label-ink-color: "#94A3B8"
+  
+  # Switches/toggles
+  switch-checked-color: "#10B981"
+  switch-unchecked-button-color: "#64748B"
+  switch-unchecked-track-color: "#334155"
+  
+  # Paper elements
+  paper-card-background-color: "#1E293B"
+  paper-dialog-background-color: "#1E293B"
+  paper-item-icon-color: "#94A3B8"
+  paper-item-icon-active-color: "#3B82F6"
+  paper-listbox-background-color: "#1E293B"
+  
+  # Data table
+  data-table-background-color: "#1E293B"
+  table-row-background-color: "#1E293B"
+  table-row-alternative-background-color: "#0F172A"
+  
+  # Buttons
+  mdc-button-outline-color: "#334155"
+  
+  # Chips
+  chip-background-color: "#334155"
+  
+  # Badges
+  label-badge-background-color: "#334155"
+  label-badge-text-color: "#F8FAFC"
+  
+  # Graphs/charts
+  graph-color: "#3B82F6"
+  
+  # Status colours
+  success-color: "#10B981"
+  warning-color: "#F59E0B"
+  error-color: "#EF4444"
+  info-color: "#3B82F6"
+  
+  # RGB versions for transparency
+  rgb-primary-color: "59, 130, 246"
+  rgb-accent-color: "16, 185, 129"
+  rgb-primary-text-color: "248, 250, 252"
+  rgb-secondary-text-color: "148, 163, 184"
+  rgb-card-background-color: "30, 41, 59"
