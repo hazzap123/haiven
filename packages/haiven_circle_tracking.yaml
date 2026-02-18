@@ -1,0 +1,350 @@
+# Haiven Care Circle - Location Tracking Sensors & Templates
+# This package provides location-based sensors for care circle members
+#
+# Features:
+# - Distance from each person to home
+# - Formatted location display
+# - Proximity detection
+# - Last location update tracking
+# - Nearest available responder
+#
+# Configuration:
+# - Person entities are configured via input_text helpers in haiven_inputs.yaml
+# - input_text.elderly_person_entity → person.elderly_person
+# - input_text.contact_1_person → person.contact_1
+# - input_text.contact_2_person → person.contact_2
+
+# Template sensors for location tracking
+template:
+  - sensor:
+      # Mum's Location Display
+      - name: "Elderly Person Location"
+        unique_id: mum_location_display
+        state: >
+          {% set entity = states('input_text.elderly_person_entity') %}
+          {% if entity and entity not in ['unknown', 'unavailable', ''] %}
+            {% if is_state(entity, 'home') %}
+              At Home
+            {% elif is_state(entity, 'not_home') %}
+              Away
+            {% elif is_state(entity, 'unavailable') %}
+              Unknown
+            {% else %}
+              {{ states(entity) | replace('_', ' ') | title }}
+            {% endif %}
+          {% else %}
+            Not Configured
+          {% endif %}
+        icon: >
+          {% set entity = states('input_text.elderly_person_entity') %}
+          {% if entity and is_state(entity, 'home') %}
+            mdi:home-heart
+          {% else %}
+            mdi:walk
+          {% endif %}
+        attributes:
+          person_entity: "{{ states('input_text.elderly_person_entity') }}"
+          last_changed: >
+            {% set entity = states('input_text.elderly_person_entity') %}
+            {% if entity and entity not in ['unknown', 'unavailable', ''] %}
+              {{ states[entity.split('.')[0]][entity.split('.')[1]].last_changed if entity.split('.')[0] in states and entity.split('.')[1] in states[entity.split('.')[0]] else 'unknown' }}
+            {% else %}
+              unknown
+            {% endif %}
+          is_home: >
+            {% set entity = states('input_text.elderly_person_entity') %}
+            {{ is_state(entity, 'home') if entity else false }}
+
+      # Primary Contact Location Display (uses name from Settings)
+      - name: "Primary Contact Location"
+        unique_id: primary_contact_location_display
+        state: >
+          {% set entity = states('input_text.contact_1_person') %}
+          {% if entity and entity not in ['unknown', 'unavailable', ''] %}
+            {% if is_state(entity, 'home') %}
+              At Home
+            {% elif is_state(entity, 'not_home') %}
+              Away
+            {% elif is_state(entity, 'unavailable') %}
+              Unknown
+            {% else %}
+              {{ states(entity) | replace('_', ' ') | title }}
+            {% endif %}
+          {% else %}
+            Not Configured
+          {% endif %}
+        icon: >
+          {% set entity = states('input_text.contact_1_person') %}
+          {% if entity and is_state(entity, 'home') %}
+            mdi:home-account
+          {% else %}
+            mdi:map-marker-account
+          {% endif %}
+        attributes:
+          contact_name: "{{ states('input_text.contact_1_name') }}"
+          person_entity: "{{ states('input_text.contact_1_person') }}"
+          phone: "{{ states('input_text.contact_1_phone') | string }}"
+          phone_formatted: >
+            {% set phone = states('input_text.contact_1_phone') | string %}
+            {% if phone and phone != '' and phone != 'unknown' %}
+              {% if phone.startswith('44') and phone | length == 12 %}
+                +44 {{ phone[2:6] }} {{ phone[6:9] }} {{ phone[9:] }}
+              {% elif phone.startswith('0') and phone | length == 11 %}
+                {{ phone[0:5] }} {{ phone[5:8] }} {{ phone[8:] }}
+              {% else %}
+                {{ phone }}
+              {% endif %}
+            {% else %}
+              Not set
+            {% endif %}
+          phone_url: "tel:{{ states('input_text.contact_1_phone') }}"
+          last_updated: >
+            {% set entity = states('input_text.contact_1_person') %}
+            {{ state_attr(entity, 'last_changed') if entity else 'unknown' }}
+          latitude: >
+            {% set entity = states('input_text.contact_1_person') %}
+            {{ state_attr(entity, 'latitude') if entity else none }}
+          longitude: >
+            {% set entity = states('input_text.contact_1_person') %}
+            {{ state_attr(entity, 'longitude') if entity else none }}
+          source: >
+            {% set entity = states('input_text.contact_1_person') %}
+            {{ state_attr(entity, 'source') if entity else 'unknown' }}
+
+      # Primary Contact Distance from Home
+      - name: "Primary Contact Distance"
+        unique_id: primary_contact_distance
+        unit_of_measurement: "km"
+        state: >
+          {% set entity = states('input_text.contact_1_person') %}
+          {% set home_lat = state_attr('zone.home', 'latitude') %}
+          {% set home_lon = state_attr('zone.home', 'longitude') %}
+          {% set person_lat = state_attr(entity, 'latitude') if entity else none %}
+          {% set person_lon = state_attr(entity, 'longitude') if entity else none %}
+          {% if person_lat and person_lon and home_lat and home_lon %}
+            {{ distance(home_lat, home_lon, person_lat, person_lon) | round(1) }}
+          {% else %}
+            {{ none }}
+          {% endif %}
+        icon: mdi:map-marker-distance
+        attributes:
+          distance_miles: >
+            {% set km = states('sensor.primary_contact_distance') | float(0) %}
+            {{ (km * 0.621371) | round(1) }}
+
+      # Secondary Contact Location Display (uses name from Settings)
+      - name: "Secondary Contact Location"
+        unique_id: secondary_contact_location_display
+        state: >
+          {% set entity = states('input_text.contact_2_person') %}
+          {% if entity and entity not in ['unknown', 'unavailable', ''] %}
+            {% if is_state(entity, 'home') %}
+              At Home
+            {% elif is_state(entity, 'not_home') %}
+              Away
+            {% elif is_state(entity, 'unavailable') %}
+              Unknown
+            {% else %}
+              {{ states(entity) | replace('_', ' ') | title }}
+            {% endif %}
+          {% else %}
+            Not Configured
+          {% endif %}
+        icon: >
+          {% set entity = states('input_text.contact_2_person') %}
+          {% if entity and is_state(entity, 'home') %}
+            mdi:home-account
+          {% else %}
+            mdi:map-marker-account
+          {% endif %}
+        attributes:
+          contact_name: "{{ states('input_text.contact_2_name') }}"
+          person_entity: "{{ states('input_text.contact_2_person') }}"
+          phone: "{{ states('input_text.contact_2_phone') | string }}"
+          phone_formatted: >
+            {% set phone = states('input_text.contact_2_phone') | string %}
+            {% if phone and phone != '' and phone != 'unknown' %}
+              {% if phone.startswith('44') and phone | length == 12 %}
+                +44 {{ phone[2:6] }} {{ phone[6:9] }} {{ phone[9:] }}
+              {% elif phone.startswith('0') and phone | length == 11 %}
+                {{ phone[0:5] }} {{ phone[5:8] }} {{ phone[8:] }}
+              {% else %}
+                {{ phone }}
+              {% endif %}
+            {% else %}
+              Not set
+            {% endif %}
+          phone_url: "tel:{{ states('input_text.contact_2_phone') }}"
+          last_updated: >
+            {% set entity = states('input_text.contact_2_person') %}
+            {{ state_attr(entity, 'last_changed') if entity else 'unknown' }}
+          latitude: >
+            {% set entity = states('input_text.contact_2_person') %}
+            {{ state_attr(entity, 'latitude') if entity else none }}
+          longitude: >
+            {% set entity = states('input_text.contact_2_person') %}
+            {{ state_attr(entity, 'longitude') if entity else none }}
+          source: >
+            {% set entity = states('input_text.contact_2_person') %}
+            {{ state_attr(entity, 'source') if entity else 'unknown' }}
+
+      # Secondary Contact Distance from Home
+      - name: "Secondary Contact Distance"
+        unique_id: secondary_contact_distance
+        unit_of_measurement: "km"
+        state: >
+          {% set entity = states('input_text.contact_2_person') %}
+          {% set home_lat = state_attr('zone.home', 'latitude') %}
+          {% set home_lon = state_attr('zone.home', 'longitude') %}
+          {% set person_lat = state_attr(entity, 'latitude') if entity else none %}
+          {% set person_lon = state_attr(entity, 'longitude') if entity else none %}
+          {% if person_lat and person_lon and home_lat and home_lon %}
+            {{ distance(home_lat, home_lon, person_lat, person_lon) | round(1) }}
+          {% else %}
+            {{ none }}
+          {% endif %}
+        icon: mdi:map-marker-distance
+        attributes:
+          distance_miles: >
+            {% set km = states('sensor.secondary_contact_distance') | float(0) %}
+            {{ (km * 0.621371) | round(1) }}
+
+      # Nearest Care Circle Member (uses names from Settings)
+      - name: "Nearest Care Circle Member"
+        unique_id: nearest_care_circle_member
+        state: >
+          {% set distances = [] %}
+          {% if states('sensor.primary_contact_distance') not in ['unavailable', 'unknown', 'None'] %}
+            {% set distances = distances + [{'name': states('input_text.contact_1_name'), 'distance': states('sensor.primary_contact_distance') | float(999)}] %}
+          {% endif %}
+          {% if states('sensor.secondary_contact_distance') not in ['unavailable', 'unknown', 'None'] %}
+            {% set distances = distances + [{'name': states('input_text.contact_2_name'), 'distance': states('sensor.secondary_contact_distance') | float(999)}] %}
+          {% endif %}
+          {% if distances | length > 0 %}
+            {% set nearest = distances | sort(attribute='distance') | first %}
+            {% if nearest.distance < 999 and nearest.name != '' %}
+              {{ nearest.name }}
+            {% else %}
+              Unknown
+            {% endif %}
+          {% else %}
+            No contacts configured
+          {% endif %}
+        icon: mdi:account-star
+        attributes:
+          distance_km: >
+            {% set distances = [
+              states('sensor.primary_contact_distance') | float(999),
+              states('sensor.secondary_contact_distance') | float(999)
+            ] %}
+            {% set min_distance = distances | min %}
+            {% if min_distance < 999 %}
+              {{ min_distance }}
+            {% else %}
+              unavailable
+            {% endif %}
+          distance_miles: >
+            {% set distances = [
+              states('sensor.primary_contact_distance') | float(999),
+              states('sensor.secondary_contact_distance') | float(999)
+            ] %}
+            {% set min_distance = distances | min %}
+            {% if min_distance < 999 %}
+              {{ (min_distance * 0.621371) | round(1) }}
+            {% else %}
+              unavailable
+            {% endif %}
+
+      # Anyone at Home - Quick check if any care circle member is present
+      - name: "Care Circle Member Present"
+        unique_id: care_circle_member_present
+        state: >
+          {% set primary = states('input_text.contact_1_person') %}
+          {% set secondary = states('input_text.contact_2_person') %}
+          {% set at_home = [] %}
+          {% if primary and primary not in ['unavailable', 'unknown', ''] %}
+            {% set at_home = at_home + [is_state(primary, 'home')] %}
+          {% endif %}
+          {% if secondary and secondary not in ['unavailable', 'unknown', ''] %}
+            {% set at_home = at_home + [is_state(secondary, 'home')] %}
+          {% endif %}
+          {{ 'Yes' if true in at_home else 'None' }}
+        icon: >
+          {{ 'mdi:account-multiple-check' if is_state('sensor.care_circle_member_present', 'Yes') else 'mdi:account-multiple-remove' }}
+        attributes:
+          primary_contact_home: >
+            {% set entity = states('input_text.contact_1_person') %}
+            {% if entity and entity not in ['unavailable', 'unknown', ''] %}
+              {{ is_state(entity, 'home') }}
+            {% else %}
+              N/A
+            {% endif %}
+          secondary_contact_home: >
+            {% set entity = states('input_text.contact_2_person') %}
+            {% if entity and entity not in ['unavailable', 'unknown', ''] %}
+              {{ is_state(entity, 'home') }}
+            {% else %}
+              N/A
+            {% endif %}
+          members_present: >
+            {% set primary = states('input_text.contact_1_person') %}
+            {% set secondary = states('input_text.contact_2_person') %}
+            {% set members = [] %}
+            {% if primary and primary not in ['unavailable', 'unknown', ''] and is_state(primary, 'home') and states('input_text.contact_1_name') != '' %}
+              {% set members = members + [states('input_text.contact_1_name')] %}
+            {% endif %}
+            {% if secondary and secondary not in ['unavailable', 'unknown', ''] and is_state(secondary, 'home') and states('input_text.contact_2_name') != '' %}
+              {% set members = members + [states('input_text.contact_2_name')] %}
+            {% endif %}
+            {{ members | join(', ') if members | length > 0 else 'None' }}
+
+  - binary_sensor:
+      # Primary Contact Nearby (within proximity threshold)
+      - name: "Primary Contact Nearby"
+        unique_id: primary_contact_nearby
+        device_class: presence
+        state: >
+          {% set distance = states('sensor.primary_contact_distance') | float(999) %}
+          {% set threshold = states('input_number.care_circle_proximity_threshold') | float(5) %}
+          {{ distance < threshold }}
+        icon: >
+          {{ 'mdi:account-check' if is_state('binary_sensor.primary_contact_nearby', 'on') else 'mdi:account-remove' }}
+
+      # Secondary Contact Nearby (within proximity threshold)
+      - name: "Secondary Contact Nearby"
+        unique_id: secondary_contact_nearby
+        device_class: presence
+        state: >
+          {% set distance = states('sensor.secondary_contact_distance') | float(999) %}
+          {% set threshold = states('input_number.care_circle_proximity_threshold') | float(5) %}
+          {{ distance < threshold }}
+        icon: >
+          {{ 'mdi:account-check' if is_state('binary_sensor.secondary_contact_nearby', 'on') else 'mdi:account-remove' }}
+
+      # Any Care Circle Member Nearby (within proximity threshold)
+      - name: "Care Circle Member Nearby"
+        unique_id: care_circle_member_nearby
+        device_class: presence
+        state: >
+          {% set nearby = [] %}
+          {% if states('binary_sensor.primary_contact_nearby') not in ['unavailable', 'unknown'] %}
+            {% set nearby = nearby + [is_state('binary_sensor.primary_contact_nearby', 'on')] %}
+          {% endif %}
+          {% if states('binary_sensor.secondary_contact_nearby') not in ['unavailable', 'unknown'] %}
+            {% set nearby = nearby + [is_state('binary_sensor.secondary_contact_nearby', 'on')] %}
+          {% endif %}
+          {{ true in nearby }}
+        icon: >
+          {{ 'mdi:account-multiple-check' if is_state('binary_sensor.care_circle_member_nearby', 'on') else 'mdi:account-multiple-remove' }}
+
+# Input number for configurable proximity threshold
+input_number:
+  care_circle_proximity_threshold:
+    name: "Proximity Alert Threshold"
+    min: 1
+    max: 50
+    step: 1
+    initial: 5
+    unit_of_measurement: "km"
+    icon: mdi:map-marker-radius
+    mode: slider

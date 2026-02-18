@@ -1,0 +1,333 @@
+# Haiven Elderly Care Monitoring - Scripts
+# Include this file in scripts.yaml or add to configuration.yaml with:
+# script: !include haiven_scripts.yaml
+
+# Script: Notify Care Circle
+notify_care_circle:
+  alias: "Haiven: Notify Care Circle"
+  description: "Send alerts to all care circle members about current deviation"
+  fields:
+    title:
+      description: "Custom notification title"
+      example: "⚠️ Haiven Alert"
+    message:
+      description: "Custom notification message"
+      example: "Issue detected"
+  sequence:
+    - variables:
+        person_name: "{{ states('input_text.elderly_person_name') }}"
+        deviation_msg: "{{ states('sensor.current_deviation_message') }}"
+        last_activity: "{{ states('sensor.last_activity_display') }}"
+        status: "{{ states('sensor.elderly_care_status') }}"
+        alert_title: "{{ title | default('⚠️ Haiven Alert - ' ~ person_name) }}"
+        alert_message: "{{ message | default(deviation_msg ~ '\n\nLast activity: ' ~ last_activity ~ '\nStatus: ' ~ status) }}"
+        primary_service: "{{ states('input_text.contact_1_notification') }}"
+        secondary_service: "{{ states('input_text.contact_2_notification') }}"
+        carer_service: "{{ states('input_text.carer_notification') }}"
+
+    # Notify primary contact
+    - condition: template
+      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+    - action: "{{ primary_service }}"
+      data:
+        title: "{{ alert_title }}"
+        message: "{{ alert_message }}"
+        data:
+          push:
+            interruption-level: time-sensitive
+          entity_id: camera.kitchen_live_view
+          actions:
+            - action: URI
+              title: View Dashboard
+              uri: /lovelace/haiven_dashboard/home
+            - action: MARK_SAFE
+              title: Mark Safe
+
+    # Notify secondary contact (if configured)
+    - condition: template
+      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+    - action: "{{ secondary_service }}"
+      data:
+        title: "{{ alert_title }}"
+        message: "{{ alert_message }}"
+        data:
+          push:
+            interruption-level: time-sensitive
+
+    # Notify carer (if configured)
+    - condition: template
+      value_template: "{{ carer_service != '' and carer_service != 'unknown' }}"
+    - action: "{{ carer_service }}"
+      data:
+        title: "{{ alert_title }}"
+        message: "{{ alert_message }}"
+
+    # Set flag that alert was sent
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.deviation_alert_sent
+
+    # Log the alert
+    - action: logbook.log
+      data:
+        name: "Haiven Care Circle Alert"
+        message: "Care circle notified: {{ alert_message }}"
+        entity_id: sensor.elderly_care_status
+
+  mode: single
+  icon: mdi:bell-alert
+
+# Script: Manual Check-in
+manual_checkin:
+  alias: "Haiven: Manual Check-in"
+  description: "Manual check-in to confirm everything is okay"
+  sequence:
+    - variables:
+        person_name: "{{ states('input_text.elderly_person_name') }}"
+        checker: "{{ user }}"
+        primary_service: "{{ states('input_text.contact_1_notification') }}"
+        secondary_service: "{{ states('input_text.contact_2_notification') }}"
+
+    # Mark as safe
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.manual_safe_status
+
+    # Notify primary contact of check-in
+    - condition: template
+      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+    - action: "{{ primary_service }}"
+      data:
+        title: "✅ Check-in - {{ person_name }}"
+        message: "Manual check-in completed at {{ now().strftime('%I:%M %p') }}"
+
+    # Notify secondary contact of check-in
+    - condition: template
+      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+    - action: "{{ secondary_service }}"
+      data:
+        title: "✅ Check-in - {{ person_name }}"
+        message: "Manual check-in completed at {{ now().strftime('%I:%M %p') }}"
+
+    # Log the check-in
+    - action: logbook.log
+      data:
+        name: "Haiven Manual Check-in"
+        message: "Manual check-in completed"
+        entity_id: input_boolean.manual_safe_status
+
+    # Show confirmation
+    - action: persistent_notification.create
+      data:
+        title: "Check-in Recorded"
+        message: "Check-in for {{ person_name }} recorded at {{ now().strftime('%I:%M %p') }}"
+        notification_id: "haiven_checkin"
+
+  mode: single
+  icon: mdi:check-circle
+
+# Script: Mark Safe
+mark_safe:
+  alias: "Haiven: Mark Safe"
+  description: "Mark the person as safe and clear current deviations"
+  sequence:
+    - variables:
+        person_name: "{{ states('input_text.elderly_person_name') }}"
+        primary_service: "{{ states('input_text.contact_1_notification') }}"
+        secondary_service: "{{ states('input_text.contact_2_notification') }}"
+
+    # Mark as safe
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.manual_safe_status
+
+    # Reset deviation alert flag
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.deviation_alert_sent
+
+    # Notify primary contact
+    - condition: template
+      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+    - action: "{{ primary_service }}"
+      data:
+        title: "🛡️ {{ person_name }} Marked Safe"
+        message: "{{ person_name }} has been marked safe at {{ now().strftime('%I:%M %p') }}"
+
+    # Notify secondary contact
+    - condition: template
+      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+    - action: "{{ secondary_service }}"
+      data:
+        title: "🛡️ {{ person_name }} Marked Safe"
+        message: "{{ person_name }} has been marked safe at {{ now().strftime('%I:%M %p') }}"
+
+    # Log the action
+    - action: logbook.log
+      data:
+        name: "Haiven Mark Safe"
+        message: "{{ person_name }} marked safe"
+        entity_id: input_boolean.manual_safe_status
+
+    # Show confirmation
+    - action: persistent_notification.create
+      data:
+        title: "Marked Safe"
+        message: "{{ person_name }} has been marked safe. Care circle notified."
+        notification_id: "haiven_mark_safe"
+
+  mode: single
+  icon: mdi:shield-check
+
+# Script: Add Care Note
+add_care_note:
+  alias: "Haiven: Add Care Note"
+  description: "Add a note to the care log"
+  fields:
+    note:
+      description: "The note to add"
+      example: "Checked milk supply, needs replenishing"
+    author:
+      description: "Who is adding the note"
+      example: "Mary (Carer)"
+  sequence:
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.latest_care_note
+      data:
+        value: "{{ note }}"
+
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.care_note_author
+      data:
+        value: "{{ author }}"
+
+    - variables:
+        primary_service: "{{ states('input_text.contact_1_notification') }}"
+        secondary_service: "{{ states('input_text.contact_2_notification') }}"
+
+    # Notify primary contact of new note
+    - condition: template
+      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+    - action: "{{ primary_service }}"
+      data:
+        title: "📝 New Care Note"
+        message: "{{ author }}: {{ note }}"
+
+    # Notify secondary contact of new note
+    - condition: template
+      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+    - action: "{{ secondary_service }}"
+      data:
+        title: "📝 New Care Note"
+        message: "{{ author }}: {{ note }}"
+
+    # Log the note
+    - action: logbook.log
+      data:
+        name: "Haiven Care Note"
+        message: "{{ author }}: {{ note }}"
+        entity_id: input_text.latest_care_note
+
+  mode: queued
+  max: 10
+  icon: mdi:note-plus
+
+# Script: Reset Daily Flags
+reset_daily_flags:
+  alias: "Haiven: Reset Daily Flags"
+  description: "Reset daily tracking flags (run at midnight)"
+  sequence:
+    - action: input_boolean.turn_off
+      target:
+        entity_id:
+          - input_boolean.deviation_alert_sent
+          - input_boolean.manual_safe_status
+
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.actual_wake_time_today
+      data:
+        time: "00:00:00"
+
+    - action: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.first_kitchen_time_today
+      data:
+        time: "00:00:00"
+
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.alerts_fired_today
+      data:
+        value: ""
+
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.daily_note
+      data:
+        value: ""
+
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.status_max_today
+      data:
+        option: "normal"
+
+    # Note: Bedtime resets at noon, not midnight (see haiven_bathroom_night_reset)
+
+    # Reset bed state machine (catches stuck states from sensor dropouts)
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.bed_state
+      data:
+        option: "not_in_bed"
+
+    - action: logbook.log
+      data:
+        name: "Haiven Daily Reset"
+        message: "Daily tracking flags reset"
+
+  mode: single
+  icon: mdi:refresh
+
+# Script: Send Haiven Notification
+# Centralized notification script for simple alerts
+send_haiven_notification:
+  alias: "Haiven: Send Notification"
+  description: "Centralized notification script for simple alerts with configurable interruption level"
+  fields:
+    title:
+      description: "Notification title"
+      required: true
+      example: "⚠️ Haiven Alert"
+      selector:
+        text:
+    message:
+      description: "Notification message"
+      required: true
+      example: "No activity detected"
+      selector:
+        text:
+          multiline: true
+    level:
+      description: "iOS interruption level (time-sensitive or passive)"
+      required: false
+      default: "time-sensitive"
+      selector:
+        select:
+          options:
+            - time-sensitive
+            - passive
+  sequence:
+    - action: "{{ states('input_text.contact_1_notification') }}"
+      data:
+        title: "{{ title }}"
+        message: "{{ message }}"
+        data:
+          push:
+            interruption-level: "{{ level | default('time-sensitive') }}"
+  mode: queued
+  max: 10
+  icon: mdi:bell-ring

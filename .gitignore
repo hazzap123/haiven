@@ -1,0 +1,92 @@
+# Home Assistant .gitignore
+
+# Runtime files
+.HA_VERSION
+*.db
+*.db-shm
+*.db-wal
+*.pid
+.uuid
+*.lock
+OZW_Log.txt
+*.pyc
+*.log
+
+# Sensitive directories and files
+.cloud/
+.storage/
+secrets.yaml
+known_devices.yaml
+*.pem
+*.key
+*.crt
+
+# Image/video cache
+www/snapshots/
+www/tmp/
+
+# Temporary files
+tmp/
+*.tmp
+*.bak
+*.swp
+*~
+.DS_Store
+
+# Dependencies
+deps/
+
+# Node modules (if using add-ons)
+node_modules/
+
+# Python virtual environment
+pyvenv.cfg
+bin/
+lib/
+include/
+share/
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Keep these directories but ignore their contents
+!.storage/.gitkeep
+!.cloud/.gitkeep
+
+# IP bans database
+ip_bans.yaml
+
+# Backups
+*.backup
+backups/
+*.db-journal
+
+# TTS cache
+tts/
+
+# Certificate authorities
+ca-certificates/
+
+# logs
+activity.log
+logs/
+
+#esphome
+/.esphome/
+
+
+
+# EPL zone configurator runtime data
+everything-presence-zone-configurator/
+
+# HACS-managed (auto-updated)
+www/community/
+custom_components/
+.worktrees/

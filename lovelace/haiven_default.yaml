@@ -1,0 +1,1992 @@
+title: Haiven
+theme: Haiven
+views:
+  - title: Home
+    path: home
+    icon: mdi:home
+    cards:
+      # ── 1. HERO CARD ──
+      # Simple glanceable status: All Good / Quieter Today / Worth Checking
+      - type: custom:mushroom-template-card
+        entity: sensor.activity_level_status
+        primary: |
+          {% set status = states('sensor.activity_level_status') %}
+          {% set s = states('sensor.elderly_care_status') %}
+          {% set bed = states('input_select.bed_state') %}
+          {% set k = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+          {% set b = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+          {% set ba = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+          {% set mins = [k, b, ba] | min %}
+          {% if s in ['concern', 'critical'] %}
+            Worth Checking
+          {% elif s == 'caution' %}
+            Quieter Today
+          {% elif bed == 'sleeping' %}
+            Sleeping
+          {% elif bed == 'in_bed' %}
+            In Bed
+          {% elif status == 'Normal' %}
+            All Good
+          {% elif mins > 180 %}
+            Worth Checking
+          {% else %}
+            Quieter Today
+          {% endif %}
+        secondary: |
+          {% set bed = states('input_select.bed_state') %}
+          {% set s = states('sensor.elderly_care_status') %}
+          {% set msg = states('sensor.current_deviation_message') %}
+          {% set room = states('sensor.current_room_location') %}
+          {% set k = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+          {% set b = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+          {% set ba = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+          {% set mins = [k, b, ba] | min %}
+          {% set mc = states('sensor.morning_context') %}
+          {% set mc_msg = state_attr('sensor.morning_context', 'message') %}
+          {% if s in ['concern', 'critical'] and msg not in ['None', 'unknown', 'unavailable'] %}
+            {{ msg | truncate(80) }}
+          {% elif mc == 'upstairs_only' and mc_msg %}
+            {{ mc_msg }}
+          {% elif bed == 'sleeping' %}
+            {% set bed_mins = states('sensor.time_in_bed_minutes') | int(0) %}
+            {% if bed_mins < 60 %}{{ bed_mins }}m{% else %}{{ (bed_mins / 60) | round(1) }}h{% endif %}
+          {% elif bed == 'in_bed' %}
+            {% set bed_mins = states('sensor.time_in_bed_minutes') | int(0) %}
+            {% if bed_mins < 60 %}{{ bed_mins }}m{% else %}{{ (bed_mins / 60) | round(1) }}h{% endif %}
+          {% elif mins < 60 %}
+            Active in {{ room | lower }} · {{ mins }}m ago
+          {% else %}
+            Last seen in {{ room | lower }} · {{ (mins / 60) | round(1) }}h ago
+          {% endif %}
+        icon: |
+          {% set s = states('sensor.elderly_care_status') %}
+          {% set bed = states('input_select.bed_state') %}
+          {% set k = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+          {% set b = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+          {% set ba = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+          {% set mins = [k, b, ba] | min %}
+          {% if s in ['concern', 'critical'] %}mdi:alert-octagon
+          {% elif s == 'caution' %}mdi:alert
+          {% elif bed == 'sleeping' %}mdi:sleep
+          {% elif bed == 'in_bed' %}mdi:bed
+          {% elif mins > 180 %}mdi:alert
+          {% else %}mdi:check-circle{% endif %}
+        icon_color: |
+          {% set s = states('sensor.elderly_care_status') %}
+          {% set bed = states('input_select.bed_state') %}
+          {% set k = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+          {% set b = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+          {% set ba = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+          {% set mins = [k, b, ba] | min %}
+          {% if s in ['concern', 'critical'] %}red
+          {% elif s == 'caution' %}orange
+          {% elif bed in ['in_bed', 'sleeping'] %}blue
+          {% elif mins > 180 %}orange
+          {% else %}green{% endif %}
+        tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 28px;
+              --card-primary-font-weight: 600;
+              --card-secondary-font-size: 15px;
+              padding: 8px 0;
+            }
+
+      # ── AI SUMMARY (tap to refresh) ──
+      - type: custom:mushroom-template-card
+        entity: input_text.current_summary
+        primary: ""
+        secondary: "{{ states('input_text.current_summary') }}"
+        multiline_secondary: true
+        icon: mdi:refresh
+        icon_color: primary
+        tap_action:
+          action: call-service
+          service: input_button.press
+          target:
+            entity_id: input_button.refresh_summary
+        card_mod:
+          style: |
+            ha-card {
+              border-left: 3px solid var(--primary-color);
+              --card-secondary-font-size: 15px;
+              margin-bottom: -4px;
+            }
+
+      # ── 2. TODAY ──
+      - type: custom:mushroom-title-card
+        title: TODAY
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 11px;
+              --title-font-weight: 600;
+              --title-letter-spacing: 0.1em;
+              --title-color: var(--secondary-text-color);
+              margin-top: 8px;
+              margin-bottom: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Wake Time
+          - type: custom:mushroom-template-card
+            entity: sensor.today_wake_time
+            primary: |
+              {% set wake = states('sensor.today_wake_time') %}
+              {% if wake == 'Not yet' %}--:--{% else %}{{ wake }}{% endif %}
+            secondary: |
+              {% set wake = states('sensor.today_wake_time') %}
+              {% set avg = states('sensor.average_wake_time_week') %}
+              {% if wake == 'Not yet' %}
+                Wake time
+              {% elif avg in ['unknown', 'unavailable', 'Calculating'] %}
+                Wake time
+              {% else %}
+                {% set wake_parts = wake.split(':') %}
+                {% set avg_parts = avg.split(':') %}
+                {% set wake_mins = (wake_parts[0] | int) * 60 + (wake_parts[1] | int) %}
+                {% set avg_mins = (avg_parts[0] | int) * 60 + (avg_parts[1] | int) %}
+                {% set diff = wake_mins - avg_mins %}
+                {% if diff | abs <= 30 %}
+                  On schedule
+                {% elif diff > 0 %}
+                  {{ (diff | abs // 60) | int }}h {{ (diff | abs % 60) | int }}m late
+                {% else %}
+                  {{ (diff | abs // 60) | int }}h {{ (diff | abs % 60) | int }}m early
+                {% endif %}
+              {% endif %}
+            icon: mdi:weather-sunset-up
+            icon_color: |
+              {% set wake = states('sensor.today_wake_time') %}
+              {% if wake == 'Not yet' %}grey
+              {% else %}amber{% endif %}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 28px;
+                  --card-primary-font-weight: 700;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Sleep Time
+          - type: custom:mushroom-template-card
+            entity: sensor.today_bedtime
+            primary: |
+              {% set bed = states('sensor.today_bedtime') %}
+              {% if bed == 'Not yet' %}--:--{% else %}{{ bed }}{% endif %}
+            secondary: |
+              {% set bed = states('sensor.today_bedtime') %}
+              {% set avg = states('sensor.average_bedtime_week') %}
+              {% if bed == 'Not yet' %}
+                Bedtime
+              {% elif avg in ['unknown', 'unavailable', 'Calculating'] %}
+                Bedtime
+              {% else %}
+                {% set bed_parts = bed.split(':') %}
+                {% set avg_parts = avg.split(':') %}
+                {% set bed_mins = (bed_parts[0] | int) * 60 + (bed_parts[1] | int) %}
+                {% set avg_mins = (avg_parts[0] | int) * 60 + (avg_parts[1] | int) %}
+                {% if bed_parts[0] | int < 6 %}
+                  {% set bed_mins = bed_mins + 1440 %}
+                {% endif %}
+                {% set diff = bed_mins - avg_mins %}
+                {% if diff | abs <= 30 %}
+                  On schedule
+                {% elif diff > 0 %}
+                  {{ (diff | abs // 60) | int }}h {{ (diff | abs % 60) | int }}m late
+                {% else %}
+                  {{ (diff | abs // 60) | int }}h {{ (diff | abs % 60) | int }}m early
+                {% endif %}
+              {% endif %}
+            icon: mdi:weather-night
+            icon_color: |
+              {% set bed = states('sensor.today_bedtime') %}
+              {% if bed == 'Not yet' %}grey
+              {% else %}blue{% endif %}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 28px;
+                  --card-primary-font-weight: 700;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Active Hours
+          - type: custom:mushroom-template-card
+            entity: sensor.last_activity_time
+            primary: |
+              {% set wake = states('input_datetime.actual_wake_time_today') %}
+              {% if wake in ['unknown', 'unavailable', '00:00:00'] %}--{% else %}
+              {% set wake_parts = wake.split(':') %}
+              {% set wake_mins = (wake_parts[0] | int) * 60 + (wake_parts[1] | int) %}
+              {% set now_mins = now().hour * 60 + now().minute %}
+              {% set diff = now_mins - wake_mins %}
+              {% if diff < 0 %}--{% else %}{{ (diff // 60) }}h {{ (diff % 60) }}m{% endif %}
+              {% endif %}
+            secondary: Active hours
+            icon: mdi:clock-outline
+            icon_color: teal
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 28px;
+                  --card-primary-font-weight: 700;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Activity Score
+          - type: custom:mushroom-template-card
+            entity: sensor.daily_activity_score
+            primary: |
+              {{ states('sensor.daily_activity_score') | int(0) }}%
+            secondary: |
+              Score · {{ state_attr('sensor.daily_activity_score', 'score_label') | default('--') }}
+            icon: mdi:chart-line
+            icon_color: |
+              {% set score = states('sensor.daily_activity_score') | int(0) %}
+              {% if score >= 80 %}green{% elif score >= 60 %}teal{% elif score >= 40 %}orange{% else %}red{% endif %}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 28px;
+                  --card-primary-font-weight: 700;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+      # View Activity link (text-only style)
+      - type: custom:mushroom-template-card
+        primary: View Activity
+        icon: mdi:arrow-right
+        icon_color: teal
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace-haiven/activity
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 13px;
+              --card-primary-color: #26A69A;
+              background: transparent !important;
+              box-shadow: none !important;
+              margin-top: -8px;
+              margin-bottom: 0px;
+            }
+
+      # ── 3. NIGHT SAFETY ──  (margin-top via card_mod for section gap)
+      - type: custom:mushroom-template-card
+        entity: sensor.overnight_bathroom_count
+        primary: |
+          {{ states('sensor.overnight_bathroom_count') | int(0) }}
+        secondary: |
+          {% set avg = states('sensor.bathroom_night_visits_14d_avg') | float(0) | round(1) %}
+          {% set elevated = is_state('binary_sensor.high_night_bathroom_frequency', 'on') %}
+          Bathroom Visits · Average is {{ avg }}/night · {% if elevated %}Elevated{% else %}Normal Behavior{% endif %}
+        icon: mdi:toilet
+        icon_color: |
+          {% if is_state('binary_sensor.high_night_bathroom_frequency', 'on') %}orange
+          {% else %}green{% endif %}
+        badge_icon: |
+          {% if is_state('binary_sensor.high_night_bathroom_frequency', 'on') %}mdi:alert
+          {% else %}mdi:check-circle{% endif %}
+        badge_color: |
+          {% if is_state('binary_sensor.high_night_bathroom_frequency', 'on') %}orange
+          {% else %}green{% endif %}
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace-haiven/activity
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 28px;
+              --card-primary-font-weight: 700;
+              --card-secondary-font-size: 12px;
+              --card-secondary-color: var(--secondary-text-color);
+              position: relative;
+              padding-top: 28px;
+              margin-top: 8px;
+            }
+            ha-card::before {
+              content: 'NIGHT SAFETY';
+              position: absolute;
+              top: 12px;
+              left: 16px;
+              font-size: 11px;
+              font-weight: 600;
+              letter-spacing: 0.1em;
+              color: var(--secondary-text-color);
+            }
+
+      # ── 4. SYSTEM HEALTH ──
+      - type: custom:mushroom-template-card
+        entity: sensor.sensor_health_status
+        primary: Sensors Online
+        secondary: |
+          {% set status = states('sensor.sensor_health_status') %}
+          {% if status == 'All online' %}
+            3 / 3 · Manage Devices >
+          {% else %}
+            {{ status }} · Manage Devices >
+          {% endif %}
+        icon: |
+          {% if states('sensor.sensor_health_status') == 'All online' %}mdi:signal
+          {% else %}mdi:wifi-alert{% endif %}
+        icon_color: |
+          {% if states('sensor.sensor_health_status') == 'All online' %}green
+          {% else %}orange{% endif %}
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace-haiven/sensors
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 16px;
+              --card-primary-font-weight: 600;
+              --card-secondary-font-size: 12px;
+              --card-secondary-color: var(--secondary-text-color);
+              position: relative;
+              padding-top: 28px;
+              margin-top: 8px;
+            }
+            ha-card::before {
+              content: 'SYSTEM HEALTH';
+              position: absolute;
+              top: 12px;
+              left: 16px;
+              font-size: 11px;
+              font-weight: 600;
+              letter-spacing: 0.1em;
+              color: var(--secondary-text-color);
+            }
+
+      # ── 5. CARE CIRCLE ──
+      - type: custom:mushroom-title-card
+        title: Care Circle
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 11px;
+              --title-font-weight: 600;
+              --title-letter-spacing: 0.1em;
+              --title-color: var(--secondary-text-color);
+              margin-top: 8px;
+              margin-bottom: -8px;
+            }
+
+      # Contact 1 (always by name)
+      - type: custom:mushroom-template-card
+        entity: sensor.primary_contact_location
+        primary: |
+          {{ states('input_text.contact_1_name') | default('Contact 1') }}
+        secondary: |
+          {% set loc = states('sensor.primary_contact_location') %}
+          {% set dist = states('sensor.primary_contact_distance') %}
+          {% if dist not in ['unknown', 'unavailable', 'None'] %}
+            {{ loc }} · {{ dist }}km
+          {% else %}
+            {{ loc }}
+          {% endif %}
+        icon: mdi:circle-small
+        icon_color: |
+          {% set dist = states('sensor.primary_contact_distance') %}
+          {% if dist not in ['unknown', 'unavailable'] and dist | float(999) < 10 %}green
+          {% else %}grey{% endif %}
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace-haiven/circles
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 14px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+              --card-secondary-color: var(--secondary-text-color);
+            }
+
+      # Contact 2 (always by name)
+      - type: custom:mushroom-template-card
+        entity: sensor.secondary_contact_location
+        primary: |
+          {{ states('input_text.contact_2_name') | default('Contact 2') }}
+        secondary: |
+          {% set loc = states('sensor.secondary_contact_location') %}
+          {% set dist = states('sensor.secondary_contact_distance') %}
+          {% if dist not in ['unknown', 'unavailable', 'None'] %}
+            {{ loc }} · {{ dist }}km
+          {% else %}
+            {{ loc }}
+          {% endif %}
+        icon: mdi:circle-small
+        icon_color: |
+          {% set dist = states('sensor.secondary_contact_distance') %}
+          {% if dist not in ['unknown', 'unavailable'] and dist | float(999) < 10 %}green
+          {% else %}grey{% endif %}
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace-haiven/circles
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 14px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+              --card-secondary-color: var(--secondary-text-color);
+              margin-top: -4px;
+            }
+
+      # ── 6. DEVIATIONS (only when active) ──
+      - type: conditional
+        conditions:
+          - entity: sensor.deviation_count
+            state_not: '0'
+        card:
+          type: custom:mushroom-template-card
+          entity: sensor.deviation_count
+          primary: |
+            {% set msg = states('sensor.current_deviation_message') %}
+            {% set count = states('sensor.deviation_count') | int(0) %}
+            {% if msg not in ['None', 'unknown', 'unavailable'] %}
+              {{ msg | truncate(80) }}
+            {% else %}
+              {{ count }} deviation{{ 's' if count != 1 else '' }} detected
+            {% endif %}
+          secondary: |
+            {{ states('sensor.deviation_count') }} ACTIVE DEVIATION{{ 'S' if states('sensor.deviation_count') | int(0) != 1 else '' }}
+          icon: mdi:alert-outline
+          icon_color: orange
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace-haiven/alerts
+          card_mod:
+            style: |
+              ha-card {
+                --card-primary-font-size: 14px;
+                --card-secondary-font-size: 11px;
+                --card-secondary-color: var(--secondary-text-color);
+                background: rgba(245, 166, 71, 0.15) !important;
+                position: relative;
+                padding-top: 28px;
+                margin-top: 8px;
+              }
+              ha-card::before {
+                content: 'ROUTINE DEVIATIONS';
+                position: absolute;
+                top: 12px;
+                left: 16px;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.1em;
+                color: var(--secondary-text-color);
+              }
+
+  # ============================================================================
+  # ACTIVITY DASHBOARD - Simple "all is well" view with trends
+  # ============================================================================
+  - title: Activity
+    path: activity
+    icon: mdi:chart-timeline-variant
+    cards:
+      # ----------------------------------------
+      # TODAY'S ACTIVITY - Simple summary
+      # ----------------------------------------
+      - type: custom:mushroom-title-card
+        title: Today
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Wake time
+          - type: custom:mushroom-template-card
+            entity: sensor.today_wake_time
+            primary: |
+              {% set wake = states('sensor.today_wake_time') %}
+              {% if wake == 'Not yet' %}--:--{% else %}{{ wake }}{% endif %}
+            secondary: Woke up
+            icon: mdi:weather-sunset-up
+            icon_color: |
+              {% if states('sensor.today_wake_time') == 'Not yet' %}grey{% else %}green{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Activity score
+          - type: custom:mushroom-template-card
+            entity: sensor.daily_activity_score
+            primary: |
+              {% set score = states('sensor.daily_activity_score') | int(0) %}
+              {% if score >= 70 %}Good{% elif score >= 50 %}OK{% else %}Low{% endif %}
+            secondary: Activity level
+            icon: |
+              {% set score = states('sensor.daily_activity_score') | int(0) %}
+              {% if score >= 70 %}mdi:emoticon-happy{% elif score >= 50 %}mdi:emoticon-neutral{% else %}mdi:emoticon-sad{% endif %}
+            icon_color: |
+              {% set score = states('sensor.daily_activity_score') | int(0) %}
+              {% if score >= 70 %}green{% elif score >= 50 %}teal{% else %}orange{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+      # ----------------------------------------
+      # TODAY'S TIMELINE - Visual pattern
+      # ----------------------------------------
+      - type: custom:mushroom-title-card
+        title: Today's pattern
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: history-graph
+        hours_to_show: 24
+        entities:
+          - entity: binary_sensor.kitchen_motion
+            name: Kitchen
+          - entity: binary_sensor.haiven_bedroom_occupancy
+            name: Bedroom
+          - entity: binary_sensor.haiven_bathroom_motion
+            name: Bathroom
+
+      # ----------------------------------------
+      # THIS WEEK - Summary stats
+      # ----------------------------------------
+      - type: custom:mushroom-title-card
+        title: This week
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Avg Wake Time
+          - type: custom:mushroom-template-card
+            entity: sensor.average_wake_time_week
+            primary: |
+              {{ states('sensor.average_wake_time_week') }}
+            secondary: Avg wake
+            icon: mdi:weather-sunset-up
+            icon_color: green
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Avg Bedtime
+          - type: custom:mushroom-template-card
+            entity: sensor.average_bedtime_week
+            primary: |
+              {{ states('sensor.average_bedtime_week') }}
+            secondary: Avg bed
+            icon: mdi:weather-night
+            icon_color: blue
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Avg Active Hours
+          - type: custom:mushroom-template-card
+            entity: sensor.average_wake_time_week
+            primary: |
+              {% set wake_avg = states('sensor.average_wake_time_week') %}
+              {% set bed_avg = states('sensor.average_bedtime_week') %}
+              {% if wake_avg not in ['unknown', 'unavailable', 'Calculating'] and bed_avg not in ['unknown', 'unavailable', 'Calculating'] %}
+                {% set wake_parts = wake_avg.split(':') %}
+                {% set bed_parts = bed_avg.split(':') %}
+                {% set wake_mins = (wake_parts[0] | int) * 60 + (wake_parts[1] | int) %}
+                {% set bed_mins = (bed_parts[0] | int) * 60 + (bed_parts[1] | int) %}
+                {% set diff = bed_mins - wake_mins %}
+                {% if diff > 0 %}
+                  {{ (diff // 60) }}h {{ (diff % 60) }}m
+                {% else %}
+                  --
+                {% endif %}
+              {% else %}
+                --
+              {% endif %}
+            secondary: Avg active
+            icon: mdi:clock-outline
+            icon_color: teal
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Avg Bathroom Visits
+          - type: custom:mushroom-template-card
+            entity: sensor.bathroom_night_visits_14d_avg
+            primary: |
+              {{ states('sensor.bathroom_night_visits_14d_avg') | float(0) | round(1) }}/night
+            secondary: Night bathroom
+            icon: mdi:toilet
+            icon_color: |
+              {% set avg = states('sensor.bathroom_night_visits_14d_avg') | float(0) %}
+              {% if avg <= 1 %}green{% elif avg <= 2 %}teal{% else %}orange{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+      # ----------------------------------------
+      # TONIGHT'S BATHROOM - Night monitoring
+      # ----------------------------------------
+      - type: custom:mushroom-title-card
+        title: Tonight's bathroom
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Visits Tonight
+          - type: custom:mushroom-template-card
+            entity: sensor.overnight_bathroom_count
+            primary: |
+              {{ states('sensor.overnight_bathroom_count') | int(0) }}
+            secondary: |
+              {% set visits = states('sensor.overnight_bathroom_count') | int(0) %}
+              {% set avg = states('sensor.bathroom_night_visits_14d_avg') | float(0) | round(1) %}
+              Visits · avg {{ avg }}
+            icon: mdi:toilet
+            icon_color: |
+              {% set visits = states('sensor.overnight_bathroom_count') | int(0) %}
+              {% set avg = states('sensor.bathroom_night_visits_14d_avg') | float(1) %}
+              {% if visits <= avg %}green{% elif visits <= avg + 1 %}teal{% elif visits <= avg + 2 %}orange{% else %}red{% endif %}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Status
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.high_night_bathroom_frequency
+            primary: |
+              {% if is_state('binary_sensor.high_night_bathroom_frequency', 'on') %}
+                Elevated
+              {% elif is_state('input_boolean.bathroom_occupied_night', 'on') %}
+                Occupied
+              {% else %}
+                Normal
+              {% endif %}
+            secondary: |
+              {% if is_state('input_boolean.bathroom_occupied_night', 'on') %}
+                {{ states('sensor.time_since_bathroom_entry_night') | int(0) }} mins
+              {% else %}
+                Status
+              {% endif %}
+            icon: |
+              {% if is_state('binary_sensor.high_night_bathroom_frequency', 'on') %}
+                mdi:alert
+              {% elif is_state('input_boolean.bathroom_occupied_night', 'on') %}
+                mdi:motion-sensor
+              {% else %}
+                mdi:check-circle
+              {% endif %}
+            icon_color: |
+              {% if is_state('binary_sensor.high_night_bathroom_frequency', 'on') %}
+                orange
+              {% elif is_state('input_boolean.bathroom_occupied_night', 'on') %}
+                teal
+              {% else %}
+                green
+              {% endif %}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Avg Duration
+          - type: custom:mushroom-template-card
+            entity: sensor.bathroom_night_duration_14d_avg
+            primary: |
+              {{ states('sensor.bathroom_night_duration_14d_avg') | int(0) }}m
+            secondary: |
+              {% set baseline = states('input_number.bathroom_night_baseline_duration') | int(0) %}
+              Avg duration · {{ baseline }}m baseline
+            icon: mdi:timer-outline
+            icon_color: |
+              {% set avg = states('sensor.bathroom_night_duration_14d_avg') | int(0) %}
+              {% set baseline = states('input_number.bathroom_night_baseline_duration') | int(10) %}
+              {% if avg <= baseline %}green{% elif avg <= baseline * 1.5 %}teal{% else %}orange{% endif %}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+          # Night Status Summary
+          - type: custom:mushroom-template-card
+            entity: sensor.night_bathroom_status
+            primary: |
+              {{ states('sensor.night_bathroom_status') | truncate(12, True, '...') }}
+            secondary: Tonight's summary
+            icon: mdi:clipboard-text-outline
+            icon_color: teal
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                  --card-secondary-color: var(--secondary-text-color);
+                }
+
+      # ----------------------------------------
+      # WEEKLY TREND - The real insight
+      # ----------------------------------------
+      - type: custom:mushroom-title-card
+        title: This week's trend
+        subtitle: Look for changes in pattern over days
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              --subtitle-font-size: 12px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: history-graph
+        hours_to_show: 168
+        entities:
+          - entity: binary_sensor.kitchen_motion
+            name: Kitchen
+
+      # ----------------------------------------
+      # QUICK STATS - Expandable detail
+      # ----------------------------------------
+      - type: custom:mushroom-title-card
+        title: Details
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.minutes_since_kitchen_activity
+            primary: |
+              {% set mins = states('sensor.minutes_since_kitchen_activity') | int(0) %}
+              {% if mins < 60 %}{{ mins }}m{% else %}{{ (mins / 60) | round(1) }}h{% endif %}
+            secondary: Kitchen
+            icon: mdi:silverware-fork-knife
+            icon_color: |
+              {% set mins = states('sensor.minutes_since_kitchen_activity') | int(0) %}
+              {% if mins <= 60 %}green{% elif mins <= 120 %}teal{% else %}orange{% endif %}
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 11px;
+                }
+
+          - type: custom:mushroom-template-card
+            entity: sensor.minutes_since_bedroom_activity
+            primary: |
+              {% set mins = states('sensor.minutes_since_bedroom_activity') | int(0) %}
+              {% if mins < 60 %}{{ mins }}m{% else %}{{ (mins / 60) | round(1) }}h{% endif %}
+            secondary: Bedroom
+            icon: mdi:bed
+            icon_color: blue
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 11px;
+                }
+
+          - type: custom:mushroom-template-card
+            entity: sensor.minutes_since_bathroom_activity
+            primary: |
+              {% set mins = states('sensor.minutes_since_bathroom_activity') | int(0) %}
+              {% if mins < 60 %}{{ mins }}m{% else %}{{ (mins / 60) | round(1) }}h{% endif %}
+            secondary: Bathroom
+            icon: mdi:shower
+            icon_color: purple
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 11px;
+                }
+
+      # ----------------------------------------
+      # CAMERA - Kitchen view
+      # ----------------------------------------
+      - camera_view: auto
+        fit_mode: cover
+        type: picture-glance
+        title: Kitchen Camera
+        image: https://demo.home-assistant.io/stub_config/kitchen.png
+        entities:
+          - sensor.last_activity_location
+          - sensor.last_activity_time
+        camera_image: camera.ring_camera_live_view
+
+  # ============================================================================
+  # SENSORS - Device status and health
+  # ============================================================================
+  - title: Sensors
+    path: sensors
+    icon: mdi:pulse
+    cards:
+      # Header
+      - type: custom:mushroom-template-card
+        primary: Sensors
+        secondary: Manage your monitoring devices
+        icon: mdi:pulse
+        icon_color: teal
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 24px;
+              --card-primary-font-weight: 600;
+              --card-secondary-font-size: 14px;
+            }
+
+      # System Health Chip
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: template
+            entity: sensor.sensor_health_status
+            icon: mdi:shield-check
+            icon_color: |
+              {{ 'green' if states('sensor.sensor_health_status') == 'All online' else 'orange' }}
+            content: |
+              {{ states('sensor.sensor_health_status') }}
+            tap_action:
+              action: more-info
+
+      # Sensors Section
+      - type: custom:mushroom-title-card
+        title: Monitoring devices
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+            }
+
+      # Sensor Cards Grid
+      - type: grid
+        columns: 1
+        square: false
+        cards:
+          # Kitchen
+          - type: custom:mushroom-template-card
+            entity: event.kitchen_motion
+            primary: Kitchen
+            secondary: |
+              {% set s = states('event.kitchen_motion') %}
+              {% if s in ['unavailable', 'unknown'] %}
+                Offline
+              {% else %}
+                Online · {{ relative_time(states.event.kitchen_motion.last_changed) }} ago
+              {% endif %}
+            icon: mdi:silverware-fork-knife
+            icon_color: |
+              {% set s = states('event.kitchen_motion') %}
+              {{ 'red' if s in ['unavailable', 'unknown'] else 'green' }}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 500;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Bedroom
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.haiven_bedroom_occupancy
+            primary: Bedroom
+            secondary: |
+              {% set s = states('binary_sensor.haiven_bedroom_occupancy') %}
+              {% if s in ['unavailable', 'unknown'] %}
+                Offline
+              {% else %}
+                Online · {{ relative_time(states.binary_sensor.haiven_bedroom_occupancy.last_changed) }} ago
+              {% endif %}
+            icon: mdi:bed
+            icon_color: |
+              {% set s = states('binary_sensor.haiven_bedroom_occupancy') %}
+              {{ 'red' if s in ['unavailable', 'unknown'] else 'green' }}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 500;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Bathroom
+          - type: custom:mushroom-template-card
+            entity: binary_sensor.haiven_bathroom_motion
+            primary: Bathroom
+            secondary: |
+              {% set s = states('binary_sensor.haiven_bathroom_motion') %}
+              {% set battery = states('sensor.haiven_bathroom_battery') | int(0) %}
+              {% if s in ['unavailable', 'unknown'] %}
+                Offline · {{ battery }}% battery
+              {% else %}
+                Online · {{ relative_time(states.binary_sensor.haiven_bathroom_motion.last_changed) }} ago · {{ battery }}%
+              {% endif %}
+            icon: mdi:shower
+            icon_color: |
+              {% set s = states('binary_sensor.haiven_bathroom_motion') %}
+              {{ 'red' if s in ['unavailable', 'unknown'] else 'green' }}
+            badge_icon: |
+              {% set battery = states('sensor.haiven_bathroom_battery') | int(100) %}
+              {% if battery < 20 %}mdi:battery-alert{% endif %}
+            badge_color: red
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 500;
+                  --card-secondary-font-size: 12px;
+                }
+
+  # ============================================================================
+  # CIRCLES - Care circle contacts and locations
+  # ============================================================================
+  - title: Circles
+    path: circles
+    icon: mdi:account-group
+    cards:
+      # Header
+      - type: custom:mushroom-template-card
+        primary: Care Circle
+        secondary: Your care team
+        icon: mdi:account-group
+        icon_color: blue
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 24px;
+              --card-primary-font-weight: 600;
+              --card-secondary-font-size: 14px;
+            }
+
+      # Status Chips
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: template
+            entity: sensor.mum_location
+            icon: mdi:home-heart
+            icon_color: |
+              {{ 'green' if states('sensor.mum_location') == 'At Home' else 'grey' }}
+            content: |
+              Mum: {{ states('sensor.mum_location') }}
+            tap_action:
+              action: more-info
+          - type: template
+            entity: binary_sensor.care_circle_member_nearby
+            icon: mdi:account-multiple-check
+            icon_color: |
+              {{ 'green' if is_state('binary_sensor.care_circle_member_nearby', 'on') else 'grey' }}
+            content: |
+              {{ 'Someone nearby' if is_state('binary_sensor.care_circle_member_nearby', 'on') else 'No one nearby' }}
+            tap_action:
+              action: more-info
+
+      # Location Summary
+      - type: custom:mushroom-title-card
+        title: Location summary
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.care_circle_member_present
+            primary: |
+              {{ states('sensor.care_circle_member_present') }}
+            secondary: At home
+            icon: mdi:home-account
+            icon_color: |
+              {{ 'green' if states('sensor.care_circle_member_present') != 'None' else 'grey' }}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 500;
+                  --card-secondary-font-size: 12px;
+                }
+
+          - type: custom:mushroom-template-card
+            entity: sensor.nearest_care_circle_member
+            primary: |
+              {{ states('sensor.nearest_care_circle_member') | truncate(12, True, '...') }}
+            secondary: Nearest
+            icon: mdi:map-marker-star
+            icon_color: teal
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 500;
+                  --card-secondary-font-size: 12px;
+                }
+
+      # Carers
+      - type: custom:mushroom-title-card
+        title: Carers
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: custom:mushroom-template-card
+        entity: sensor.primary_contact_location
+        primary: |
+          {{ state_attr('sensor.primary_contact_location', 'contact_name') | default('Not set') }}
+        secondary: |
+          {{ states('sensor.primary_contact_location') }} · {{ states('sensor.primary_contact_distance') }}
+        icon: mdi:account
+        icon_color: green
+        tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 18px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+            }
+
+      # Second carer (only shown if configured)
+      - type: conditional
+        conditions:
+          - entity: input_text.contact_2_name
+            state_not: ''
+        card:
+          type: custom:mushroom-template-card
+          entity: sensor.secondary_contact_location
+          primary: |
+            {{ state_attr('sensor.secondary_contact_location', 'contact_name') | default('Not set') }}
+          secondary: |
+            {{ states('sensor.secondary_contact_location') }} · {{ states('sensor.secondary_contact_distance') }}
+          icon: mdi:account
+          icon_color: blue
+          tap_action:
+            action: more-info
+          card_mod:
+            style: |
+              ha-card {
+                --card-primary-font-size: 18px;
+                --card-primary-font-weight: 500;
+                --card-secondary-font-size: 12px;
+              }
+
+      # Daily Note
+      - type: entities
+        entities:
+          - entity: input_text.daily_note
+            name: Daily note
+        card_mod:
+          style: |
+            ha-card {
+              margin-top: 8px;
+            }
+
+      # Mark Safe Button
+      - type: custom:mushroom-template-card
+        primary: Mark Safe
+        icon: mdi:shield-check
+        icon_color: white
+        tap_action:
+          action: call-service
+          service: script.mark_safe
+        card_mod:
+          style: |
+            ha-card {
+              background: linear-gradient(135deg, #7FC7C7 0%, #6bb3b3 100%) !important;
+              --card-primary-font-size: 18px;
+              --card-primary-font-weight: 600;
+              --card-primary-color: white;
+              --icon-color: white !important;
+              padding: 8px 0;
+            }
+            mushroom-shape-icon {
+              --icon-color: white !important;
+            }
+
+  # ============================================================================
+  # ALERTS - Active alerts and notifications
+  # ============================================================================
+  - title: Alerts
+    path: alerts
+    icon: mdi:bell
+    cards:
+      # Header
+      - type: custom:mushroom-template-card
+        entity: sensor.deviation_count
+        primary: Alerts
+        secondary: |
+          {% set count = states('sensor.deviation_count') | int(0) %}
+          {% if count == 0 %}All clear{% else %}{{ count }} active alert{{ 's' if count != 1 else '' }}{% endif %}
+        icon: mdi:bell
+        icon_color: |
+          {% set count = states('sensor.deviation_count') | int(0) %}
+          {{ 'green' if count == 0 else 'orange' }}
+        badge_icon: |
+          {% set count = states('sensor.deviation_count') | int(0) %}
+          {% if count > 0 %}mdi:alert{% endif %}
+        badge_color: orange
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 24px;
+              --card-primary-font-weight: 600;
+              --card-secondary-font-size: 14px;
+            }
+
+      # Deviation Alert
+      - type: conditional
+        conditions:
+          - entity: sensor.deviation_count
+            state_not: '0'
+        card:
+          type: markdown
+          content: |
+            ⚠️ **{{ states('input_text.elderly_person_name') }}**
+
+            {{ states('sensor.current_deviation_message') }}
+          card_mod:
+            style: |
+              ha-card {
+                background: #FFF3E0;
+                border-left: 4px solid #F5A647;
+                padding: 16px;
+              }
+
+      # Deviation Action Buttons
+      - type: conditional
+        conditions:
+          - entity: sensor.deviation_count
+            state_not: '0'
+        card:
+          type: grid
+          columns: 2
+          square: false
+          cards:
+            - type: custom:mushroom-template-card
+              primary: Dismiss
+              icon: mdi:close
+              icon_color: grey
+              tap_action:
+                action: call-service
+                service: input_boolean.turn_off
+                service_data:
+                  entity_id: input_boolean.deviation_alert_sent
+              card_mod:
+                style: |
+                  ha-card {
+                    --card-primary-font-size: 14px;
+                  }
+            - type: custom:mushroom-template-card
+              primary: Check In
+              icon: mdi:phone
+              icon_color: white
+              tap_action:
+                action: call-service
+                service: script.manual_checkin
+              card_mod:
+                style: |
+                  ha-card {
+                    background: #7FC7C7 !important;
+                    --card-primary-font-size: 14px;
+                    --card-primary-color: white;
+                    --icon-color: white !important;
+                  }
+                  mushroom-shape-icon {
+                    --icon-color: white !important;
+                  }
+
+      # Mark Safe Button
+      - type: custom:mushroom-template-card
+        primary: Mark Safe
+        icon: mdi:shield-check
+        icon_color: white
+        tap_action:
+          action: call-service
+          service: script.mark_safe
+        card_mod:
+          style: |
+            ha-card {
+              background: linear-gradient(135deg, #7FC7C7 0%, #6bb3b3 100%) !important;
+              --card-primary-font-size: 18px;
+              --card-primary-font-weight: 600;
+              --card-primary-color: white;
+              --icon-color: white !important;
+              padding: 8px 0;
+            }
+            mushroom-shape-icon {
+              --icon-color: white !important;
+            }
+
+      # Critical: No Return From Bathroom
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.no_return_from_bathroom_possible_fall
+            state: 'on'
+        card:
+          type: markdown
+          content: |
+            🚨 **CRITICAL: No Return From Bathroom**
+
+            {{ states('input_text.elderly_person_name') }} entered bathroom at {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }} ({{ states('sensor.time_since_bathroom_entry_night') }} mins ago)
+
+            **Has NOT returned to bedroom - Possible fall or medical emergency!**
+
+            **ACTION REQUIRED: Check immediately or call emergency services**
+          card_mod:
+            style: |
+              ha-card {
+                background: #D32F2F;
+                border-left: 8px solid #B71C1C;
+                padding: 20px;
+                color: white;
+                font-weight: bold;
+              }
+
+      # Extended Bathroom Visit
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.extended_night_bathroom_visit
+            state: 'on'
+        card:
+          type: markdown
+          content: |
+            🚨 **Extended Night Bathroom Visit**
+
+            {{ states('input_text.elderly_person_name') }} has been in the bathroom for {{ states('sensor.current_night_bathroom_duration') }} mins (since {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }})
+
+            Baseline: {{ states('input_number.bathroom_night_baseline_duration') }} mins
+          card_mod:
+            style: |
+              ha-card {
+                background: #FFEBEE;
+                border-left: 4px solid #E74C3C;
+                padding: 16px;
+              }
+
+      # High Bathroom Frequency
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.high_night_bathroom_frequency
+            state: 'on'
+        card:
+          type: markdown
+          content: |
+            ⚠️ **High Night Bathroom Frequency**
+
+            {{ states('sensor.night_bathroom_status') }}
+
+            Baseline: {{ states('input_number.bathroom_night_baseline_visits') }} visits
+          card_mod:
+            style: |
+              ha-card {
+                background: #FFF3E0;
+                border-left: 4px solid #F5A647;
+                padding: 16px;
+              }
+
+      # All Clear
+      - type: conditional
+        conditions:
+          - entity: sensor.deviation_count
+            state: '0'
+          - entity: binary_sensor.no_return_from_bathroom_possible_fall
+            state: 'off'
+          - entity: binary_sensor.extended_night_bathroom_visit
+            state: 'off'
+          - entity: binary_sensor.high_night_bathroom_frequency
+            state: 'off'
+        card:
+          type: custom:mushroom-template-card
+          primary: All Clear
+          secondary: Everything is running normally
+          icon: mdi:check-circle
+          icon_color: green
+          card_mod:
+            style: |
+              ha-card {
+                background: #E8F5E9 !important;
+                --card-primary-font-size: 20px;
+                --card-primary-font-weight: 600;
+                --card-secondary-font-size: 14px;
+                padding: 8px 0;
+              }
+
+      # Status Details Section
+      - type: custom:mushroom-title-card
+        title: Status details
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: sensor.deviation_count
+            primary: |
+              {{ states('sensor.deviation_count') }}
+            secondary: Deviations
+            icon: mdi:alert-circle-outline
+            icon_color: |
+              {{ 'green' if states('sensor.deviation_count') | int == 0 else 'orange' }}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          - type: custom:mushroom-template-card
+            entity: input_boolean.manual_safe_status
+            primary: |
+              {{ 'Marked safe' if is_state('input_boolean.manual_safe_status', 'on') else 'Not marked' }}
+            secondary: Manual status
+            icon: mdi:shield-check
+            icon_color: |
+              {{ 'green' if is_state('input_boolean.manual_safe_status', 'on') else 'grey' }}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 500;
+                  --card-secondary-font-size: 12px;
+                }
+
+      # Night Bathroom Section
+      - type: custom:mushroom-title-card
+        title: Night bathroom status
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 16px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          - type: custom:mushroom-template-card
+            entity: input_boolean.bathroom_occupied_night
+            primary: |
+              {{ 'Occupied' if is_state('input_boolean.bathroom_occupied_night', 'on') else 'Empty' }}
+            secondary: Bathroom now
+            icon: |
+              {{ 'mdi:motion-sensor' if is_state('input_boolean.bathroom_occupied_night', 'on') else 'mdi:toilet' }}
+            icon_color: |
+              {{ 'teal' if is_state('input_boolean.bathroom_occupied_night', 'on') else 'grey' }}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 16px;
+                  --card-primary-font-weight: 500;
+                  --card-secondary-font-size: 12px;
+                }
+
+          - type: custom:mushroom-template-card
+            entity: sensor.time_since_bathroom_entry_night
+            primary: |
+              {% set mins = states('sensor.time_since_bathroom_entry_night') | int(0) %}
+              {{ mins }}m
+            secondary: Time in bathroom
+            icon: mdi:timer-outline
+            icon_color: |
+              {% set mins = states('sensor.time_since_bathroom_entry_night') | int(0) %}
+              {% if mins <= 10 %}green{% elif mins <= 20 %}teal{% else %}orange{% endif %}
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+  # ============================================================================
+  # SETTINGS - Configuration and preferences
+  # ============================================================================
+  - title: Settings
+    path: settings
+    icon: mdi:cog
+    cards:
+      # Header
+      - type: custom:mushroom-template-card
+        entity: input_boolean.haiven_monitoring_enabled
+        primary: Settings
+        secondary: |
+          {% set monitoring_on = is_state('input_boolean.haiven_monitoring_enabled', 'on') %}
+          {% set primary = states('input_text.contact_1_name') | length > 0 %}
+          {% set secondary = states('input_text.contact_2_name') | length > 0 %}
+          {% set carer = states('input_text.carer_name') | length > 0 %}
+          {% set contact_count = [primary, secondary, carer] | select | list | count %}
+          {{ 'Monitoring on' if monitoring_on else 'Monitoring off' }} · {{ contact_count }} contact{{ 's' if contact_count != 1 else '' }}
+        icon: mdi:cog
+        icon_color: |
+          {{ 'green' if is_state('input_boolean.haiven_monitoring_enabled', 'on') else 'grey' }}
+        badge_icon: |
+          {{ 'mdi:check' if is_state('input_boolean.haiven_monitoring_enabled', 'on') else 'mdi:pause' }}
+        badge_color: |
+          {{ 'green' if is_state('input_boolean.haiven_monitoring_enabled', 'on') else 'grey' }}
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 24px;
+              --card-primary-font-weight: 600;
+              --card-secondary-font-size: 14px;
+            }
+
+      # System Health Chips
+      - type: custom:mushroom-chips-card
+        chips:
+          - type: template
+            entity: sensor.sensor_health_status
+            icon: mdi:wifi
+            icon_color: |
+              {{ 'green' if states('sensor.sensor_health_status') == 'All online' else 'orange' }}
+            content: |
+              Sensors: {{ states('sensor.sensor_health_status') }}
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace-haiven/sensors
+          - type: template
+            entity: sensor.activity_tracking_status
+            icon: mdi:chart-line
+            icon_color: |
+              {{ 'green' if states('sensor.activity_tracking_status') == 'All online' else 'orange' }}
+            content: |
+              Tracking: {{ states('sensor.activity_tracking_status') }}
+            tap_action:
+              action: more-info
+
+      # Essential Section
+      - type: custom:mushroom-title-card
+        title: Essential
+        subtitle: Required settings
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 18px;
+              --subtitle-font-size: 12px;
+              margin-bottom: -12px;
+            }
+
+      # Monitoring Toggle
+      - type: custom:mushroom-entity-card
+        entity: input_boolean.haiven_monitoring_enabled
+        name: Monitoring
+        icon_color: |
+          {{ 'green' if is_state('input_boolean.haiven_monitoring_enabled', 'on') else 'grey' }}
+        tap_action:
+          action: toggle
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 16px;
+            }
+
+      # Person Name
+      - type: custom:mushroom-template-card
+        entity: input_text.elderly_person_name
+        primary: |
+          {{ states('input_text.elderly_person_name') or 'Not set' }}
+        secondary: Person being monitored
+        icon: mdi:account-heart
+        icon_color: teal
+        tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 16px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+            }
+
+      # Routine Section
+      - type: custom:mushroom-title-card
+        title: Routine
+        subtitle: Wake and bedtime expectations
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 18px;
+              --subtitle-font-size: 12px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Expected Wake
+          - type: custom:mushroom-template-card
+            entity: input_datetime.expected_wake_time
+            primary: |
+              {{ states('input_datetime.expected_wake_time')[:5] }}
+            secondary: Expected wake
+            icon: mdi:weather-sunset-up
+            icon_color: green
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Wake Variance
+          - type: custom:mushroom-template-card
+            entity: input_number.wake_time_variance_minutes
+            primary: |
+              ±{{ states('input_number.wake_time_variance_minutes') | int }}m
+            secondary: Wake variance
+            icon: mdi:plus-minus
+            icon_color: grey
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Expected Bedtime
+          - type: custom:mushroom-template-card
+            entity: input_datetime.expected_bedtime
+            primary: |
+              {{ states('input_datetime.expected_bedtime')[:5] }}
+            secondary: Expected bed
+            icon: mdi:weather-night
+            icon_color: blue
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Bedtime Variance
+          - type: custom:mushroom-template-card
+            entity: input_number.bedtime_variance_minutes
+            primary: |
+              ±{{ states('input_number.bedtime_variance_minutes') | int }}m
+            secondary: Bed variance
+            icon: mdi:plus-minus
+            icon_color: grey
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+      # Activity Alert
+      - type: custom:mushroom-template-card
+        entity: input_number.no_activity_alert_hours
+        primary: |
+          {{ states('input_number.no_activity_alert_hours') | int }} hours
+        secondary: Alert if no activity for this long
+        icon: mdi:clock-alert-outline
+        icon_color: orange
+        tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 18px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+            }
+
+      # Contacts Section
+      - type: custom:mushroom-title-card
+        title: Contacts
+        subtitle: Care circle details
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 18px;
+              --subtitle-font-size: 12px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      # Primary Contact
+      - type: custom:mushroom-template-card
+        entity: input_text.contact_1_name
+        primary: |
+          {{ states('input_text.contact_1_name') or 'Not set' }}
+        secondary: |
+          Primary · {{ states('input_text.contact_1_phone') or 'No phone' }}
+        icon: mdi:account-star
+        icon_color: green
+        tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 16px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+            }
+
+      # Secondary Contact
+      - type: custom:mushroom-template-card
+        entity: input_text.contact_2_name
+        primary: |
+          {{ states('input_text.contact_2_name') or 'Not set' }}
+        secondary: |
+          Secondary · {{ states('input_text.contact_2_phone') or 'No phone' }}
+        icon: mdi:account
+        icon_color: |
+          {{ 'blue' if states('input_text.contact_2_name') else 'grey' }}
+        tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 16px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+            }
+
+      # Professional Carer
+      - type: custom:mushroom-template-card
+        entity: input_text.carer_name
+        primary: |
+          {{ states('input_text.carer_name') or 'Not set' }}
+        secondary: |
+          Carer · {{ states('input_text.carer_schedule') or 'No schedule' }}
+        icon: mdi:account-heart
+        icon_color: |
+          {{ 'purple' if states('input_text.carer_name') else 'grey' }}
+        tap_action:
+          action: more-info
+        card_mod:
+          style: |
+            ha-card {
+              --card-primary-font-size: 16px;
+              --card-primary-font-weight: 500;
+              --card-secondary-font-size: 12px;
+            }
+
+      # Status Thresholds Section
+      - type: custom:mushroom-title-card
+        title: Status thresholds
+        subtitle: Inactivity gap triggers (tap to edit)
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 18px;
+              --subtitle-font-size: 12px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Monitoring threshold
+          - type: custom:mushroom-template-card
+            entity: input_number.status_gap_monitoring_mins
+            primary: |
+              {{ states('input_number.status_gap_monitoring_mins') | int }}m
+            secondary: Monitoring
+            icon: mdi:information
+            icon_color: teal
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Caution threshold
+          - type: custom:mushroom-template-card
+            entity: input_number.status_gap_caution_mins
+            primary: |
+              {{ states('input_number.status_gap_caution_mins') | int }}m
+            secondary: Caution
+            icon: mdi:alert
+            icon_color: orange
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Concern threshold
+          - type: custom:mushroom-template-card
+            entity: input_number.status_gap_concern_mins
+            primary: |
+              {{ states('input_number.status_gap_concern_mins') | int }}m
+            secondary: Concern
+            icon: mdi:alert-circle
+            icon_color: red
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Critical threshold
+          - type: custom:mushroom-template-card
+            entity: input_number.status_gap_critical_mins
+            primary: |
+              {{ states('input_number.status_gap_critical_mins') | int }}m
+            secondary: Critical
+            icon: mdi:alert-octagon
+            icon_color: red
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Transition timeout
+          - type: custom:mushroom-template-card
+            entity: input_number.transition_timeout_mins
+            primary: |
+              {{ states('input_number.transition_timeout_mins') | int }}m
+            secondary: Room transition
+            icon: mdi:swap-horizontal
+            icon_color: grey
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Safe status duration
+          - type: custom:mushroom-template-card
+            entity: input_number.safe_status_duration_hours
+            primary: |
+              {{ states('input_number.safe_status_duration_hours') | int }}h
+            secondary: Mark Safe expires
+            icon: mdi:shield-check
+            icon_color: green
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 20px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+      # Advanced Section
+      - type: custom:mushroom-title-card
+        title: Advanced
+        subtitle: Night bathroom baselines
+        card_mod:
+          style: |
+            ha-card {
+              --title-font-size: 18px;
+              --subtitle-font-size: 12px;
+              margin-bottom: -12px;
+              margin-top: -8px;
+            }
+
+      - type: grid
+        columns: 2
+        square: false
+        cards:
+          # Baseline Visits
+          - type: custom:mushroom-template-card
+            entity: input_number.bathroom_night_baseline_visits
+            primary: |
+              {{ states('input_number.bathroom_night_baseline_visits') | int }}
+            secondary: Baseline visits
+            icon: mdi:toilet
+            icon_color: teal
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }
+
+          # Baseline Duration
+          - type: custom:mushroom-template-card
+            entity: input_number.bathroom_night_baseline_duration
+            primary: |
+              {{ states('input_number.bathroom_night_baseline_duration') | int }}m
+            secondary: Baseline duration
+            icon: mdi:timer-outline
+            icon_color: teal
+            tap_action:
+              action: more-info
+            card_mod:
+              style: |
+                ha-card {
+                  --card-primary-font-size: 24px;
+                  --card-primary-font-weight: 600;
+                  --card-secondary-font-size: 12px;
+                }

@@ -1,0 +1,111 @@
+# Haiven Care Circle - Contact Configuration
+# Who we care for and who cares for them
+# Single source of truth for contact details, entities, and notification services
+
+input_text:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # ELDERLY PERSON (Being Cared For) - REQUIRED
+  # ─────────────────────────────────────────────────────────────────────────────
+  elderly_person_name:
+    name: Elderly Person Name
+    max: 50
+    icon: mdi:account
+    initial: "Your Person"
+
+  elderly_person_entity:
+    name: Elderly Person Entity
+    max: 100
+    icon: mdi:account-heart
+    pattern: "^person\\.[a-zA-Z0-9_]+$"
+    initial: "person.elderly_person"
+
+  elderly_person_device_tracker:
+    name: Elderly Person Device Tracker
+    max: 100
+    icon: mdi:map-marker-account
+    pattern: "^device_tracker\\.[a-zA-Z0-9_]+$"
+    initial: "device_tracker.your_person_phone"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CONTACT 1 (Carer 1)
+  # ─────────────────────────────────────────────────────────────────────────────
+  contact_1_name:
+    name: Contact 1 Name
+    max: 100
+    icon: mdi:account
+    initial: "Carer 1"
+
+  contact_1_type:
+    name: Contact 1 Type
+    max: 20
+    icon: mdi:account-key
+    initial: "carer"
+
+  contact_1_person:
+    name: Contact 1 Person Entity
+    max: 100
+    icon: mdi:account
+    pattern: "^person\\.[a-zA-Z0-9_]+$"
+    initial: "person.contact_1"
+
+  contact_1_device_tracker:
+    name: Contact 1 Device Tracker
+    max: 100
+    icon: mdi:map-marker-account
+    pattern: "^device_tracker\\.[a-zA-Z0-9_]+$"
+    initial: "device_tracker.carer_1_phone"
+
+  contact_1_phone:
+    name: Contact 1 Phone
+    max: 20
+    icon: mdi:phone
+    initial: "+44 0000 000 000"
+
+  contact_1_notification:
+    name: Contact 1 Notification Service
+    max: 100
+    icon: mdi:bell-ring
+    pattern: "^notify\\.[a-zA-Z0-9_]+$"
+    initial: "notify.mobile_app_your_phone"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CONTACT 2 (Carer 2)
+  # ─────────────────────────────────────────────────────────────────────────────
+  contact_2_name:
+    name: Contact 2 Name
+    max: 100
+    icon: mdi:account
+    initial: "Carer 2"
+
+  contact_2_type:
+    name: Contact 2 Type
+    max: 20
+    icon: mdi:account-key
+    initial: "carer"
+
+  contact_2_person:
+    name: Contact 2 Person Entity
+    max: 100
+    icon: mdi:account
+    pattern: "^person\\.[a-zA-Z0-9_]+$"
+    initial: "person.contact_2"
+
+  contact_2_device_tracker:
+    name: Contact 2 Device Tracker
+    max: 100
+    icon: mdi:map-marker-account
+    pattern: "^device_tracker\\.[a-zA-Z0-9_]+$"
+    initial: "device_tracker.carer_2_phone"
+
+  contact_2_phone:
+    name: Contact 2 Phone
+    max: 20
+    icon: mdi:phone
+    initial: "+44 0000 000 000"
+
+  contact_2_notification:
+    name: Contact 2 Notification Service
+    max: 100
+    icon: mdi:bell-ring
+    pattern: "^notify\\.[a-zA-Z0-9_]+$"
+    initial: "notify.mobile_app_your_phone"

@@ -1,0 +1,44 @@
+# Haiven Communications - Summaries, Notes & Alerts
+# How the system communicates with caregivers
+
+input_button:
+  refresh_summary:
+    name: Refresh Summary
+    icon: mdi:refresh
+
+input_text:
+  # AI-generated dashboard summary (updated by daily summary automations)
+  current_summary:
+    name: Current Summary
+    max: 255
+    icon: mdi:message-text
+    initial: "Waiting for first summary..."
+
+  # Care notes and documentation
+  latest_care_note:
+    name: Latest Care Note
+    max: 255
+    mode: text
+    icon: mdi:note-text
+
+  next_appointment_details:
+    name: Next Appointment Details
+    max: 200
+    icon: mdi:calendar-text
+
+  care_note_author:
+    name: Note Author
+    max: 50
+    icon: mdi:account-edit
+
+  alerts_fired_today:
+    name: Alerts Fired Today
+    max: 255
+    icon: mdi:bell-alert
+    initial: ""
+
+  daily_note:
+    name: Daily Note
+    max: 255
+    mode: text
+    icon: mdi:note-edit

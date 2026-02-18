@@ -1,0 +1,269 @@
+# Haiven Monitoring Engine - Configuration & Runtime State
+# Routine baselines, deviation thresholds, status flags, activity counters, state machines
+
+# ===== ROUTINE BASELINES =====
+input_datetime:
+  expected_wake_time:
+    name: Expected Wake Time
+    has_date: false
+    has_time: true
+    icon: mdi:alarm
+
+  expected_bedtime:
+    name: Expected Bedtime
+    has_date: false
+    has_time: true
+    icon: mdi:bed
+
+  next_appointment:
+    name: Next Appointment
+    has_date: true
+    has_time: true
+    icon: mdi:calendar-clock
+
+  actual_wake_time_today:
+    name: Actual Wake Time Today
+    has_date: false
+    has_time: true
+    icon: mdi:alarm-check
+
+  actual_bedtime_today:
+    name: Actual Bedtime Today
+    has_date: false
+    has_time: true
+    icon: mdi:bed-clock
+
+  bed_state_last_transition:
+    name: Bed State Last Transition
+    has_date: true
+    has_time: true
+    icon: mdi:clock
+
+  zone1_entered_time:
+    name: Zone 1 (Bed) Entered Time
+    has_date: true
+    has_time: true
+    icon: mdi:bed-clock
+
+  first_kitchen_time_today:
+    name: First Kitchen Time Today
+    has_date: false
+    has_time: true
+    icon: mdi:silverware-fork-knife
+
+# ===== DEVIATION THRESHOLDS =====
+input_number:
+  wake_time_variance_minutes:
+    name: Wake Time Variance (minutes)
+    min: 15
+    max: 120
+    step: 15
+    unit_of_measurement: "min"
+    icon: mdi:clock-alert
+
+  bedtime_variance_minutes:
+    name: Bedtime Variance (minutes)
+    min: 15
+    max: 120
+    step: 15
+    unit_of_measurement: "min"
+    icon: mdi:clock-alert
+
+  no_activity_alert_hours:
+    name: No Activity Alert (hours)
+    min: 2
+    max: 8
+    step: 0.5
+    unit_of_measurement: "hours"
+    icon: mdi:motion-sensor-off
+
+  kitchen_triggers_baseline:
+    name: Expected Daily Kitchen Triggers
+    min: 10
+    max: 200
+    step: 5
+    initial: 100
+    unit_of_measurement: "triggers"
+    icon: mdi:chart-timeline-variant
+
+  bed_settling_seconds:
+    name: Bed Settling Delay
+    min: 30
+    max: 300
+    step: 30
+    initial: 120
+    unit_of_measurement: "sec"
+    icon: mdi:timer
+    mode: box
+
+  bed_left_grace_minutes:
+    name: Bed Left Grace Period
+    min: 1
+    max: 15
+    step: 1
+    initial: 5
+    unit_of_measurement: "min"
+    icon: mdi:timer-outline
+    mode: box
+
+  # EPL speed thresholds for derived still/moving target sensors
+  epl_still_speed_threshold:
+    name: EPL Still Speed Threshold
+    min: 0.01
+    max: 0.5
+    step: 0.01
+    initial: 0.05
+    unit_of_measurement: "m/s"
+    icon: mdi:sleep
+    mode: box
+
+  epl_moving_speed_threshold:
+    name: EPL Moving Speed Threshold
+    min: 0.05
+    max: 1.0
+    step: 0.05
+    initial: 0.15
+    unit_of_measurement: "m/s"
+    icon: mdi:run
+    mode: box
+
+  # Status severity thresholds - configurable gap thresholds for 5-level status
+  status_gap_monitoring_mins:
+    name: "Status: Monitoring threshold (minutes)"
+    min: 30
+    max: 180
+    step: 15
+    initial: 60
+    unit_of_measurement: "min"
+    icon: mdi:timer-sand
+
+  status_gap_caution_mins:
+    name: "Status: Caution threshold (minutes)"
+    min: 60
+    max: 300
+    step: 15
+    initial: 120
+    unit_of_measurement: "min"
+    icon: mdi:timer-alert
+
+  status_gap_concern_mins:
+    name: "Status: Concern threshold (minutes)"
+    min: 90
+    max: 360
+    step: 15
+    initial: 180
+    unit_of_measurement: "min"
+    icon: mdi:timer-alert-outline
+
+  status_gap_critical_mins:
+    name: "Status: Critical threshold (minutes)"
+    min: 120
+    max: 480
+    step: 15
+    initial: 240
+    unit_of_measurement: "min"
+    icon: mdi:alert-octagon
+
+  transition_timeout_mins:
+    name: "Room transition timeout (minutes)"
+    min: 5
+    max: 60
+    step: 5
+    initial: 30
+    unit_of_measurement: "min"
+    icon: mdi:swap-horizontal
+
+  safe_status_duration_hours:
+    name: "Mark Safe duration (hours)"
+    min: 1
+    max: 8
+    step: 1
+    initial: 2
+    unit_of_measurement: "h"
+    icon: mdi:shield-check
+
+# ===== STATUS FLAGS =====
+input_boolean:
+  haiven_monitoring_enabled:
+    name: Haiven Monitoring Enabled
+    icon: mdi:shield-home
+
+  manual_safe_status:
+    name: Manually Marked Safe
+    icon: mdi:shield-check
+
+  deviation_alert_sent:
+    name: Deviation Alert Already Sent Today
+    icon: mdi:bell-check
+
+  kitchen_motion:
+    name: Kitchen Motion
+    icon: mdi:silverware-fork-knife
+
+  # Settings UI state - persist expanded/collapsed sections
+  settings_contacts_expanded:
+    name: Settings Contacts Section Expanded
+    icon: mdi:account-group
+    initial: false
+
+  settings_advanced_expanded:
+    name: Settings Advanced Section Expanded
+    icon: mdi:cog-outline
+    initial: false
+
+# ===== ACTIVITY COUNTERS =====
+counter:
+  kitchen_triggers_today:
+    name: Kitchen Triggers Today
+    icon: mdi:silverware-fork-knife
+    step: 1
+    initial: 0
+    restore: true
+
+  bedroom_triggers_today:
+    name: Bedroom Triggers Today
+    icon: mdi:bed
+    step: 1
+    initial: 0
+    restore: true
+
+  bathroom_triggers_today:
+    name: Bathroom Triggers Today
+    icon: mdi:shower
+    step: 1
+    initial: 0
+    restore: true
+
+  total_triggers_today:
+    name: Total Triggers Today
+    icon: mdi:counter
+    step: 1
+    initial: 0
+    restore: true
+
+  bathroom_visits_night:
+    name: Bathroom Visits Tonight
+    icon: mdi:toilet
+    restore: true
+
+# ===== STATE MACHINES =====
+input_select:
+  bed_state:
+    name: Bed State
+    options:
+      - not_in_bed
+      - in_bed
+      - sleeping
+    initial: not_in_bed
+    icon: mdi:bed
+
+  status_max_today:
+    name: Status Max Today
+    options:
+      - normal
+      - monitoring
+      - caution
+      - concern
+      - critical
+    initial: normal
+    icon: mdi:gauge
