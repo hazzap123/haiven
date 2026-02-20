@@ -8,7 +8,7 @@ Complete setup and maintenance guides for all Haiven monitoring sensors.
 
 ## Sensor Overview
 
-Haiven uses 3 sensors for triangulated monitoring:
+Haiven in original uses 3 sensors for triangulated monitoring:
 
 | Sensor | Type | Entity | Location |
 |--------|------|--------|----------|
