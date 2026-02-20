@@ -2,7 +2,7 @@
 
 **Elderly care monitoring for Home Assistant.** Tracks daily activity patterns using motion and presence sensors, detects routine deviations, and alerts caregivers.
 
-Built for real-world use — monitoring a parent living independently.
+THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best a wellness / wellbeing support aid. No warranties and doesn't replace human care, love and decency, but can take the edge off some of the anxiety of caring for someone at a distance.
 
 ## What it does
 
