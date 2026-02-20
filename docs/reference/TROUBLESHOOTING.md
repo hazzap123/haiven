@@ -37,15 +37,10 @@ sensor.deviation_count: 0 = normal
    - Check they're not "unknown" or "unavailable"
    - Cross-reference with [ENTITY_REFERENCE.md](ENTITY_REFERENCE.md)
 
-2. **Check Ring integration**
-   - Settings > Integrations > Ring
-   - Verify camera is online
+2. **Check  integration**
+   - Settings > Integrations > Device
+   - Verify device is online
    - May need to re-authenticate
-
-3. **Check ESPHome integration (bedroom sensor)**
-   - Settings > Integrations > ESPHome
-   - Verify device shows connected
-   - Check WiFi signal strength
 
 4. **Reload YAML configuration**
    - Developer Tools > YAML > All YAML configuration
@@ -346,26 +341,6 @@ sensor.deviation_count: 0 = normal
 1. Decrease movement sensitivity to 50-60%
 2. Disable far zones
 3. Adjust sensor angle
-
----
-
-## Known Quirks (Not Bugs)
-
-### ESPHome "Max Command Length" Warning
-
-```
-[W][ld2410:598]: Max command length exceeded; ignoring
-```
-
-**This is normal** with LD2410 firmware 2.04.x. The warning is intentionally suppressed in production config. The sensor works fine despite this message.
-
-### Kitchen Evening Activity (Dogs)
-
-Late evening kitchen motion (22:00-23:00) is almost always dogs, not mum. This is why kitchen is ignored for bedtime detection.
-
-### MMW Brief "Off" States
-
-Brief "off" states when lying still are normal (not "left room"). Only sustained gaps (20+ min) indicate actual movement. The presence timeout handles this.
 
 ---
 
