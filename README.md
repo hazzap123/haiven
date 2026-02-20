@@ -15,15 +15,15 @@ Built for real-world use — monitoring a parent living independently.
 
 ## What you need
 
-**Hardware (3 sensors):**
-- Kitchen: Any motion sensor (Ring camera motion, Zigbee PIR, etc.)
-- Bedroom: Presence sensor with zone support (Everything Presence Lite recommended)
+**Hardware (3 sensors):** you can add more but will need to configure for that.
+- Kitchen: Motion or presence sensor (Ring camera with motion, MMW Zigbee PIR, etc.)
+- Bedroom: Motion or Presence sensor with zone support if want in bed detection
 - Bathroom: Motion sensor (Shelly BLU Motion, Zigbee PIR, etc.)
 
 **Software:**
 - Home Assistant 2024.1+
 - HACS (for dashboard card dependencies)
-- Optional: Anthropic API key (for AI-generated summaries via Claude)
+- Optional: Anthropic API key (for AI-generated summaries via Claude) or any other llm you like
 
 ## Quick start
 
