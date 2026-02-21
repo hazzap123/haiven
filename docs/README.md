@@ -63,7 +63,7 @@ Elderly care monitoring system for Home Assistant.
 ### 3-Sensor Monitoring
 
 ```
-Kitchen (Ring Camera)    -> Morning activity, meals
+Kitchen/Living Room (Motion sensor)  -> Morning activity, meals
 Bedroom (MMW Presence)   -> Sleep, wake-up, rest
 Bathroom (PIR Motion)    -> Routine, bathroom breaks
 ```

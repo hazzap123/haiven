@@ -8,7 +8,7 @@
 
 | Sensor | Location | Entity |
 |--------|----------|--------|
-| Ring Camera | Kitchen | `event.kitchen_motion` |
+| Motion sensor | Kitchen | `event.kitchen_motion` |
 | MMW Presence | Bedroom | `binary_sensor.haiven_bedroom_occupancy` |
 | Shelly BLU Motion | Bathroom | `binary_sensor.haiven_bathroom_motion` |
 
@@ -68,7 +68,7 @@ Should see:
 
 ## Step 5: Test (5 min)
 
-1. Walk past Ring camera
+1. Trigger your kitchen sensor
 2. Check `sensor.last_activity_display` updates to "Kitchen"
 3. Enter bedroom > Check updates to "Bedroom"
 4. Use bathroom > Check updates to "Bathroom"

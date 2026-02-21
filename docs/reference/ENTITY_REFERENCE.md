@@ -12,7 +12,7 @@ Single source of truth for all entity IDs used in the Haiven monitoring system.
 
 | Entity ID | Type | Location | Description |
 |-----------|------|----------|-------------|
-| `event.kitchen_motion` | Event | Kitchen | Ring camera motion detection |
+| `event.kitchen_motion` | Event | Kitchen | Kitchen motion detection |
 | `binary_sensor.haiven_bedroom_occupancy` | Binary | Bedroom | MMW presence (LD2410 radar) |
 | `binary_sensor.haiven_bathroom_motion` | Binary | Bathroom | Shelly BLU PIR motion |
 

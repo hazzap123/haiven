@@ -8,27 +8,27 @@ Complete setup and maintenance guides for all Haiven monitoring sensors.
 
 ## Sensor Overview
 
-Haiven in original uses 3 sensors for triangulated monitoring:
+Haiven uses 3 sensors for triangulated monitoring. The sensor types below are what was used in the original build — any compatible Home Assistant sensor will work.
 
-| Sensor | Type | Entity | Location |
-|--------|------|--------|----------|
-| Ring Camera | Event-based motion | `event.kitchen_motion` | Kitchen |
-| Everything Presence Lite | MMW radar (LD2410) | `binary_sensor.haiven_bedroom_occupancy` | Bedroom |
-| Shelly BLU Motion | PIR motion | `binary_sensor.haiven_bathroom_motion` | Bathroom |
+| Sensor type | Entity (default) | Location |
+|-------------|-----------------|----------|
+| Motion or presence sensor | `event.kitchen_motion` | Kitchen / main living area |
+| MMW radar presence sensor | `binary_sensor.haiven_bedroom_occupancy` | Bedroom |
+| PIR motion sensor | `binary_sensor.haiven_bathroom_motion` | Bathroom |
 
 ### Coverage Pattern
 
 ```
 House Layout:
 +---------------------------------+
-|  Kitchen/Living Room            |
-|  Ring Camera (Motion Detection) |  <- Morning activity, meals
+|  Kitchen / Living Room          |
+|  Motion Sensor                  |  <- Morning activity, meals
 +---------------------------------+
-|  Main Bedroom                   |
-|  MMW Presence Sensor (Radar)    |  <- Sleep, wake-up, rest
-|    |                            |
-|    +-- Ensuite Bathroom         |
-|        PIR Motion Sensor        |  <- Routine, bathroom breaks
+|  Bedroom                        |
+|  Presence Sensor (Radar/PIR)    |  <- Sleep, wake-up, rest
++---------------------------------+
+|  Bathroom                       |
+|  PIR Motion Sensor              |  <- Routine, bathroom breaks
 +---------------------------------+
 ```
 
@@ -232,35 +232,33 @@ Battery-powered PIR motion sensor for bathroom activity tracking.
 
 ---
 
-## Ring Camera (Kitchen)
+## Kitchen Sensor
 
-Uses Ring integration for motion detection events.
+Any motion or presence sensor that exposes an entity to Home Assistant will work. The original build used a Ring camera — but a Zigbee PIR, MMW radar, or any other HA-compatible sensor is fine.
 
 ### Key Entity
 
 | Entity | Description |
 |--------|-------------|
-| `event.kitchen_motion` | Motion detection event |
+| `event.kitchen_motion` | Motion detection event (entity ID is configurable via setup.sh) |
 
 ### Sensor Behavior
 
-- **Event-based:** Triggers on motion, doesn't have on/off state
-- **Ring cloud:** Depends on Ring integration working
-- **Last changed:** Shows when last motion detected
+- **Event-based sensors** (e.g. Ring, some Zigbee PIRs): trigger on motion, no persistent on/off state
+- **Binary sensors** (e.g. MMW radar, occupancy sensors): have on/off state; both types are supported
 
-### Quirks for Haiven
+### Notes
 
-**Kitchen evening activity (dogs):** Late activity (22:00-23:00) is almost always dogs, not mum. This is why kitchen is **not used for bedtime detection**.
+Kitchen is **not used for bedtime detection** — evening activity in shared spaces is too ambiguous. Bedroom sensor handles sleep/wake.
 
 ### Troubleshooting
 
 **Not updating:**
-- Check Ring integration (Settings > Integrations > Ring)
-- May need to re-authenticate
-- Verify camera is online in Ring app
+- Verify the entity ID matches what you configured in setup.sh
+- Check sensor is reachable in Settings > Devices
 
 **Missing activity:**
-- Camera may not see all kitchen areas
+- Check sensor placement covers the areas the person uses
 - Bedroom/bathroom sensors provide backup coverage
 
 ---
