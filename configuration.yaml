@@ -216,7 +216,7 @@ lovelace:
       title: Haiven
       icon: mdi:heart-pulse
       show_in_sidebar: true
-      filename: lovelace/haiven_default.yaml
+      filename: lovelace/dashboard_default.yaml
 
 # History Stats - Rolling averages for activity baselines
 sensor:

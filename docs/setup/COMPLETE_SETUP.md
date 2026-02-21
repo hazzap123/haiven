@@ -108,7 +108,7 @@ See [CARE_CIRCLE.md](CARE_CIRCLE.md) for detailed instructions.
 
 | Helper | Purpose |
 |--------|---------|
-| `input_text.elderly_person_name` | Name (e.g., "Mum") |
+| `input_text.elderly_person_name` | Name of the person being monitored |
 | `input_text.elderly_person_entity` | Person entity ID |
 | `input_text.contact_1_name` | Primary contact name |
 | `input_text.contact_1_notification` | Notification service |
@@ -151,9 +151,9 @@ Should see:
 
 **Option B: Create new dashboard**
 1. Settings > Dashboards > + ADD DASHBOARD
-2. Name: "Haiven - Mum's Status"
+2. Name: "Haiven - [Person's Name] Status"
 3. Edit > Raw Config Editor
-4. Copy from `lovelace/haiven_default.yaml`
+4. Copy from `lovelace/dashboard_default.yaml`
 
 **Verify:**
 - [ ] Status circle displays (green/orange/red)
@@ -295,13 +295,13 @@ Day 1:
 ### Morning Confirmation
 ```
 Title: "Morning"
-Message: "Mum is up and about (06:45)"
+Message: "[Name] is up and about (06:45)"
 Level: Passive
 ```
 
 ### Deviation Alert
 ```
-Title: "Haiven Alert - Mum"
+Title: "Haiven Alert - [Name]"
 Message: "No morning activity detected by expected time"
 Level: Time-sensitive
 Actions: [Mark Safe, View Dashboard, View Camera]
@@ -309,7 +309,7 @@ Actions: [Mark Safe, View Dashboard, View Camera]
 
 ### Daily Summary
 ```
-Title: "Daily Report - Mum"
+Title: "Daily Report - [Name]"
 Message: "Wake: 06:45, Last activity: Kitchen, Status: All Good"
 Level: Passive
 ```

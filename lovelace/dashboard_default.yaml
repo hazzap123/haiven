@@ -1064,12 +1064,12 @@ views:
       - type: custom:mushroom-chips-card
         chips:
           - type: template
-            entity: sensor.mum_location
+            entity: sensor.elderly_person_location
             icon: mdi:home-heart
             icon_color: |
-              {{ 'green' if states('sensor.mum_location') == 'At Home' else 'grey' }}
+              {{ 'green' if states('sensor.elderly_person_location') == 'At Home' else 'grey' }}
             content: |
-              Mum: {{ states('sensor.mum_location') }}
+              {{ states('input_text.elderly_person_name') }}: {{ states('sensor.elderly_person_location') }}
             tap_action:
               action: more-info
           - type: template
