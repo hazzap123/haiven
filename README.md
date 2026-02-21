@@ -87,7 +87,7 @@ configuration.yaml               # Main config — includes all packages
 ├── haiven_persons.yaml           # Person entities
 ├── haiven_zones.yaml             # Geographic zones
 └── lovelace/
-    └── haiven_default.yaml       # Dashboard
+    └── dashboard_default.yaml    # Dashboard
 ```
 
 ## Licence

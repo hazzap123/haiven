@@ -17,7 +17,7 @@
 # Template sensors for location tracking
 template:
   - sensor:
-      # Mum's Location Display
+      # Monitored Person Location Display
       - name: "Elderly Person Location"
         unique_id: mum_location_display
         state: >

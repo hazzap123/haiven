@@ -20,7 +20,7 @@
       data:
         agent_id: conversation.claude_conversation
         text: >
-          Generate a morning summary notification for Mum's carers (2-3 sentences, warm tone).
+          Generate a morning summary notification for {{ states('input_text.elderly_person_name') }}'s carers (2-3 sentences, warm tone).
 
           Current data:
           - Wake time today: {{ states('sensor.today_wake_time') }}
@@ -68,7 +68,7 @@
       data:
         agent_id: conversation.claude_conversation
         text: >
-          Generate a brief afternoon check-in notification for Mum's carers (1-2 sentences).
+          Generate a brief afternoon check-in notification for {{ states('input_text.elderly_person_name') }}'s carers (1-2 sentences).
 
           Current data:
           - Last activity location: {{ states('sensor.activity_data') }}
@@ -115,7 +115,7 @@
       data:
         agent_id: conversation.claude_conversation
         text: >
-          Generate an evening summary notification for Mum's carers (2-3 sentences, day recap).
+          Generate an evening summary notification for {{ states('input_text.elderly_person_name') }}'s carers (2-3 sentences, day recap).
 
           Current data:
           - Wake time today: {{ states('sensor.today_wake_time') }}
@@ -285,7 +285,7 @@
           data:
             agent_id: conversation.claude_conversation
             text: >
-              Generate a morning deviation alert for Mum's carers (1-2 sentences, clear but not alarmist).
+              Generate a morning deviation alert for {{ states('input_text.elderly_person_name') }}'s carers (1-2 sentences, clear but not alarmist).
 
               Current data:
               - Deviation count: {{ states('sensor.deviation_count') }}
@@ -354,7 +354,7 @@
       data:
         agent_id: conversation.claude_conversation
         text: >
-          Generate a no-activity alert for Mum's carers (2-3 sentences, suggest checking in).
+          Generate a no-activity alert for {{ states('input_text.elderly_person_name') }}'s carers (2-3 sentences, suggest checking in).
 
           Current data:
           - Hours since last activity: {{ state_attr('sensor.activity_data', 'hours_since_latest') | float(0) | round(1) }}
@@ -717,9 +717,9 @@
           {% set state = trigger.to_state.state if trigger.to_state else 'unknown' %}
           {% if 'motion' in trigger.entity_id %}Motion ({{ state }}){% elif 'occupancy' in trigger.entity_id or 'presence' in trigger.entity_id %}Presence ({{ state }}){% else %}Sensor ({{ state }}){% endif %}
   mode: queued
-- id: haiven_log_mum_location
+- id: haiven_log_person_location
   alias: "Haiven: Log Elderly Person Location Changes"
-  description: Log when Mum arrives home or leaves to activity.log
+  description: Log when the monitored person arrives home or leaves to activity.log
   triggers:
     - trigger: state
       entity_id: person.elderly_person
@@ -735,7 +735,7 @@
   actions:
     - action: shell_command.log_activity
       data:
-        location: "Mum"
+        location: "{{ states('input_text.elderly_person_name') }}"
         sensor_type: >-
           {% if trigger.to_state.state == 'home' %}
             Location (arrived home)
@@ -1188,7 +1188,7 @@
 
                   Last activity: {{ states('sensor.last_activity_display') }}
 
-                  Please check on Mum as soon as possible.
+                  Please check on {{ states('input_text.elderly_person_name') }} as soon as possible.
                 data:
                   push:
                     interruption-level: time-sensitive
@@ -1207,7 +1207,7 @@
 
                   Last activity: {{ states('sensor.last_activity_display') }}
 
-                  Please check on Mum as soon as possible.
+                  Please check on {{ states('input_text.elderly_person_name') }} as soon as possible.
                 data:
                   push:
                     interruption-level: time-sensitive
@@ -1226,7 +1226,7 @@
 
                   Last activity: {{ states('sensor.last_activity_display') }}
 
-                  Please check on Mum as soon as possible.
+                  Please check on {{ states('input_text.elderly_person_name') }} as soon as possible.
                 data:
                   push:
                     interruption-level: time-sensitive

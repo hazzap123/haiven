@@ -49,7 +49,7 @@ Files should already be in place.
 | Expected Wake Time | Date/Time (time only) | 06:00 |
 | Wake Variance | Number (15-120, step 15) | 120 min |
 | No Activity Alert | Number (2-8, step 0.5) | 4 hours |
-| Person Name | Text | "Mum" |
+| Person Name | Text | "Margaret" (whatever name you use) |
 
 ---
 
@@ -82,7 +82,7 @@ Should see:
 Paste this minimal view:
 
 ```yaml
-title: Haiven - Mum
+title: Haiven - [Person Name]
 views:
   - title: Status
     cards:
