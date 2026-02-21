@@ -16,7 +16,7 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 ## What you need
 
 **Hardware (3 sensors):** you can add more but will need to configure for that.
-- Kitchen: Motion or presence sensor (Ring camera with motion, MMW Zigbee PIR, etc.)
+- Kitchen / living room: Motion or presence sensor (Ring camera with motion, MMW Zigbee PIR, etc.)
 - Bedroom: Motion or Presence sensor with zone support if want in bed detection
 - Bathroom: Motion sensor (Shelly BLU Motion, Zigbee PIR, etc.)
 
