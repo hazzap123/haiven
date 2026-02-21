@@ -34,7 +34,7 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 
 ### Hardware
 - Home Assistant server (2024.1+)
-- Ring camera with motion detection (Kitchen)
+- Motion or presence sensor (Kitchen or main living area)
 - Everything Presence Lite MMW sensor (Bedroom)
 - Shelly BLU Motion PIR sensor (Bathroom)
 - Mobile devices for notifications
@@ -60,7 +60,7 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 - [ ] HACS installed
 - [ ] File Editor add-on installed
 - [ ] 3 sensors working:
-  - [ ] Ring Camera: `event.kitchen_motion`
+  - [ ] Kitchen sensor: `event.kitchen_motion`
   - [ ] MMW Presence: `binary_sensor.haiven_bedroom_occupancy`
   - [ ] PIR Motion: `binary_sensor.haiven_bathroom_motion`
 
@@ -163,7 +163,7 @@ Should see:
 ### Step 7: Test System (15 min)
 
 **Test 1: Sensor Detection**
-- [ ] Walk past Ring camera > Kitchen activity updates
+- [ ] Trigger kitchen sensor > Kitchen activity updates
 - [ ] Enter bedroom > Bedroom presence updates
 - [ ] Use bathroom > Bathroom motion updates
 - [ ] `sensor.last_activity_display` shows correct room

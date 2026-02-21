@@ -135,7 +135,7 @@ sensor.deviation_count: 0 = normal
    - Set to actual typical wake time
 
 3. **Check sensor placement**
-   - Ring camera might not see all kitchen activity
+   - Kitchen sensor placement might not cover all activity areas
    - Bedroom sensor may be detecting hallway
    - Bathroom sensor may have poor coverage
 
