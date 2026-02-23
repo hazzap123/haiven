@@ -31,7 +31,7 @@ frontend:
 # Shell commands for file logging
 shell_command:
   log_activity: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO {{ location }} {{ sensor_type }} | $(date +\"%H:%M:%S\") | $(date +\"%A\")\" >> /config/activity.log"'
-  backup_activity_log: 'cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)" && git push origin main'
+  backup_activity_log: 'cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)"'
   log_haiven_event: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO HAIVEN {{ event_type }} | {{ detail }} | $(date +\"%A\")\" >> /config/activity.log"'
   # MMW sensor detailed logging
 

@@ -882,20 +882,13 @@
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
   actions:
-    - action: "{{ states('input_text.contact_1_notification') }}"
+    - action: script.notify_care_circle
       data:
         title: "⚠️ Extended Night Bathroom Visit"
         message: >
           {{ states('input_text.elderly_person_name') }} in bathroom for
           {{ states('sensor.bathroom_night_current_duration') }} mins
           (since {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }})
-        data:
-          priority: high
-          actions:
-            - action: "CHECK_IN"
-              title: "Call Now"
-            - action: "DISMISS_15"
-              title: "Check in 15min"
     - action: input_text.set_value
       target:
         entity_id: input_text.alerts_fired_today
@@ -916,7 +909,7 @@
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
   actions:
-    - action: "{{ states('input_text.contact_1_notification') }}"
+    - action: script.notify_care_circle
       data:
         title: "🚨 URGENT: No Return From Bathroom"
         message: >
@@ -924,14 +917,6 @@
           {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }}
           ({{ states('sensor.bathroom_night_current_duration') }} mins ago) and has NOT returned to bedroom.
           Possible fall or medical emergency - CHECK IMMEDIATELY!
-        data:
-          priority: critical
-          ttl: 0
-          actions:
-            - action: "CALL_NOW"
-              title: "Call Now"
-            - action: "EMERGENCY"
-              title: "Call Emergency Services"
     - action: input_text.set_value
       target:
         entity_id: input_text.alerts_fired_today
