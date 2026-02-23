@@ -10,11 +10,13 @@ Single source of truth for all entity IDs used in the Haiven monitoring system.
 
 ### Core Monitoring Sensors
 
-| Entity ID | Type | Location | Description |
+Haiven uses three stable role aliases throughout all automations and sensors. Physical hardware is mapped to these roles in `haiven_sensor_roles.yaml` — run `bash scripts/setup.sh` to configure.
+
+| Entity ID | Role | Location | Description |
 |-----------|------|----------|-------------|
-| `event.kitchen_motion` | Event | Kitchen | Kitchen motion detection |
-| `binary_sensor.haiven_bedroom_occupancy` | Binary | Bedroom | MMW presence (LD2410 radar) |
-| `binary_sensor.haiven_bathroom_motion` | Binary | Bathroom | Shelly BLU PIR motion |
+| `binary_sensor.haiven_activity_sensor` | `activity` | Kitchen / living area | First trigger = wake time; daytime movement baseline |
+| `binary_sensor.haiven_bed_sensor` | `bed` | Bedroom | Presence detection; sleep/wake state |
+| `binary_sensor.haiven_bath_sensor` | `bath` | Bathroom | Night visit counting; routine tracking |
 
 ### MMW Sensor Extended Entities
 
@@ -185,6 +187,7 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 
 | File | Contains |
 |------|----------|
+| `haiven_sensor_roles.yaml` | Physical sensor → role mappings (only file with raw hardware IDs) |
 | `haiven_inputs.yaml` | All input helpers (central config) |
 | `haiven_sensors_3sensor.yaml` | Template sensors |
 | `haiven_persons.yaml` | Person entity definitions |

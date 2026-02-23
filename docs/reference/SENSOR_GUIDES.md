@@ -10,11 +10,13 @@ Complete setup and maintenance guides for all Haiven monitoring sensors.
 
 Haiven uses 3 sensors for triangulated monitoring. The sensor types below are what was used in the original build — any compatible Home Assistant sensor will work.
 
-| Sensor type | Entity (default) | Location |
-|-------------|-----------------|----------|
-| Motion or presence sensor | `event.kitchen_motion` | Kitchen / main living area |
-| MMW radar presence sensor | `binary_sensor.haiven_bedroom_occupancy` | Bedroom |
-| PIR motion sensor | `binary_sensor.haiven_bathroom_motion` | Bathroom |
+| Sensor type | Role alias | Location |
+|-------------|-----------|----------|
+| Motion or presence sensor (any type) | `binary_sensor.haiven_activity_sensor` | Kitchen / main living area |
+| MMW radar presence sensor | `binary_sensor.haiven_bed_sensor` | Bedroom |
+| PIR motion sensor | `binary_sensor.haiven_bath_sensor` | Bathroom |
+
+Physical hardware is mapped to these aliases in `haiven_sensor_roles.yaml` via `bash scripts/setup.sh`.
 
 ### Coverage Pattern
 

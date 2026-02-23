@@ -251,9 +251,9 @@ sensor.deviation_count: 0 = normal
    - Settings > System > Logs
    - Look for Jinja2 template errors
 
-4. **Verify sensor entity IDs**
-   - Template sensors reference specific entity IDs
-   - If your sensors have different IDs, update `haiven_sensors_3sensor.yaml`
+4. **Verify sensor role aliases are not unknown**
+   - Search Developer Tools > States for `haiven_activity_sensor`, `haiven_bed_sensor`, `haiven_bath_sensor`
+   - If unknown: check `haiven_sensor_roles.yaml` has correct hardware entity IDs (run `bash scripts/setup.sh` to reconfigure)
 
 ---
 
@@ -292,7 +292,7 @@ sensor.deviation_count: 0 = normal
    - Replace battery if below 20%
 
 2. **Verify sensor is online**
-   - Developer Tools > States > `binary_sensor.haiven_bathroom_motion`
+   - Developer Tools > States > `binary_sensor.haiven_bath_sensor`
    - State should be "on" or "off", not "unavailable"
 
 3. **Test by walking in bathroom**
@@ -349,9 +349,9 @@ sensor.deviation_count: 0 = normal
 ### Check Sensor States
 ```
 Developer Tools > States > Search:
-- event.kitchen_motion
-- binary_sensor.haiven_bedroom_occupancy
-- binary_sensor.haiven_bathroom_motion
+- binary_sensor.haiven_activity_sensor
+- binary_sensor.haiven_bed_sensor
+- binary_sensor.haiven_bath_sensor
 ```
 
 ### Check Template Sensors

@@ -59,10 +59,10 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 - [ ] Home Assistant running (2024.1+)
 - [ ] HACS installed
 - [ ] File Editor add-on installed
-- [ ] 3 sensors working:
-  - [ ] Kitchen sensor: `event.kitchen_motion`
-  - [ ] MMW Presence: `binary_sensor.haiven_bedroom_occupancy`
-  - [ ] PIR Motion: `binary_sensor.haiven_bathroom_motion`
+- [ ] 3 physical sensors working — note each entity ID:
+  - [ ] Kitchen/living area motion or presence sensor (any type)
+  - [ ] Bedroom presence sensor (radar or PIR)
+  - [ ] Bathroom motion sensor
 
 ### Step 1: Install Custom Cards (10 min)
 
@@ -76,6 +76,7 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 Files should already be in `/config/`:
 
 ```
+haiven_sensor_roles.yaml  <- Sensor role mappings (configure this first)
 haiven_inputs.yaml        <- Input helpers
 haiven_sensors_3sensor.yaml <- Template sensors
 scripts.yaml              <- Notification scripts
@@ -87,11 +88,27 @@ Check `configuration.yaml` includes:
 homeassistant:
   packages:
     haiven_inputs: !include haiven_inputs.yaml
+    haiven_sensor_roles: !include haiven_sensor_roles.yaml
     haiven_sensors_3sensor: !include haiven_sensors_3sensor.yaml
 
 script: !include scripts.yaml
 automation: !include automations.yaml
 ```
+
+### Step 2b: Map Your Sensors (5 min)
+
+Run the interactive setup script to map your physical sensors to Haiven's three role aliases:
+
+```bash
+bash scripts/setup.sh
+```
+
+When prompted, enter the entity IDs of your three sensors (noted in Pre-Installation above):
+- **Activity sensor** (kitchen/living area) — any motion or presence entity type
+- **Bed sensor** (bedroom) — presence/occupancy sensor
+- **Bath sensor** (bathroom) — motion sensor
+
+This writes your sensor IDs into `haiven_sensor_roles.yaml` — the only file that contains raw hardware entity IDs. All automations and sensors use the stable aliases (`binary_sensor.haiven_activity_sensor`, `binary_sensor.haiven_bed_sensor`, `binary_sensor.haiven_bath_sensor`).
 
 ### Step 3: Configure Care Circle (30 min)
 
@@ -143,6 +160,11 @@ Should see:
 - [ ] `sensor.deviation_count`
 - [ ] `sensor.sensor_health_status`
 
+Also verify the role alias sensors exist (search `haiven_activity`, `haiven_bed`, `haiven_bath`):
+- [ ] `binary_sensor.haiven_activity_sensor`
+- [ ] `binary_sensor.haiven_bed_sensor`
+- [ ] `binary_sensor.haiven_bath_sensor`
+
 ### Step 6: Setup Dashboard (15 min)
 
 **Option A: Use existing dashboard**
@@ -163,9 +185,9 @@ Should see:
 ### Step 7: Test System (15 min)
 
 **Test 1: Sensor Detection**
-- [ ] Trigger kitchen sensor > Kitchen activity updates
-- [ ] Enter bedroom > Bedroom presence updates
-- [ ] Use bathroom > Bathroom motion updates
+- [ ] Trigger kitchen sensor > `binary_sensor.haiven_activity_sensor` briefly shows `on`
+- [ ] Enter bedroom > `binary_sensor.haiven_bed_sensor` shows `on`
+- [ ] Use bathroom > `binary_sensor.haiven_bath_sensor` shows `on`
 - [ ] `sensor.last_activity_display` shows correct room
 
 **Test 2: Status Calculation**

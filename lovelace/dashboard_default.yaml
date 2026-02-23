@@ -571,11 +571,11 @@ views:
       - type: history-graph
         hours_to_show: 24
         entities:
-          - entity: binary_sensor.kitchen_motion
+          - entity: binary_sensor.haiven_activity_sensor
             name: Kitchen
-          - entity: binary_sensor.haiven_bedroom_occupancy
+          - entity: binary_sensor.haiven_bed_sensor
             name: Bedroom
-          - entity: binary_sensor.haiven_bathroom_motion
+          - entity: binary_sensor.haiven_bath_sensor
             name: Bathroom
 
       # ----------------------------------------
@@ -827,7 +827,7 @@ views:
       - type: history-graph
         hours_to_show: 168
         entities:
-          - entity: binary_sensor.kitchen_motion
+          - entity: binary_sensor.haiven_activity_sensor
             name: Kitchen
 
       # ----------------------------------------
@@ -961,18 +961,18 @@ views:
         cards:
           # Kitchen
           - type: custom:mushroom-template-card
-            entity: event.kitchen_motion
+            entity: binary_sensor.haiven_activity_sensor
             primary: Kitchen
             secondary: |
-              {% set s = states('event.kitchen_motion') %}
+              {% set s = states('binary_sensor.haiven_activity_sensor') %}
               {% if s in ['unavailable', 'unknown'] %}
                 Offline
               {% else %}
-                Online · {{ relative_time(states.event.kitchen_motion.last_changed) }} ago
+                Online · {{ relative_time(states.binary_sensor.haiven_activity_sensor.last_changed) }} ago
               {% endif %}
             icon: mdi:silverware-fork-knife
             icon_color: |
-              {% set s = states('event.kitchen_motion') %}
+              {% set s = states('binary_sensor.haiven_activity_sensor') %}
               {{ 'red' if s in ['unavailable', 'unknown'] else 'green' }}
             tap_action:
               action: more-info
@@ -986,18 +986,18 @@ views:
 
           # Bedroom
           - type: custom:mushroom-template-card
-            entity: binary_sensor.haiven_bedroom_occupancy
+            entity: binary_sensor.haiven_bed_sensor
             primary: Bedroom
             secondary: |
-              {% set s = states('binary_sensor.haiven_bedroom_occupancy') %}
+              {% set s = states('binary_sensor.haiven_bed_sensor') %}
               {% if s in ['unavailable', 'unknown'] %}
                 Offline
               {% else %}
-                Online · {{ relative_time(states.binary_sensor.haiven_bedroom_occupancy.last_changed) }} ago
+                Online · {{ relative_time(states.binary_sensor.haiven_bed_sensor.last_changed) }} ago
               {% endif %}
             icon: mdi:bed
             icon_color: |
-              {% set s = states('binary_sensor.haiven_bedroom_occupancy') %}
+              {% set s = states('binary_sensor.haiven_bed_sensor') %}
               {{ 'red' if s in ['unavailable', 'unknown'] else 'green' }}
             tap_action:
               action: more-info
@@ -1011,19 +1011,19 @@ views:
 
           # Bathroom
           - type: custom:mushroom-template-card
-            entity: binary_sensor.haiven_bathroom_motion
+            entity: binary_sensor.haiven_bath_sensor
             primary: Bathroom
             secondary: |
-              {% set s = states('binary_sensor.haiven_bathroom_motion') %}
+              {% set s = states('binary_sensor.haiven_bath_sensor') %}
               {% set battery = states('sensor.haiven_bathroom_battery') | int(0) %}
               {% if s in ['unavailable', 'unknown'] %}
                 Offline · {{ battery }}% battery
               {% else %}
-                Online · {{ relative_time(states.binary_sensor.haiven_bathroom_motion.last_changed) }} ago · {{ battery }}%
+                Online · {{ relative_time(states.binary_sensor.haiven_bath_sensor.last_changed) }} ago · {{ battery }}%
               {% endif %}
             icon: mdi:shower
             icon_color: |
-              {% set s = states('binary_sensor.haiven_bathroom_motion') %}
+              {% set s = states('binary_sensor.haiven_bath_sensor') %}
               {{ 'red' if s in ['unavailable', 'unknown'] else 'green' }}
             badge_icon: |
               {% set battery = states('sensor.haiven_bathroom_battery') | int(100) %}

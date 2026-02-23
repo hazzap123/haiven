@@ -70,7 +70,7 @@ sql:
       SELECT ROUND(COUNT(*) / 14.0, 1) as avg_visits
       FROM states
       INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
-      WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+      WHERE states_meta.entity_id = 'binary_sensor.haiven_bath_sensor'
       AND states.state = 'on'
       AND (CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) >= 22
            OR CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) < 6)
@@ -92,7 +92,7 @@ sql:
               SELECT s2.last_updated_ts
               FROM states s2
               INNER JOIN states_meta sm2 ON s2.metadata_id = sm2.metadata_id
-              WHERE sm2.entity_id = 'binary_sensor.haiven_bathroom_motion'
+              WHERE sm2.entity_id = 'binary_sensor.haiven_bath_sensor'
               AND s2.state = 'off'
               AND s2.last_updated_ts > states.last_updated_ts
               ORDER BY s2.last_updated_ts ASC
@@ -100,7 +100,7 @@ sql:
             ) as off_time
           FROM states
           INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
-          WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+          WHERE states_meta.entity_id = 'binary_sensor.haiven_bath_sensor'
           AND states.state = 'on'
           AND (CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) >= 22
                OR CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) < 6)
@@ -120,7 +120,7 @@ sql:
       SELECT datetime(MAX(states.last_updated_ts), 'unixepoch', 'localtime') as newest_time
       FROM states
       INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
-      WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+      WHERE states_meta.entity_id = 'binary_sensor.haiven_bath_sensor'
     column: newest_time
     name: "[Debug] Newest via last_updated_ts"
 
@@ -129,7 +129,7 @@ sql:
       SELECT COUNT(*) as count
       FROM states
       INNER JOIN states_meta ON states.metadata_id = states_meta.metadata_id
-      WHERE states_meta.entity_id = 'binary_sensor.haiven_bathroom_motion'
+      WHERE states_meta.entity_id = 'binary_sensor.haiven_bath_sensor'
       AND states.state = 'on'
       AND (CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) >= 22
            OR CAST(strftime('%H', datetime(states.last_updated_ts, 'unixepoch', 'localtime')) AS INTEGER) < 6)

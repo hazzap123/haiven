@@ -116,11 +116,11 @@ bash scripts/setup.sh
 ```
 
 When prompted:
-- Kitchen sensor: `<entity_id_from_step_3>`
-- Bedroom sensor: `binary_sensor.everything_presence_lite_bad434_occupancy`
-- Bathroom sensor: `binary_sensor.shelly_blu_motion_a029_motion`
+- Activity sensor (kitchen): `<entity_id_from_step_3>`
+- Bed sensor (bedroom): `binary_sensor.everything_presence_lite_bad434_occupancy`
+- Bath sensor (bathroom): `binary_sensor.shelly_blu_motion_a029_motion`
 
-**If haivenapp already uses template aliases** (confirmed in step 4): skip `setup.sh`. The haiven package files reference `haiven_kitchen_motion`, `haiven_bedroom_occupancy`, `haiven_bathroom_motion` which should already exist as template sensors.
+`setup.sh` writes these values into `haiven_sensor_roles.yaml` only — no other files are touched.
 
 ### 1b: Copy files from haivenapp (requires local clone of haivenapp)
 
@@ -233,8 +233,9 @@ ha core restart
 sensor.elderly_care_status
 sensor.activity_data
 sensor.overnight_bathroom_count
-binary_sensor.everything_presence_lite_bad434_occupancy
-binary_sensor.shelly_blu_motion_a029_motion
+binary_sensor.haiven_activity_sensor
+binary_sensor.haiven_bed_sensor
+binary_sensor.haiven_bath_sensor
 ```
 
 ### Step 8: Re-enter tuned input helper values
@@ -261,7 +262,7 @@ data:
 Do not declare done until all items are green.
 
 - [ ] `sensor.elderly_care_status` shows `normal` (not `unknown`)
-- [ ] `sensor.activity_data` updates when kitchen sensor triggers
+- [ ] `sensor.activity_data` updates when kitchen sensor triggers (`binary_sensor.haiven_activity_sensor` shows `on` briefly)
 - [ ] `sensor.overnight_bathroom_count` shows a number (not `unknown`)
 - [ ] Dashboard loads with hero card showing Toni's status
 - [ ] Send test notification to Harry's phone — received OK

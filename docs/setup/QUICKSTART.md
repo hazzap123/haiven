@@ -6,19 +6,27 @@
 
 ## Your 3-Sensor Setup
 
-| Sensor | Location | Entity |
-|--------|----------|--------|
-| Motion sensor | Kitchen | `event.kitchen_motion` |
-| MMW Presence | Bedroom | `binary_sensor.haiven_bedroom_occupancy` |
-| Shelly BLU Motion | Bathroom | `binary_sensor.haiven_bathroom_motion` |
+Haiven maps your physical sensors to three stable role aliases via `haiven_sensor_roles.yaml`. Run `bash scripts/setup.sh` to configure (see Step 1b below).
+
+| Role | Location | Stable alias |
+|------|----------|--------------|
+| Activity | Kitchen / living area | `binary_sensor.haiven_activity_sensor` |
+| Bed | Bedroom | `binary_sensor.haiven_bed_sensor` |
+| Bath | Bathroom | `binary_sensor.haiven_bath_sensor` |
 
 ---
 
-## Step 1: Verify Sensors (2 min)
+## Step 1: Map Your Sensors (5 min)
 
-1. **Developer Tools > States**
-2. Search for each entity above
-3. Verify all show as available (not "unknown")
+Run the setup script to map your three physical sensors to Haiven's role aliases:
+
+```bash
+bash scripts/setup.sh
+```
+
+Then verify the aliases exist in **Developer Tools > States** — search `haiven_activity`, `haiven_bed`, `haiven_bath`. All three should show as available (not "unknown").
+
+**Step 1b: Verify Configuration**
 
 ---
 
@@ -97,13 +105,13 @@ views:
       - type: entities
         title: Room Activity
         entities:
-          - entity: event.kitchen_motion
+          - entity: binary_sensor.haiven_activity_sensor
             name: Kitchen
             secondary_info: last-changed
-          - entity: binary_sensor.haiven_bedroom_occupancy
+          - entity: binary_sensor.haiven_bed_sensor
             name: Bedroom
             secondary_info: last-changed
-          - entity: binary_sensor.haiven_bathroom_motion
+          - entity: binary_sensor.haiven_bath_sensor
             name: Bathroom
             secondary_info: last-changed
 ```

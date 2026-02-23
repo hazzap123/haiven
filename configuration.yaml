@@ -12,6 +12,7 @@ homeassistant:
     haiven_care_circle_inputs: !include packages/haiven_care_circle_inputs.yaml
     haiven_monitoring_inputs: !include packages/haiven_monitoring_inputs.yaml
     haiven_comms_inputs: !include packages/haiven_comms_inputs.yaml
+    haiven_sensor_roles: !include haiven_sensor_roles.yaml
     haiven_sensors_3sensor: !include haiven_sensors_3sensor.yaml
     haiven_bathroom_night: !include packages/haiven_bathroom_night.yaml
     haiven_circle_tracking: !include packages/haiven_circle_tracking.yaml
@@ -30,19 +31,14 @@ frontend:
 
 # Shell commands for file logging
 shell_command:
-  log_activity: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO {{ location }} {{ sensor_type }} | $(date +\"%H:%M:%S\") | $(date +\"%A\")\" >> /config/activity.log"'
-  backup_activity_log: 'cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)"'
-  log_haiven_event: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO HAIVEN {{ event_type }} | {{ detail }} | $(date +\"%A\")\" >> /config/activity.log"'
+  log_activity: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO {{ location }} {{ sensor_type }} | $(date +\"%H:%M:%S\") | $(date +\"%A\")\" >> /config/mum_activity.log"'
+  backup_activity_log: 'cd /config && git add mum_activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)"'
+  log_haiven_event: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO HAIVEN {{ event_type }} | {{ detail }} | $(date +\"%A\")\" >> /config/mum_activity.log"'
   # MMW sensor detailed logging
 
 # Template sensors
 template:
   - binary_sensor:
-      - name: "Kitchen Motion"
-        unique_id: kitchen_motion_binary
-        device_class: motion
-        state: "{{ is_state('input_boolean.kitchen_motion', 'on') }}"
-
       - name: "Extended Night Bathroom Visit"
         unique_id: bathroom_night_visit_extended
         device_class: problem
@@ -179,7 +175,7 @@ lovelace:
 sensor:
   - platform: history_stats
     name: Kitchen Triggers 7 Day Count
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_activity_sensor
     state: "on"
     type: count
     start: "{{ now() - timedelta(days=7) }}"
@@ -187,7 +183,7 @@ sensor:
 
   - platform: history_stats
     name: Kitchen Triggers 24h Count
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_activity_sensor
     state: "on"
     type: count
     start: "{{ now() - timedelta(hours=24) }}"
@@ -195,7 +191,7 @@ sensor:
 
   - platform: history_stats
     name: Kitchen Triggers Last Hour
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_activity_sensor
     state: "on"
     type: count
     start: "{{ now() - timedelta(hours=1) }}"
@@ -206,7 +202,7 @@ sensor:
   # All other hours: counts from last night 21:00 to today 06:00 (completed window)
   - platform: history_stats
     name: Overnight Bathroom Count
-    entity_id: binary_sensor.haiven_bathroom_motion
+    entity_id: binary_sensor.haiven_bath_sensor
     state: "on"
     type: count
     start: >

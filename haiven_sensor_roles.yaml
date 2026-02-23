@@ -1,0 +1,46 @@
+# haiven_sensor_roles.yaml
+# Map your physical sensors to Haiven's three behavioural roles.
+# Run `bash scripts/setup.sh` to configure, or edit directly.
+# This is the ONLY file that contains raw sensor entity IDs.
+#
+# ROLES:
+#   activity  → binary_sensor.haiven_activity_sensor  (kitchen/living area)
+#   bed       → binary_sensor.haiven_bed_sensor       (bedroom presence)
+#   bath      → binary_sensor.haiven_bath_sensor      (bathroom motion)
+
+automation:
+  - id: haiven_activity_role_trigger
+    alias: "Haiven: Activity sensor bridge"
+    description: "Bridges any sensor type (event or binary) to stable binary sensor"
+    trigger:
+      - platform: state
+        entity_id: event.kitchen_motion   # ACTIVITY SENSOR — setup.sh replaces this line
+    action:
+      - service: input_boolean.turn_on
+        target: { entity_id: input_boolean.haiven_activity_pulse }
+      - delay: "00:00:05"
+      - service: input_boolean.turn_off
+        target: { entity_id: input_boolean.haiven_activity_pulse }
+    mode: restart
+
+input_boolean:
+  haiven_activity_pulse:
+    name: "Haiven Activity Pulse"
+    icon: mdi:motion-sensor
+
+template:
+  - binary_sensor:
+      - name: "Haiven Activity Sensor"
+        unique_id: haiven_activity_sensor
+        device_class: motion
+        state: "{{ is_state('input_boolean.haiven_activity_pulse', 'on') }}"
+
+      - name: "Haiven Bed Sensor"
+        unique_id: haiven_bed_sensor
+        device_class: occupancy
+        state: "{{ is_state('binary_sensor.haiven_bedroom_occupancy', 'on') }}"  # BED SENSOR — setup.sh replaces this string
+
+      - name: "Haiven Bath Sensor"
+        unique_id: haiven_bath_sensor
+        device_class: motion
+        state: "{{ is_state('binary_sensor.haiven_bathroom_motion', 'on') }}"   # BATH SENSOR — setup.sh replaces this string

@@ -1,98 +1,53 @@
-#!/bin/bash
-#
+#!/usr/bin/env bash
 # Haiven Setup Script
-# Configures sensor entity IDs for your specific hardware
+# Maps your physical sensors to Haiven's three behavioural roles.
+# Only edits haiven_sensor_roles.yaml — all other files use stable alias names.
 #
 # Usage: bash scripts/setup.sh
 #
+# You will be prompted for three sensor entity IDs:
+#   ACTIVITY — kitchen or living area motion sensor (event or binary)
+#   BED      — bedroom presence/occupancy sensor
+#   BATH     — bathroom motion sensor
 
-set -e
+set -euo pipefail
 
-echo "=============================="
-echo "  Haiven Setup"
-echo "=============================="
-echo ""
-echo "This script configures Haiven for your specific sensors."
-echo "You'll need the entity IDs of your 3 sensors from Home Assistant."
-echo ""
-echo "Find them in Settings > Devices & Services > Entities"
-echo ""
+ROLES_FILE="$(dirname "$0")/../haiven_sensor_roles.yaml"
 
-# Kitchen sensor
-echo "--- Kitchen Sensor ---"
-echo "This should be a motion sensor in the kitchen/living area."
-echo "Examples: event.kitchen_motion, binary_sensor.kitchen_motion"
-read -p "Kitchen sensor entity ID [event.kitchen_motion]: " KITCHEN
-KITCHEN=${KITCHEN:-event.kitchen_motion}
-
-# Bedroom sensor
-echo ""
-echo "--- Bedroom Sensor ---"
-echo "This should be a presence/occupancy sensor in the bedroom."
-echo "Examples: binary_sensor.bedroom_presence, binary_sensor.bedroom_occupancy"
-read -p "Bedroom sensor entity ID [binary_sensor.haiven_bedroom_occupancy]: " BEDROOM
-BEDROOM=${BEDROOM:-binary_sensor.haiven_bedroom_occupancy}
-
-# Bathroom sensor
-echo ""
-echo "--- Bathroom Sensor ---"
-echo "This should be a motion sensor in the bathroom."
-echo "Examples: binary_sensor.bathroom_motion, binary_sensor.bathroom_pir"
-read -p "Bathroom sensor entity ID [binary_sensor.haiven_bathroom_motion]: " BATHROOM
-BATHROOM=${BATHROOM:-binary_sensor.haiven_bathroom_motion}
-
-echo ""
-echo "Configuration:"
-echo "  Kitchen:  $KITCHEN"
-echo "  Bedroom:  $BEDROOM"
-echo "  Bathroom: $BATHROOM"
-echo ""
-read -p "Apply these settings? [Y/n]: " CONFIRM
-CONFIRM=${CONFIRM:-Y}
-
-if [[ ! "$CONFIRM" =~ ^[Yy] ]]; then
-    echo "Cancelled."
-    exit 0
-fi
-
-# Get the directory where the script lives, then go up one level to config root
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_DIR="$(dirname "$SCRIPT_DIR")"
-
-echo ""
-echo "Applying to files in $CONFIG_DIR..."
-
-# Replace kitchen sensor
-if [ "$KITCHEN" != "event.kitchen_motion" ]; then
-    find "$CONFIG_DIR" -name "*.yaml" -exec sed -i.bak "s|event\.kitchen_motion|${KITCHEN}|g" {} +
-    find "$CONFIG_DIR" -name "*.yaml.bak" -delete
-    echo "  Kitchen sensor: replaced"
-else
-    echo "  Kitchen sensor: using default (no changes needed)"
-fi
-
-# Replace bedroom sensor
-if [ "$BEDROOM" != "binary_sensor.haiven_bedroom_occupancy" ]; then
-    find "$CONFIG_DIR" -name "*.yaml" -exec sed -i.bak "s|binary_sensor\.haiven_bedroom_occupancy|${BEDROOM}|g" {} +
-    find "$CONFIG_DIR" -name "*.yaml.bak" -delete
-    echo "  Bedroom sensor: replaced"
-else
-    echo "  Bedroom sensor: using default (no changes needed)"
-fi
-
-# Replace bathroom sensor
-if [ "$BATHROOM" != "binary_sensor.haiven_bathroom_motion" ]; then
-    find "$CONFIG_DIR" -name "*.yaml" -exec sed -i.bak "s|binary_sensor\.haiven_bathroom_motion|${BATHROOM}|g" {} +
-    find "$CONFIG_DIR" -name "*.yaml.bak" -delete
-    echo "  Bathroom sensor: replaced"
-else
-    echo "  Bathroom sensor: using default (no changes needed)"
+if [ ! -f "$ROLES_FILE" ]; then
+  echo "ERROR: haiven_sensor_roles.yaml not found at $ROLES_FILE"
+  exit 1
 fi
 
 echo ""
-echo "Done! Next steps:"
-echo "  1. Copy secrets.yaml.example to secrets.yaml and fill in values"
-echo "  2. Edit haiven_persons.yaml with your household members"
-echo "  3. Edit packages/haiven_care_circle_inputs.yaml with contact details"
-echo "  4. Restart Home Assistant"
+echo "Haiven Sensor Setup"
+echo "==================="
+echo "Enter your physical sensor entity IDs (from Home Assistant > Developer Tools > States)"
 echo ""
+
+read -rp "ACTIVITY sensor entity_id (e.g. event.kitchen_motion): " ACTIVITY
+read -rp "BED sensor entity_id (e.g. binary_sensor.bedroom_occupancy): " BED
+read -rp "BATH sensor entity_id (e.g. binary_sensor.bathroom_motion): " BATH
+
+echo ""
+echo "Configuring:"
+echo "  activity -> $ACTIVITY"
+echo "  bed      -> $BED"
+echo "  bath     -> $BATH"
+echo ""
+
+# Replace activity sensor (in automation trigger)
+sed -i "s|entity_id: event.kitchen_motion|entity_id: ${ACTIVITY}|g" "$ROLES_FILE"
+
+# Replace bed sensor (in template wrapper)
+sed -i "s|is_state('binary_sensor.haiven_bedroom_occupancy'|is_state('${BED}'|g" "$ROLES_FILE"
+
+# Replace bath sensor (in template wrapper)
+sed -i "s|is_state('binary_sensor.haiven_bathroom_motion'|is_state('${BATH}'|g" "$ROLES_FILE"
+
+echo "Done. Reload Home Assistant configuration to apply changes."
+echo ""
+echo "Verify in Developer Tools > States that these entities exist:"
+echo "  binary_sensor.haiven_activity_sensor"
+echo "  binary_sensor.haiven_bed_sensor"
+echo "  binary_sensor.haiven_bath_sensor"

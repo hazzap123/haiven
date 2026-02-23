@@ -38,9 +38,9 @@ template:
         state: >
           {# State is the current/last location #}
           {% set invalid = ['unknown', 'unavailable'] %}
-          {% set k = states.event.kitchen_motion %}
-          {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
-          {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+          {% set k = states.binary_sensor.haiven_activity_sensor %}
+          {% set b = states.binary_sensor.haiven_bed_sensor %}
+          {% set bath = states.binary_sensor.haiven_bath_sensor %}
           {% set times = [] %}
           {% if k and k.state not in invalid %}
             {% set times = times + [{'loc': 'Kitchen', 'time': k.last_changed}] %}
@@ -59,19 +59,19 @@ template:
         icon: mdi:map-marker
         attributes:
           kitchen_last: >
-            {% set s = states.event.kitchen_motion %}
+            {% set s = states.binary_sensor.haiven_activity_sensor %}
             {{ s.last_changed.isoformat() if s and s.state not in ['unknown', 'unavailable'] else none }}
           bedroom_last: >
-            {% set s = states.binary_sensor.haiven_bedroom_occupancy %}
+            {% set s = states.binary_sensor.haiven_bed_sensor %}
             {{ s.last_changed.isoformat() if s and s.state not in ['unknown', 'unavailable'] else none }}
           bathroom_last: >
-            {% set s = states.binary_sensor.haiven_bathroom_motion %}
+            {% set s = states.binary_sensor.haiven_bath_sensor %}
             {{ s.last_changed.isoformat() if s and s.state not in ['unknown', 'unavailable'] else none }}
           latest_time: >
             {% set invalid = ['unknown', 'unavailable'] %}
-            {% set k = states.event.kitchen_motion %}
-            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
-            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set k = states.binary_sensor.haiven_activity_sensor %}
+            {% set b = states.binary_sensor.haiven_bed_sensor %}
+            {% set bath = states.binary_sensor.haiven_bath_sensor %}
             {% set times = [] %}
             {% if k and k.state not in invalid %}{% set times = times + [k.last_changed] %}{% endif %}
             {% if b and b.state not in invalid %}{% set times = times + [b.last_changed] %}{% endif %}
@@ -83,9 +83,9 @@ template:
             {% endif %}
           minutes_since_latest: >
             {% set invalid = ['unknown', 'unavailable'] %}
-            {% set k = states.event.kitchen_motion %}
-            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
-            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set k = states.binary_sensor.haiven_activity_sensor %}
+            {% set b = states.binary_sensor.haiven_bed_sensor %}
+            {% set bath = states.binary_sensor.haiven_bath_sensor %}
             {% set times = [] %}
             {% if k and k.state not in invalid %}{% set times = times + [k.last_changed] %}{% endif %}
             {% if b and b.state not in invalid %}{% set times = times + [b.last_changed] %}{% endif %}
@@ -104,9 +104,9 @@ template:
             {% endif %}
           previous_location: >
             {% set invalid = ['unknown', 'unavailable'] %}
-            {% set k = states.event.kitchen_motion %}
-            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
-            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set k = states.binary_sensor.haiven_activity_sensor %}
+            {% set b = states.binary_sensor.haiven_bed_sensor %}
+            {% set bath = states.binary_sensor.haiven_bath_sensor %}
             {% set times = [] %}
             {% if k and k.state not in invalid %}
               {% set times = times + [{'loc': 'Kitchen', 'time': k.last_changed}] %}
@@ -134,9 +134,9 @@ template:
             {% endif %}
           rooms_active_today: >
             {% set invalid = ['unknown', 'unavailable'] %}
-            {% set k = states.event.kitchen_motion %}
-            {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
-            {% set bath = states.binary_sensor.haiven_bathroom_motion %}
+            {% set k = states.binary_sensor.haiven_activity_sensor %}
+            {% set b = states.binary_sensor.haiven_bed_sensor %}
+            {% set bath = states.binary_sensor.haiven_bath_sensor %}
             {% set count = 0 %}
             {% if k and k.state not in invalid and k.last_changed.date() == now().date() %}
               {% set count = count + 1 %}
@@ -172,8 +172,8 @@ template:
             {# If someone is currently detected in any room, no transition concern #}
             {# This prevents false positives from bedroom presence staying "on" #}
             {# (last_changed grows stale while occupancy is continuously on) #}
-            {% set bedroom_active = is_state('binary_sensor.haiven_bedroom_occupancy', 'on') %}
-            {% set bathroom_active = is_state('binary_sensor.haiven_bathroom_motion', 'on') %}
+            {% set bedroom_active = is_state('binary_sensor.haiven_bed_sensor', 'on') %}
+            {% set bathroom_active = is_state('binary_sensor.haiven_bath_sensor', 'on') %}
             {% if bedroom_active or bathroom_active %}
               false
             {% else %}
@@ -220,13 +220,13 @@ template:
           {% set has_woken = wake not in ['unknown', 'unavailable', none, '', '00:00:00'] %}
           {% set bed = states('input_select.bed_state') %}
           {% set kitchen_today = states('counter.kitchen_triggers_today') | int(0) %}
-          {% set bedroom_active = is_state('binary_sensor.haiven_bedroom_occupancy', 'on') %}
-          {% set bathroom_active = is_state('binary_sensor.haiven_bathroom_motion', 'on') %}
+          {% set bedroom_active = is_state('binary_sensor.haiven_bed_sensor', 'on') %}
+          {% set bathroom_active = is_state('binary_sensor.haiven_bath_sensor', 'on') %}
           {% set had_any_activity = false %}
           {% set invalid = ['unknown', 'unavailable'] %}
-          {% set k = states.event.kitchen_motion %}
-          {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
-          {% set ba = states.binary_sensor.haiven_bathroom_motion %}
+          {% set k = states.binary_sensor.haiven_activity_sensor %}
+          {% set b = states.binary_sensor.haiven_bed_sensor %}
+          {% set ba = states.binary_sensor.haiven_bath_sensor %}
           {% if (k and k.state not in invalid and k.last_changed.date() == now().date()) or
                 (b and b.state not in invalid and b.last_changed.date() == now().date()) or
                 (ba and ba.state not in invalid and ba.last_changed.date() == now().date()) %}
@@ -295,9 +295,9 @@ template:
 
             {# Check for any activity today #}
             {% set invalid_states = ['unknown', 'unavailable'] %}
-            {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
-            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+            {% set kitchen_last = states.binary_sensor.haiven_activity_sensor.last_changed if states.binary_sensor.haiven_activity_sensor.state not in invalid_states else none %}
+            {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed if states.binary_sensor.haiven_bed_sensor.state not in invalid_states else none %}
+            {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed if states.binary_sensor.haiven_bath_sensor.state not in invalid_states else none %}
 
             {% set had_activity_today = false %}
             {% if kitchen_last and as_datetime(kitchen_last).date() == now().date() %}
@@ -474,9 +474,9 @@ template:
             {% set invalid_states = ['unknown', 'unavailable'] %}
 
             {# Gather sensor timestamps directly (not via activity_data to avoid feedback) #}
-            {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
-            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+            {% set kitchen_last = states.binary_sensor.haiven_activity_sensor.last_changed if states.binary_sensor.haiven_activity_sensor.state not in invalid_states else none %}
+            {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed if states.binary_sensor.haiven_bed_sensor.state not in invalid_states else none %}
+            {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed if states.binary_sensor.haiven_bath_sensor.state not in invalid_states else none %}
 
             {# Check morning activity deviation #}
             {% set now_time = now() %}
@@ -534,9 +534,9 @@ template:
           {% set invalid_states = ['unknown', 'unavailable'] %}
 
           {# Gather sensor timestamps directly #}
-          {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
-          {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
-          {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+          {% set kitchen_last = states.binary_sensor.haiven_activity_sensor.last_changed if states.binary_sensor.haiven_activity_sensor.state not in invalid_states else none %}
+          {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed if states.binary_sensor.haiven_bed_sensor.state not in invalid_states else none %}
+          {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed if states.binary_sensor.haiven_bath_sensor.state not in invalid_states else none %}
 
           {# Check morning activity #}
           {% set now_time = now() %}
@@ -772,9 +772,9 @@ template:
       - name: "Sensor Health Status"
         unique_id: sensor_health_status
         state: >
-          {% set kitchen = 'event.kitchen_motion' %}
-          {% set bedroom = 'binary_sensor.haiven_bedroom_occupancy' %}
-          {% set bathroom = 'binary_sensor.haiven_bathroom_motion' %}
+          {% set kitchen = 'binary_sensor.haiven_activity_sensor' %}
+          {% set bedroom = 'binary_sensor.haiven_bed_sensor' %}
+          {% set bathroom = 'binary_sensor.haiven_bath_sensor' %}
   
           {% set kitchen_ok = states(kitchen) not in ['unknown', 'unavailable'] %}
           {% set bedroom_ok = states(bedroom) not in ['unknown', 'unavailable'] %}
@@ -795,9 +795,9 @@ template:
             All offline: check
           {% endif %}
         icon: >
-          {% set kitchen = 'event.kitchen_motion' %}
-          {% set bedroom = 'binary_sensor.haiven_bedroom_occupancy' %}
-          {% set bathroom = 'binary_sensor.haiven_bathroom_motion' %}
+          {% set kitchen = 'binary_sensor.haiven_activity_sensor' %}
+          {% set bedroom = 'binary_sensor.haiven_bed_sensor' %}
+          {% set bathroom = 'binary_sensor.haiven_bath_sensor' %}
   
           {% set kitchen_ok = states(kitchen) not in ['unknown', 'unavailable'] %}
           {% set bedroom_ok = states(bedroom) not in ['unknown', 'unavailable'] %}
@@ -816,12 +816,12 @@ template:
             mdi:alert-circle
           {% endif %}
         attributes:
-          kitchen_status: "{{ states('event.kitchen_motion') }}"
-          kitchen_last: "{{ relative_time(states.event.kitchen_motion.last_changed) }} ago"
-          bedroom_status: "{{ states('binary_sensor.haiven_bedroom_occupancy') }}"
-          bedroom_last: "{{ relative_time(states.binary_sensor.haiven_bedroom_occupancy.last_changed) }} ago"
-          bathroom_status: "{{ states('binary_sensor.haiven_bathroom_motion') }}"
-          bathroom_last: "{{ relative_time(states.binary_sensor.haiven_bathroom_motion.last_changed) }} ago"
+          kitchen_status: "{{ states('binary_sensor.haiven_activity_sensor') }}"
+          kitchen_last: "{{ relative_time(states.binary_sensor.haiven_activity_sensor.last_changed) }} ago"
+          bedroom_status: "{{ states('binary_sensor.haiven_bed_sensor') }}"
+          bedroom_last: "{{ relative_time(states.binary_sensor.haiven_bed_sensor.last_changed) }} ago"
+          bathroom_status: "{{ states('binary_sensor.haiven_bath_sensor') }}"
+          bathroom_last: "{{ relative_time(states.binary_sensor.haiven_bath_sensor.last_changed) }} ago"
           bathroom_battery: "{{ states('sensor.haiven_bathroom_battery') }}%"
 
   # Room Activity Summary
@@ -829,9 +829,9 @@ template:
       - name: "Room Activity Summary"
         unique_id: room_activity_summary
         state: >
-          {% set kitchen = states.event.kitchen_motion.last_changed %}
-          {% set bedroom = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
-          {% set bathroom = states.binary_sensor.haiven_bathroom_motion.last_changed %}
+          {% set kitchen = states.binary_sensor.haiven_activity_sensor.last_changed %}
+          {% set bedroom = states.binary_sensor.haiven_bed_sensor.last_changed %}
+          {% set bathroom = states.binary_sensor.haiven_bath_sensor.last_changed %}
   
           {% set summary = [] %}
           {% if kitchen and as_datetime(kitchen).date() == now().date() %}
@@ -951,8 +951,8 @@ template:
             false
           {% else %}
             {# Get sensor timestamps #}
-            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed %}
+            {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed %}
 
             {# 1. Bathroom had activity in current evening window (after 17:30 today) #}
             {% set today_1730 = now().replace(hour=17, minute=30, second=0, microsecond=0) %}
@@ -980,17 +980,17 @@ template:
           {% endif %}
         attributes:
           bathroom_time: >
-            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
+            {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed %}
             {{ bathroom_last.strftime('%H:%M') if bathroom_last else 'unknown' }}
           bedroom_time: >
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed %}
             {{ bedroom_last.strftime('%H:%M') if bedroom_last else 'unknown' }}
           mins_bathroom_to_bedroom: >
-            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed %}
+            {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed %}
             {{ ((bedroom_last - bathroom_last).total_seconds() / 60) | int if bedroom_last > bathroom_last else -1 }}
           bedroom_minutes_ago: >
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed %}
             {{ ((now() - bedroom_last).total_seconds() / 60) | int }}
           detection_window_active: >
             {% set now_hour = now().hour %}
@@ -1353,7 +1353,7 @@ template:
         unique_id: minutes_since_kitchen_activity
         unit_of_measurement: "min"
         state: >
-          {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in ['unknown', 'unavailable'] else none %}
+          {% set kitchen_last = states.binary_sensor.haiven_activity_sensor.last_changed if states.binary_sensor.haiven_activity_sensor.state not in ['unknown', 'unavailable'] else none %}
           {% if kitchen_last %}
             {{ ((now() - kitchen_last).total_seconds() / 60) | int }}
           {% else %}
@@ -1366,10 +1366,10 @@ template:
         unit_of_measurement: "min"
         state: >
           {# If occupancy is currently ON, someone is actively there — report 0 #}
-          {% if is_state('binary_sensor.haiven_bedroom_occupancy', 'on') %}
+          {% if is_state('binary_sensor.haiven_bed_sensor', 'on') %}
             0
           {% else %}
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in ['unknown', 'unavailable'] else none %}
+            {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed if states.binary_sensor.haiven_bed_sensor.state not in ['unknown', 'unavailable'] else none %}
             {% if bedroom_last %}
               {{ ((now() - bedroom_last).total_seconds() / 60) | int }}
             {% else %}
@@ -1383,10 +1383,10 @@ template:
         unit_of_measurement: "min"
         state: >
           {# If motion is currently ON, someone is actively there — report 0 #}
-          {% if is_state('binary_sensor.haiven_bathroom_motion', 'on') %}
+          {% if is_state('binary_sensor.haiven_bath_sensor', 'on') %}
             0
           {% else %}
-            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in ['unknown', 'unavailable'] else none %}
+            {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed if states.binary_sensor.haiven_bath_sensor.state not in ['unknown', 'unavailable'] else none %}
             {% if bathroom_last %}
               {{ ((now() - bathroom_last).total_seconds() / 60) | int }}
             {% else %}

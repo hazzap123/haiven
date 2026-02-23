@@ -27,7 +27,7 @@
           - Expected wake: {{ states('input_datetime.expected_wake_time') }}
           - Overnight bathroom visits: {{ states('sensor.overnight_bathroom_count') }}
           - Overnight activity: {{ states('sensor.overnight_activity_summary') }}
-          - Bedroom occupancy: {{ states('binary_sensor.haiven_bedroom_occupancy') }}
+          - Bedroom occupancy: {{ states('binary_sensor.haiven_bed_sensor') }}
           - Sensor health: {{ states('sensor.sensor_health_status') }}
           - Home status: {{ states('binary_sensor.elderly_person_home') }}
           - Recent activity: {{ states('sensor.recent_activity_summary') }}
@@ -360,7 +360,7 @@
           - Hours since last activity: {{ state_attr('sensor.activity_data', 'hours_since_latest') | float(0) | round(1) }}
           - Alert threshold: {{ states('input_number.no_activity_alert_hours') }} hours
           - Last activity: {{ states('sensor.last_activity_time') }} in {{ states('sensor.activity_data') }}
-          - Bedroom presence: {{ states('binary_sensor.haiven_bedroom_occupancy') }}
+          - Bedroom presence: {{ states('binary_sensor.haiven_bed_sensor') }}
           - Recent activity: {{ states('sensor.recent_activity_summary') }}
           - Sensor health: {{ states('sensor.sensor_health_status') }}
 
@@ -392,9 +392,9 @@
   triggers:
     - trigger: state
       entity_id:
-        - event.kitchen_motion
-        - binary_sensor.haiven_bedroom_occupancy
-        - binary_sensor.haiven_bathroom_motion
+        - binary_sensor.haiven_activity_sensor
+        - binary_sensor.haiven_bed_sensor
+        - binary_sensor.haiven_bath_sensor
   conditions:
     - condition: state
       entity_id: input_boolean.manual_safe_status
@@ -495,7 +495,7 @@
   description: Log actual wake times to help adjust baselines
   triggers:
     - trigger: state
-      entity_id: event.kitchen_motion
+      entity_id: binary_sensor.haiven_activity_sensor
   conditions:
     - condition: state
       entity_id: binary_sensor.morning_window_active
@@ -518,7 +518,7 @@
   description: Mark the person safe when first morning kitchen activity is detected
   triggers:
     - trigger: state
-      entity_id: event.kitchen_motion
+      entity_id: binary_sensor.haiven_activity_sensor
   conditions:
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
@@ -610,7 +610,7 @@
     - condition: template
       alias: Kitchen had activity this morning
       value_template: >-
-        {% set kitchen_last = states.event.kitchen_motion.last_changed %}
+        {% set kitchen_last = states.binary_sensor.haiven_activity_sensor.last_changed %}
         {% if kitchen_last %}
           {% set activity_date = as_datetime(kitchen_last).date() %}
           {% set activity_hour = as_datetime(kitchen_last).hour %}
@@ -625,7 +625,7 @@
         entity_id: input_datetime.actual_wake_time_today
       data:
         time: >-
-          {% set kitchen_last = states.event.kitchen_motion.last_changed %}
+          {% set kitchen_last = states.binary_sensor.haiven_activity_sensor.last_changed %}
           {{ as_datetime(kitchen_last).strftime('%H:%M:%S') }}
     - action: input_boolean.turn_on
       target:
@@ -640,7 +640,7 @@
       data:
         name: Haiven Wake Time Catch-Up
         message: >-
-          Wake time recovered from kitchen sensor: {{ states.event.kitchen_motion.last_changed.strftime('%H:%M') }}
+          Wake time recovered from kitchen sensor: {{ states.binary_sensor.haiven_activity_sensor.last_changed.strftime('%H:%M') }}
           (primary detection was missed)
         entity_id: input_datetime.actual_wake_time_today
     - action: script.send_haiven_notification
@@ -648,7 +648,7 @@
         title: "☀️ Haiven - Wake Time Recovered"
         message: >-
           {{ states('input_text.elderly_person_name') }}'s wake time was recovered from sensor data:
-          {{ states.event.kitchen_motion.last_changed.strftime('%I:%M %p') }}
+          {{ states.binary_sensor.haiven_activity_sensor.last_changed.strftime('%I:%M %p') }}
           (primary detection missed - possible integration issue)
         level: passive
   mode: single
@@ -714,17 +714,17 @@
   description: Append every monitored activity event to activity.log
   triggers:
     - trigger: state
-      entity_id: binary_sensor.kitchen_motion
+      entity_id: binary_sensor.haiven_activity_sensor
       to:
         - "on"
         - "off"
     - trigger: state
-      entity_id: binary_sensor.haiven_bathroom_motion
+      entity_id: binary_sensor.haiven_bath_sensor
       to:
         - "on"
         - "off"
     - trigger: state
-      entity_id: binary_sensor.haiven_bedroom_occupancy
+      entity_id: binary_sensor.haiven_bed_sensor
       to:
         - "on"
         - "off"
@@ -738,10 +738,10 @@
     - action: shell_command.log_activity
       data:
         location: >-
-          {% if 'kitchen' in trigger.entity_id %}Kitchen{% elif 'bathroom' in trigger.entity_id or 'haiven_bathroom' in trigger.entity_id %}Bathroom{% elif 'bedroom' in trigger.entity_id or 'haiven_bedroom' in trigger.entity_id %}Bedroom{% else %}Unknown{% endif %}
+          {% if 'activity' in trigger.entity_id %}Kitchen{% elif 'bath' in trigger.entity_id %}Bathroom{% elif 'bed' in trigger.entity_id %}Bedroom{% else %}Unknown{% endif %}
         sensor_type: >-
           {% set state = trigger.to_state.state if trigger.to_state else 'unknown' %}
-          {% if 'motion' in trigger.entity_id %}Motion ({{ state }}){% elif 'occupancy' in trigger.entity_id or 'presence' in trigger.entity_id %}Presence ({{ state }}){% else %}Sensor ({{ state }}){% endif %}
+          {% if 'bed' in trigger.entity_id %}Presence ({{ state }}){% else %}Motion ({{ state }}){% endif %}
   mode: queued
 - id: haiven_log_person_location
   alias: "Haiven: Log Elderly Person Location Changes"
@@ -786,7 +786,7 @@
   description: Alert if bathroom visits are unusual (frequency/duration)
   triggers:
     - trigger: state
-      entity_id: binary_sensor.haiven_bathroom_motion
+      entity_id: binary_sensor.haiven_bath_sensor
       to: "on"
       for:
         hours: 2
@@ -812,7 +812,7 @@
   description: Track bathroom visits during sleep hours (between bedtime+variance and wake-variance)
   triggers:
     - trigger: state
-      entity_id: binary_sensor.haiven_bathroom_motion
+      entity_id: binary_sensor.haiven_bath_sensor
       to: "on"
   conditions:
     - condition: state
@@ -835,7 +835,7 @@
       data:
         name: Night Bathroom Visit
         message: "Visit #{{ states('counter.bathroom_visits_night') }} - Entry tracked"
-        entity_id: binary_sensor.haiven_bathroom_motion
+        entity_id: binary_sensor.haiven_bath_sensor
   mode: single
 - id: haiven_bathroom_night_reset
   alias: "Haiven: Noon Reset (Bedtime & Night Counter)"
@@ -871,7 +871,7 @@
   description: Detect exit from bathroom when bedroom motion is detected
   triggers:
     - trigger: state
-      entity_id: binary_sensor.haiven_bedroom_occupancy
+      entity_id: binary_sensor.haiven_bed_sensor
       to: "on"
   conditions:
     - condition: state
@@ -894,7 +894,7 @@
       data:
         name: Night Bathroom Exit
         message: "Returned to bedroom - exit confirmed"
-        entity_id: binary_sensor.haiven_bedroom_occupancy
+        entity_id: binary_sensor.haiven_bed_sensor
   mode: single
 - id: haiven_bathroom_night_extended_alert
   alias: "Haiven: Alert Extended Night Bathroom Visit"
@@ -1024,23 +1024,6 @@
           {% set current = states('input_text.alerts_fired_today') %}
           {{ (current ~ ',bedtime_check') if current else 'bedtime_check' }}
   mode: single
-- id: haiven_kitchen_motion_helper
-  alias: "Haiven: Kitchen Motion Helper"
-  description: Convert Kitchen event to persistent binary state for history display
-  triggers:
-    - trigger: state
-      entity_id: event.kitchen_motion
-  conditions: []
-  actions:
-    - action: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.kitchen_motion
-    - delay:
-        seconds: 60
-    - action: input_boolean.turn_off
-      target:
-        entity_id: input_boolean.kitchen_motion
-  mode: restart
 # Haiven Care Circle - Location-Based Automations
 # These automations use person tracking to provide location-aware alerts
 #
@@ -1407,15 +1390,12 @@
 
 - id: haiven_count_kitchen_trigger
   alias: "Haiven: Count Kitchen Trigger"
-  description: Increment kitchen and total counters on kitchen motion
+  description: Increment kitchen and total counters on kitchen activity
   triggers:
     - trigger: state
-      entity_id: event.kitchen_motion
-  conditions:
-    - condition: template
-      alias: Ignore unknown/unavailable states
-      value_template: >-
-        {{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable', 'idle'] }}
+      entity_id: binary_sensor.haiven_activity_sensor
+      to: "on"
+  conditions: []
   actions:
     - action: counter.increment
       target:
@@ -1431,7 +1411,7 @@
   description: Increment bedroom and total counters on bedroom occupancy on
   triggers:
     - trigger: state
-      entity_id: binary_sensor.haiven_bedroom_occupancy
+      entity_id: binary_sensor.haiven_bed_sensor
       to: "on"
   conditions: []
   actions:
@@ -1449,7 +1429,7 @@
   description: Increment bathroom and total counters on bathroom motion on
   triggers:
     - trigger: state
-      entity_id: binary_sensor.haiven_bathroom_motion
+      entity_id: binary_sensor.haiven_bath_sensor
       to: "on"
   conditions: []
   actions:
@@ -1571,9 +1551,9 @@
       alias: Same room for 4+ hours
       value_template: >-
         {% set invalid_states = ['unknown', 'unavailable'] %}
-        {% set kitchen_last = states.event.kitchen_motion.last_changed if states.event.kitchen_motion.state not in invalid_states else none %}
-        {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in invalid_states else none %}
-        {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
+        {% set kitchen_last = states.binary_sensor.haiven_activity_sensor.last_changed if states.binary_sensor.haiven_activity_sensor.state not in invalid_states else none %}
+        {% set bedroom_last = states.binary_sensor.haiven_bed_sensor.last_changed if states.binary_sensor.haiven_bed_sensor.state not in invalid_states else none %}
+        {% set bathroom_last = states.binary_sensor.haiven_bath_sensor.last_changed if states.binary_sensor.haiven_bath_sensor.state not in invalid_states else none %}
 
         {% set times = [] %}
         {% if kitchen_last %}{% set times = times + [{'loc': 'Kitchen', 'time': kitchen_last}] %}{% endif %}
@@ -1729,7 +1709,7 @@
           entity_id: binary_sensor.haiven_bedroom_still_target
           state: "on"
         - condition: state
-          entity_id: binary_sensor.haiven_bedroom_occupancy
+          entity_id: binary_sensor.haiven_bed_sensor
           state: "on"
   actions:
     - action: input_select.select_option
@@ -1811,12 +1791,9 @@
   description: Record first kitchen motion of the day
   triggers:
     - trigger: state
-      entity_id: event.kitchen_motion
+      entity_id: binary_sensor.haiven_activity_sensor
+      to: "on"
   conditions:
-    - condition: template
-      alias: Valid motion event
-      value_template: >-
-        {{ trigger.to_state is not none and trigger.to_state.state not in ['idle', 'unknown', 'unavailable'] }}
     - condition: template
       alias: Not yet recorded today
       value_template: >-
