@@ -339,10 +339,10 @@
           true
         {% endif %}
     - condition: template
-      alias: Only fire once per day
+      alias: Re-alert no sooner than 4 hours after last alert
       value_template: >-
         {% set last = state_attr('automation.haiven_no_activity_alert', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (now() - as_datetime(last)).total_seconds() > 14400 }}
     - condition: template
       alias: No activity for threshold hours
       value_template: >-
@@ -1109,13 +1109,13 @@
 
 - id: alert_no_one_nearby_during_warning
   alias: "Circle Tracking: Alert if No One Nearby During Warning Status"
-  description: "Escalate alert if status is warning but no care circle member is nearby"
+  description: "Escalate alert if status is concern/critical but no care circle member is nearby"
   triggers:
     - trigger: state
       entity_id: sensor.elderly_care_status
       to:
-        - "warning"
-        - "alert"
+        - "concern"
+        - "critical"
   conditions:
     # No one is nearby (within 5km)
     - condition: state
@@ -1150,7 +1150,7 @@
   triggers:
     - trigger: state
       entity_id: sensor.elderly_care_status
-      to: "alert"
+      to: "critical"
   actions:
     # Determine who is nearest
     - variables:
@@ -1240,7 +1240,7 @@
   triggers:
     - trigger: state
       entity_id: sensor.elderly_care_status
-      to: "warning"
+      to: "concern"
       for:
         minutes: 5
   conditions:
