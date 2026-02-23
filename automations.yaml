@@ -539,9 +539,7 @@
         {% set valid_motion = event_state not in ['idle', 'unknown', 'unavailable', 'off', none] %}
         {{ valid_motion and (last is none or as_datetime(last).date() < now().date()) }}
   actions:
-    - action: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.manual_safe_status
+    # Record wake time first so deviation sensors reflect actual wake time
     - action: input_datetime.set_datetime
       target:
         entity_id: input_datetime.actual_wake_time_today
@@ -553,6 +551,34 @@
           - sensor.elderly_care_status
           - sensor.today_wake_time
           - sensor.deviation_count
+    # Wait for sensors to settle before checking deviations
+    - delay:
+        seconds: 5
+    # Alert if wake time is a deviation — must happen BEFORE setting safe flag,
+    # otherwise haiven_morning_activity_check sees safe=on and skips its check
+    - if:
+        - condition: numeric_state
+          entity_id: sensor.deviation_count
+          above: 0
+      then:
+        - action: script.send_haiven_notification
+          data:
+            title: "⚠️ Haiven - Late Wake"
+            message: >
+              {{ states('input_text.elderly_person_name') }} is awake at
+              {{ now().strftime('%I:%M %p') }} — {{ states('sensor.current_deviation_message') }}
+            level: time-sensitive
+        - action: input_text.set_value
+          target:
+            entity_id: input_text.alerts_fired_today
+          data:
+            value: >-
+              {% set current = states('input_text.alerts_fired_today') %}
+              {{ (current ~ ',morning_activity') if current else 'morning_activity' }}
+    # Mark safe and send Good Morning after deviation check
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.manual_safe_status
     - action: logbook.log
       data:
         name: Haiven Morning Confirmation
