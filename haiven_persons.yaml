@@ -1,31 +1,32 @@
 # Haiven Care Circle - Person Tracking Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 # Configure person entities for location tracking
+# Production: Mum's House — Harry's mum
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ELDERLY PERSON (Being Cared For) - REQUIRED
 # ─────────────────────────────────────────────────────────────────────────────
-- name: "Your Person"
+- name: "Toni"
   id: elderly_person  # → person.elderly_person
   device_trackers:
-    - device_tracker.your_person_phone
+    - device_tracker.toni_iphone
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONTACT 1 (Carer 1)
 # ─────────────────────────────────────────────────────────────────────────────
-- name: "Carer 1"
+- name: "Harry"
   id: contact_1  # → person.contact_1
   device_trackers:
-    - device_tracker.carer_1_phone
+    - device_tracker.iphone_hp
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONTACT 2 (Carer 2)
 # ─────────────────────────────────────────────────────────────────────────────
-- name: "Carer 2"
+- name: "Abby"
   id: contact_2  # → person.contact_2
   device_trackers:
-    - device_tracker.carer_2_phone
+    - device_tracker.abby_iphone
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ADDING MORE CONTACTS

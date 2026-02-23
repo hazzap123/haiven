@@ -10,7 +10,7 @@ input_text:
     name: Elderly Person Name
     max: 50
     icon: mdi:account
-    initial: "Your Person"
+    initial: "Toni"
 
   elderly_person_entity:
     name: Elderly Person Entity
@@ -24,7 +24,7 @@ input_text:
     max: 100
     icon: mdi:map-marker-account
     pattern: "^device_tracker\\.[a-zA-Z0-9_]+$"
-    initial: "device_tracker.your_person_phone"
+    initial: "device_tracker.toni_iphone"
 
   # ─────────────────────────────────────────────────────────────────────────────
   # CONTACT 1 (Carer 1)
@@ -33,7 +33,7 @@ input_text:
     name: Contact 1 Name
     max: 100
     icon: mdi:account
-    initial: "Carer 1"
+    initial: "Harry"
 
   contact_1_type:
     name: Contact 1 Type
@@ -53,20 +53,20 @@ input_text:
     max: 100
     icon: mdi:map-marker-account
     pattern: "^device_tracker\\.[a-zA-Z0-9_]+$"
-    initial: "device_tracker.carer_1_phone"
+    initial: "device_tracker.iphone_hp"
 
   contact_1_phone:
     name: Contact 1 Phone
     max: 20
     icon: mdi:phone
-    initial: "+44 0000 000 000"
+    initial: "+44 0000 000 000"  # TODO: verify Harry's number via SSH
 
   contact_1_notification:
     name: Contact 1 Notification Service
     max: 100
     icon: mdi:bell-ring
     pattern: "^notify\\.[a-zA-Z0-9_]+$"
-    initial: "notify.mobile_app_your_phone"
+    initial: "notify.mobile_app_iphone_hp"
 
   # ─────────────────────────────────────────────────────────────────────────────
   # CONTACT 2 (Carer 2)
@@ -75,7 +75,7 @@ input_text:
     name: Contact 2 Name
     max: 100
     icon: mdi:account
-    initial: "Carer 2"
+    initial: "Abby"
 
   contact_2_type:
     name: Contact 2 Type
@@ -95,17 +95,17 @@ input_text:
     max: 100
     icon: mdi:map-marker-account
     pattern: "^device_tracker\\.[a-zA-Z0-9_]+$"
-    initial: "device_tracker.carer_2_phone"
+    initial: "device_tracker.abby_iphone"
 
   contact_2_phone:
     name: Contact 2 Phone
     max: 20
     icon: mdi:phone
-    initial: "+44 0000 000 000"
+    initial: "+44 0000 000 000"  # TODO: verify Abby's number via SSH
 
   contact_2_notification:
     name: Contact 2 Notification Service
     max: 100
     icon: mdi:bell-ring
     pattern: "^notify\\.[a-zA-Z0-9_]+$"
-    initial: "notify.mobile_app_your_phone"
+    initial: "notify.mobile_app_your_phone"  # TODO: verify Abby's notify service via SSH
