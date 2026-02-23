@@ -69,49 +69,6 @@ template:
         delay_on: "00:05:00"
 
   - sensor:
-      - name: "Overnight Bathroom Count"
-        unique_id: overnight_bathroom_count_from_log
-        icon: mdi:toilet
-        state: >
-          {% set log = state_attr('sensor.activity_log_48h', 'log') %}
-          {% set wake = states('sensor.today_wake_time') %}
-          {% if log %}
-            {% set entries = log.split('|') %}
-            {% set count = namespace(n=0) %}
-            {% set last_mins = namespace(v=-99) %}
-            {% set wake_mins = namespace(v=9999) %}
-            {% if wake not in ['Not yet', 'unknown', 'unavailable'] and ':' in wake %}
-              {% set wake_mins.v = (wake.split(':')[0] | int) * 60 + (wake.split(':')[1] | int) %}
-            {% endif %}
-            {% for entry in entries %}
-              {% set parts = entry.strip().split(' ') %}
-              {% if parts | length >= 2 %}
-                {% set time = parts[0] %}
-                {% set loc = parts[1] %}
-                {% set st = parts[2] | default('') %}
-                {% set h = time.split(':')[0] | int %}
-                {% if h == 12 %}
-                  {% set count.n = 0 %}
-                  {% set last_mins.v = -99 %}
-                {% endif %}
-                {% set is_night = time >= '21:00' or time < '06:00' %}
-                {% if is_night and loc == 'Bathroom' and st == '(on)' %}
-                  {% set m = time.split(':')[1] | int %}
-                  {% set mins = h * 60 + m %}
-                  {% set near_wake = (mins - wake_mins.v) | abs < 15 or (mins + 1440 - wake_mins.v) | abs < 15 %}
-                  {% if not near_wake %}
-                    {% if mins - last_mins.v > 15 or last_mins.v - mins > 15 %}
-                      {% set count.n = count.n + 1 %}
-                    {% endif %}
-                    {% set last_mins.v = mins %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            {{ count.n }}
-          {% else %}
-            unknown
-          {% endif %}
 
       - name: "Recent Activity Summary"
         unique_id: recent_activity_summary_from_log
@@ -243,3 +200,24 @@ sensor:
     type: count
     start: "{{ now() - timedelta(hours=1) }}"
     end: "{{ now() }}"
+
+  # Overnight bathroom visit count (21:00–06:00)
+  # During the night (21:00–23:59): counts from tonight 21:00 to tomorrow 06:00
+  # All other hours: counts from last night 21:00 to today 06:00 (completed window)
+  - platform: history_stats
+    name: Overnight Bathroom Count
+    entity_id: binary_sensor.haiven_bathroom_motion
+    state: "on"
+    type: count
+    start: >
+      {% if now().hour >= 21 %}
+        {{ today_at('21:00') }}
+      {% else %}
+        {{ today_at('21:00') - timedelta(days=1) }}
+      {% endif %}
+    end: >
+      {% if now().hour >= 21 %}
+        {{ today_at('06:00') + timedelta(days=1) }}
+      {% else %}
+        {{ today_at('06:00') }}
+      {% endif %}
