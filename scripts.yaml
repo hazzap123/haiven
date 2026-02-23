@@ -26,41 +26,47 @@ notify_care_circle:
         carer_service: "{{ states('input_text.carer_notification') }}"
 
     # Notify primary contact
-    - condition: template
-      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
-    - action: "{{ primary_service }}"
-      data:
-        title: "{{ alert_title }}"
-        message: "{{ alert_message }}"
-        data:
-          push:
-            interruption-level: time-sensitive
-          entity_id: camera.kitchen_live_view
-          actions:
-            - action: URI
-              title: View Dashboard
-              uri: /lovelace/haiven_dashboard/home
-            - action: MARK_SAFE
-              title: Mark Safe
+    - if:
+        - condition: template
+          value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+      then:
+        - action: "{{ primary_service }}"
+          data:
+            title: "{{ alert_title }}"
+            message: "{{ alert_message }}"
+            data:
+              push:
+                interruption-level: time-sensitive
+              entity_id: camera.kitchen_live_view
+              actions:
+                - action: URI
+                  title: View Dashboard
+                  uri: /lovelace/haiven_dashboard/home
+                - action: MARK_SAFE
+                  title: Mark Safe
 
     # Notify secondary contact (if configured)
-    - condition: template
-      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
-    - action: "{{ secondary_service }}"
-      data:
-        title: "{{ alert_title }}"
-        message: "{{ alert_message }}"
-        data:
-          push:
-            interruption-level: time-sensitive
+    - if:
+        - condition: template
+          value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+      then:
+        - action: "{{ secondary_service }}"
+          data:
+            title: "{{ alert_title }}"
+            message: "{{ alert_message }}"
+            data:
+              push:
+                interruption-level: time-sensitive
 
     # Notify carer (if configured)
-    - condition: template
-      value_template: "{{ carer_service != '' and carer_service != 'unknown' }}"
-    - action: "{{ carer_service }}"
-      data:
-        title: "{{ alert_title }}"
-        message: "{{ alert_message }}"
+    - if:
+        - condition: template
+          value_template: "{{ carer_service != '' and carer_service != 'unknown' }}"
+      then:
+        - action: "{{ carer_service }}"
+          data:
+            title: "{{ alert_title }}"
+            message: "{{ alert_message }}"
 
     # Set flag that alert was sent
     - action: input_boolean.turn_on
@@ -94,20 +100,24 @@ manual_checkin:
         entity_id: input_boolean.manual_safe_status
 
     # Notify primary contact of check-in
-    - condition: template
-      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
-    - action: "{{ primary_service }}"
-      data:
-        title: "✅ Check-in - {{ person_name }}"
-        message: "Manual check-in completed at {{ now().strftime('%I:%M %p') }}"
+    - if:
+        - condition: template
+          value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+      then:
+        - action: "{{ primary_service }}"
+          data:
+            title: "✅ Check-in - {{ person_name }}"
+            message: "Manual check-in completed at {{ now().strftime('%I:%M %p') }}"
 
     # Notify secondary contact of check-in
-    - condition: template
-      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
-    - action: "{{ secondary_service }}"
-      data:
-        title: "✅ Check-in - {{ person_name }}"
-        message: "Manual check-in completed at {{ now().strftime('%I:%M %p') }}"
+    - if:
+        - condition: template
+          value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+      then:
+        - action: "{{ secondary_service }}"
+          data:
+            title: "✅ Check-in - {{ person_name }}"
+            message: "Manual check-in completed at {{ now().strftime('%I:%M %p') }}"
 
     # Log the check-in
     - action: logbook.log
@@ -147,20 +157,24 @@ mark_safe:
         entity_id: input_boolean.deviation_alert_sent
 
     # Notify primary contact
-    - condition: template
-      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
-    - action: "{{ primary_service }}"
-      data:
-        title: "🛡️ {{ person_name }} Marked Safe"
-        message: "{{ person_name }} has been marked safe at {{ now().strftime('%I:%M %p') }}"
+    - if:
+        - condition: template
+          value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+      then:
+        - action: "{{ primary_service }}"
+          data:
+            title: "🛡️ {{ person_name }} Marked Safe"
+            message: "{{ person_name }} has been marked safe at {{ now().strftime('%I:%M %p') }}"
 
     # Notify secondary contact
-    - condition: template
-      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
-    - action: "{{ secondary_service }}"
-      data:
-        title: "🛡️ {{ person_name }} Marked Safe"
-        message: "{{ person_name }} has been marked safe at {{ now().strftime('%I:%M %p') }}"
+    - if:
+        - condition: template
+          value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+      then:
+        - action: "{{ secondary_service }}"
+          data:
+            title: "🛡️ {{ person_name }} Marked Safe"
+            message: "{{ person_name }} has been marked safe at {{ now().strftime('%I:%M %p') }}"
 
     # Log the action
     - action: logbook.log
@@ -208,20 +222,24 @@ add_care_note:
         secondary_service: "{{ states('input_text.contact_2_notification') }}"
 
     # Notify primary contact of new note
-    - condition: template
-      value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
-    - action: "{{ primary_service }}"
-      data:
-        title: "📝 New Care Note"
-        message: "{{ author }}: {{ note }}"
+    - if:
+        - condition: template
+          value_template: "{{ primary_service != '' and primary_service != 'unknown' }}"
+      then:
+        - action: "{{ primary_service }}"
+          data:
+            title: "📝 New Care Note"
+            message: "{{ author }}: {{ note }}"
 
     # Notify secondary contact of new note
-    - condition: template
-      value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
-    - action: "{{ secondary_service }}"
-      data:
-        title: "📝 New Care Note"
-        message: "{{ author }}: {{ note }}"
+    - if:
+        - condition: template
+          value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+      then:
+        - action: "{{ secondary_service }}"
+          data:
+            title: "📝 New Care Note"
+            message: "{{ author }}: {{ note }}"
 
     # Log the note
     - action: logbook.log
