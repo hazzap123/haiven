@@ -933,9 +933,10 @@ template:
               10:00
             {% endif %}
 
-  # Bedtime Pattern Detection - V4 Logic (Bathroom → Bedroom sequence)
-  # Based on 2 weeks of data analysis: bedtime is 17:30-21:30, bathroom then bedroom within 30 mins
-  # Ignores kitchen entirely (contaminated by dog activity)
+  # Bedtime Pattern Detection - V5 Logic (Kitchen quiet + bathroom gap)
+  # Signal: kitchen goes quiet in 17:30-21:00 window, bedroom-only activity,
+  # bathroom had an evening visit then goes quiet — that gap is when she's asleep.
+  # mmWave bedroom fires after sleep are noise; don't require bedroom to be "recent".
   - binary_sensor:
       - name: "Bedtime Pattern Detected"
         unique_id: bedtime_pattern_detected
@@ -944,33 +945,34 @@ template:
           {% set now_hour = now().hour %}
           {% set now_min = now().minute %}
 
-          {# Time window: 17:30 - 21:30 (based on historical data: bedtimes 17:48-19:31) #}
-          {% set in_window = (now_hour == 17 and now_min >= 30) or (18 <= now_hour <= 21) %}
+          {# Time window: 17:30 - 21:00 #}
+          {% set in_window = (now_hour == 17 and now_min >= 30) or (18 <= now_hour < 21) %}
 
           {% if not in_window %}
             false
           {% else %}
-            {# Get sensor timestamps #}
-            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
-
-            {# 1. Bathroom had activity in current evening window (after 17:30 today) #}
             {% set today_1730 = now().replace(hour=17, minute=30, second=0, microsecond=0) %}
-            {% set bathroom_in_window = bathroom_last >= today_1730 %}
 
-            {# 2. Bedroom activity came AFTER bathroom #}
-            {% set bedroom_after_bathroom = bedroom_last > bathroom_last %}
+            {# 1. Kitchen quiet: no activity in evening window, or >30 mins since last kitchen event #}
+            {% set kitchen_last = states.event.kitchen_motion.last_changed %}
+            {% set kitchen_quiet = kitchen_last is none
+               or kitchen_last < today_1730
+               or ((now() - kitchen_last).total_seconds() / 60) > 30 %}
 
-            {# 3. Bedroom activity within 30 mins of bathroom (the transition) #}
-            {% set mins_between = ((bedroom_last - bathroom_last).total_seconds() / 60) | int %}
-            {% set bedroom_within_30 = mins_between >= 0 and mins_between <= 30 %}
+            {# 2. Bathroom had an evening visit (part of bedtime routine) #}
+            {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
+            {% set bathroom_in_window = bathroom_last is not none and bathroom_last >= today_1730 %}
 
-            {# 4. Bedroom is currently active or was very recently (within 15 mins) #}
-            {% set bedroom_mins_ago = ((now() - bedroom_last).total_seconds() / 60) | int %}
-            {% set bedroom_recent = bedroom_mins_ago < 15 %}
+            {# 3. Bathroom gap: inactive for >20 mins — the quiet after the visit is when she's asleep #}
+            {% set bathroom_mins_ago = ((now() - bathroom_last).total_seconds() / 60) | int if bathroom_last else 9999 %}
+            {% set bathroom_quiet = bathroom_mins_ago > 20 %}
 
-            {# Pattern: Bathroom in window → Bedroom within 30 mins → Bedroom still recent #}
-            {{ bathroom_in_window and bedroom_after_bathroom and bedroom_within_30 and bedroom_recent }}
+            {# 4. Bedroom had activity in the evening window (confirms she's in the bedroom) #}
+            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
+            {% set bedroom_in_window = bedroom_last is not none and bedroom_last >= today_1730 %}
+
+            {# Pattern: kitchen quiet + bathroom evening visit + bathroom now quiet + bedroom active tonight #}
+            {{ kitchen_quiet and bathroom_in_window and bathroom_quiet and bedroom_in_window }}
           {% endif %}
         icon: >
           {% if is_state('binary_sensor.bedtime_pattern_detected', 'on') %}
@@ -980,22 +982,22 @@ template:
           {% endif %}
         attributes:
           bathroom_time: >
+            {# Bedtime timestamp = when bathroom went quiet (last bathroom activity) #}
             {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
             {{ bathroom_last.strftime('%H:%M') if bathroom_last else 'unknown' }}
           bedroom_time: >
             {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
             {{ bedroom_last.strftime('%H:%M') if bedroom_last else 'unknown' }}
-          mins_bathroom_to_bedroom: >
+          bathroom_mins_quiet: >
             {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
-            {{ ((bedroom_last - bathroom_last).total_seconds() / 60) | int if bedroom_last > bathroom_last else -1 }}
-          bedroom_minutes_ago: >
-            {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
-            {{ ((now() - bedroom_last).total_seconds() / 60) | int }}
+            {{ ((now() - bathroom_last).total_seconds() / 60) | int if bathroom_last else -1 }}
+          kitchen_last_time: >
+            {% set kitchen_last = states.event.kitchen_motion.last_changed %}
+            {{ kitchen_last.strftime('%H:%M') if kitchen_last else 'unknown' }}
           detection_window_active: >
             {% set now_hour = now().hour %}
             {% set now_min = now().minute %}
-            {{ (now_hour == 17 and now_min >= 30) or (18 <= now_hour <= 21) }}
+            {{ (now_hour == 17 and now_min >= 30) or (18 <= now_hour < 21) }}
 
   # EPL Derived: still/moving target from LD2450 speed data
   # LD2450 doesn't have native still/moving (that's LD2410).
