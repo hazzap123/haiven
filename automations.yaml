@@ -861,6 +861,11 @@
         entity_id: input_datetime.actual_bedtime_today
       data:
         time: "00:00:00"
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.bed_state
+      data:
+        option: "not_in_bed"
     - action: logbook.log
       data:
         name: "Haiven Noon Reset"
