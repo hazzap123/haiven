@@ -293,14 +293,9 @@ reset_daily_flags:
       data:
         option: "normal"
 
-    # Note: Bedtime resets at noon, not midnight (see haiven_bathroom_night_reset)
-
-    # Reset bed state machine (catches stuck states from sensor dropouts)
-    - action: input_select.select_option
-      target:
-        entity_id: input_select.bed_state
-      data:
-        option: "not_in_bed"
+    # Note: bed_state resets at noon, not midnight (see haiven_bathroom_night_reset)
+    # Moving it here caused false positive alerts: midnight reset cleared 'sleeping'
+    # while Toni was still in bed, removing the room_transition_timeout suppression.
 
     - action: logbook.log
       data:
