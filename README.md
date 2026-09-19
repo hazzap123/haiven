@@ -12,6 +12,8 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 - Alerts on missed wake times, prolonged inactivity, unusual bathroom visits, and more
 - Care circle tracking — knows which carer is nearest during an alert
 - Dashboard with live status, activity timeline, and weekly trends
+- Drift Watch: catches a routine sliding slowly over a month, the kind of change a day-to-day average can't see
+- Sensor coverage screen: shows exactly what stops working when a sensor goes offline, not just that it did
 
 ## What you need
 
