@@ -2,8 +2,7 @@
 
 Full installation and configuration guide for the Haiven elderly care monitoring system.
 
-**Version:** 1.0
-**Updated:** 2026-02-04
+**Updated:** 2026-09-19
 
 ---
 
@@ -13,20 +12,19 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 
 ### Key Features
 
-- **Visual Status Indicator**
-  - Green: Routine normal
-  - Orange: Potential deviation (1-2 hours off schedule)
-  - Red: Alert (4+ hours, needs attention)
+- **Five-level status**, not a traffic light — normal, monitoring, caution, concern, critical, plus a separate "away" state. Full scoring: [STATUS_SPEC.md](../reference/STATUS_SPEC.md)
 
 - **Activity Monitoring**
   - Real-time tracking across rooms
   - Wake-up and bedtime detection
   - Extended inactivity alerts
+  - Drift Watch: a month of nights against a baseline that doesn't move
+  - Sensor coverage screen: what stops working when a sensor goes offline
 
 - **Care Circle Notifications**
   - Mobile alerts to multiple contacts
-  - Actionable notifications (Mark Safe, View Dashboard)
-  - Daily summary reports
+  - Actionable notifications (Mark Safe, Check In)
+  - AI-generated morning, afternoon and evening summaries
 
 ---
 
@@ -35,20 +33,14 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 ### Hardware
 - Home Assistant server (2024.1+)
 - Motion or presence sensor (Kitchen or main living area)
-- Everything Presence Lite MMW sensor (Bedroom)
-- Shelly BLU Motion PIR sensor (Bathroom)
+- A presence sensor with zone support for the bedroom, if you want in-bed detection (the reference build uses an Everything Presence Lite running a custom LD2450 ESPHome firmware — see [SENSOR_GUIDES.md](../reference/SENSOR_GUIDES.md))
+- Motion sensor for the bathroom (the reference build uses a Shelly BLU Motion)
 - Mobile devices for notifications
 
 ### Software
-- HACS (Home Assistant Community Store)
-- File Editor add-on (recommended)
-
-### Custom Cards (via HACS > Frontend)
-- [ ] button-card
-- [ ] lovelace-card-mod
-- [ ] lovelace-multiple-entity-row
-- [ ] lovelace-auto-entities
-- [ ] lovelace-mushroom (optional)
+- Home Assistant 2024.1+
+- No HACS, no custom Lovelace cards to install — the dashboard is a self-contained card library (`www-src/haiven-cards.js`) that `scripts/setup.sh` deploys for you
+- Optional: Anthropic API key for AI-generated summaries (or any LLM you like)
 
 ---
 
@@ -57,41 +49,35 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 ### Pre-Installation (Verify)
 
 - [ ] Home Assistant running (2024.1+)
-- [ ] HACS installed
-- [ ] File Editor add-on installed
-- [ ] 3 sensors working:
-  - [ ] Kitchen sensor: `event.kitchen_motion`
-  - [ ] MMW Presence: `binary_sensor.haiven_bedroom_occupancy`
-  - [ ] PIR Motion: `binary_sensor.haiven_bathroom_motion`
+- [ ] Your three sensors are producing state changes in **Developer Tools > States**
 
-### Step 1: Install Custom Cards (10 min)
+### Step 1: Clone and run setup (10 min)
 
-1. Open **HACS** > **Frontend**
-2. Click **+ Explore & Download Repositories**
-3. Search and install each card
-4. **Restart Home Assistant**
+```bash
+git clone https://github.com/hazzap123/haiven.git /config
+cd /config
+bash scripts/setup.sh
+```
+
+The script prompts for your three entity IDs, rewrites every `.yaml` and `.js` file that references the defaults (the dashboard card reads the same three entities directly, so it has to go through the same substitution), and copies `www-src/haiven-cards.js` and `www-src/haiven-loader.js` into `www/` — the directory Home Assistant actually serves from.
 
 ### Step 2: Verify Configuration Files (5 min)
 
 Files should already be in `/config/`:
 
 ```
-haiven_inputs.yaml        <- Input helpers
-haiven_sensors_3sensor.yaml <- Template sensors
-scripts.yaml              <- Notification scripts
-automations.yaml          <- Monitoring automations
+packages/haiven_care_circle_inputs.yaml   <- Contact/carer helpers
+packages/haiven_monitoring_inputs.yaml    <- Thresholds and state machines
+packages/haiven_comms_inputs.yaml         <- Summary and alert text
+packages/haiven_drift.yaml                <- Drift Watch
+packages/haiven_night_insights.yaml       <- Nightly bathroom-visit stats
+packages/haiven_movement.yaml             <- Today's movement vs 7-day average
+haiven_sensors_3sensor.yaml               <- Core template sensors
+scripts.yaml                              <- Notification scripts
+automations.yaml                          <- Monitoring automations
 ```
 
-Check `configuration.yaml` includes:
-```yaml
-homeassistant:
-  packages:
-    haiven_inputs: !include haiven_inputs.yaml
-    haiven_sensors_3sensor: !include haiven_sensors_3sensor.yaml
-
-script: !include scripts.yaml
-automation: !include automations.yaml
-```
+These are all wired into `configuration.yaml`'s `homeassistant.packages` block already — nothing to hand-edit here unless you're adding your own.
 
 ### Step 3: Configure Care Circle (30 min)
 
@@ -102,7 +88,7 @@ See [CARE_CIRCLE.md](CARE_CIRCLE.md) for detailed instructions.
 1. Install HA mobile app on each person's phone
 2. Find notification service names (Developer Tools > Actions > search "notify")
 3. Find device tracker names (Developer Tools > States > filter "device_tracker.")
-4. Edit `haiven_inputs.yaml` with actual values:
+4. Edit `packages/haiven_care_circle_inputs.yaml` with actual values:
 
 **Required helpers:**
 
@@ -114,9 +100,9 @@ See [CARE_CIRCLE.md](CARE_CIRCLE.md) for detailed instructions.
 | `input_text.contact_1_notification` | Notification service |
 | ... | See [ENTITY_REFERENCE.md](../reference/ENTITY_REFERENCE.md) for complete list |
 
-### Step 4: Create Input Helpers (10 min)
+### Step 4: Check Your Baselines (5 min)
 
-Go to **Settings > Helpers** and create (if not auto-created):
+`packages/haiven_monitoring_inputs.yaml` already defines every threshold helper below — nothing to create by hand. Adjust the values either in **Settings > Helpers**, or on the dashboard's own Settings tab once it's up:
 
 **Time Baselines:**
 - `input_datetime.expected_wake_time` - Default: 06:00
@@ -143,22 +129,16 @@ Should see:
 - [ ] `sensor.deviation_count`
 - [ ] `sensor.sensor_health_status`
 
-### Step 6: Setup Dashboard (15 min)
+### Step 6: Verify the Dashboard (5 min)
 
-**Option A: Use existing dashboard**
-- Navigate to Settings > Dashboards
-- Find "Haiven" dashboard
-
-**Option B: Create new dashboard**
-1. Settings > Dashboards > + ADD DASHBOARD
-2. Name: "Haiven - [Person's Name] Status"
-3. Edit > Raw Config Editor
-4. Copy from `lovelace/dashboard_default.yaml`
+Nothing to build here — `setup.sh` already deployed the card in Step 1, and `configuration.yaml` registers the dashboard itself (`lovelace.dashboards.lovelace-haiven`, pointing at `lovelace/haiven_default.yaml`). It should just appear in your sidebar after the restart in Step 5.
 
 **Verify:**
-- [ ] Status circle displays (green/orange/red)
-- [ ] Last activity shows correctly
-- [ ] Sensor status displays
+- [ ] "Haiven" shows in the sidebar
+- [ ] Home view shows a status card, today's facts, and your three rooms
+- [ ] Bottom nav bar shows Home / Activity / Alerts / Circle / More
+
+If the sidebar item is missing, check `lovelace.dashboards` in `configuration.yaml`. If it's there but the page is blank, the card didn't deploy — see [TROUBLESHOOTING.md](../reference/TROUBLESHOOTING.md).
 
 ### Step 7: Test System (15 min)
 
@@ -169,9 +149,9 @@ Should see:
 - [ ] `sensor.last_activity_display` shows correct room
 
 **Test 2: Status Calculation**
-- [ ] `sensor.elderly_care_status` shows "all_good"
+- [ ] `sensor.elderly_care_status` shows `normal`
 - [ ] `sensor.deviation_count` is 0
-- [ ] Dashboard status circle is green
+- [ ] Dashboard status badge reads "All well"
 
 **Test 3: Notifications**
 - [ ] Developer Tools > Actions > `script.notify_care_circle`
@@ -254,7 +234,7 @@ Day 1:
 
 **On their phone:**
 - [ ] How to access Haiven dashboard
-- [ ] Status indicator meaning (green/orange/red)
+- [ ] Status indicator meaning (five levels, plus away)
 - [ ] "Check-in" button
 - [ ] "Mark Safe" button
 - [ ] How to respond to alerts
@@ -270,23 +250,7 @@ Day 1:
 
 ### How Status is Calculated
 
-```yaml
-# Green (All Good)
-- Morning activity within expected time + variance
-- No extended periods without activity
-- All sensors responding
-
-# Orange (Potential Deviation)
-- Morning activity 1-2 hours late
-- One deviation detected
-- Manual monitoring recommended
-
-# Red (Alert)
-- No morning activity by expected + variance
-- No activity for threshold hours
-- Sensor offline
-- Immediate attention needed
-```
+A weighted severity score (`sensor.status_severity_score`), not a single rule — late wake, inactivity gaps, and a failed room transition each add points, and the total maps onto the five levels. Full breakdown, exact point values and thresholds: [STATUS_SPEC.md](../reference/STATUS_SPEC.md).
 
 ---
 
@@ -310,7 +274,7 @@ Actions: [Mark Safe, View Dashboard, View Camera]
 ### Daily Summary
 ```
 Title: "Daily Report - [Name]"
-Message: "Wake: 06:45, Last activity: Kitchen, Status: All Good"
+Message: "Wake: 06:45, Last activity: Kitchen, Status: All well"
 Level: Passive
 ```
 
@@ -322,9 +286,10 @@ Level: Passive
 |------------|---------|--------|
 | Morning Activity Check | Wake time + variance | Alert if no activity |
 | No Activity Alert | Every hour | Alert if threshold exceeded |
-| Status Change Notification | Status to orange/red | Notify care circle |
+| Status Change Notification | Status reaches caution or above | Notify care circle |
 | Daily Reset | Midnight | Reset tracking flags |
 | Bedtime Detection | Bathroom > Bedroom pattern | Record bedtime |
+| Drift Alert | 09:00 and 12:30 | One message when a drift chart trips |
 
 ---
 
@@ -353,7 +318,8 @@ Level: Passive
 - [../reference/ENTITY_REFERENCE.md](../reference/ENTITY_REFERENCE.md) - All entity IDs
 - [../reference/TROUBLESHOOTING.md](../reference/TROUBLESHOOTING.md) - Problem solving
 - [../reference/SENSOR_GUIDES.md](../reference/SENSOR_GUIDES.md) - Hardware guides
+- [../reference/STATUS_SPEC.md](../reference/STATUS_SPEC.md) - Full severity scoring
 
 ---
 
-*Last Updated: 2026-02-04*
+*Last Updated: 2026-09-19*

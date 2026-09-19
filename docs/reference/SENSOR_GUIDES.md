@@ -2,7 +2,7 @@
 
 Complete setup and maintenance guides for all Haiven monitoring sensors.
 
-**Updated:** 2026-02-04
+**Updated:** 2026-09-19
 
 ---
 
@@ -38,11 +38,15 @@ House Layout:
 
 The millimeter wave radar sensor detects presence through breathing and micro-movements.
 
+**Sensor model matters here.** This is an **LD2450** radar, not LD2410 — they're different chips with different ESPHome components, and mixing them up has broken this exact setup before. The reference build runs a custom ESPHome firmware (esp-idf framework, raw UART parsing of the LD2450 protocol, not the stock `ld2410` component) rather than Everything Smart Home's default firmware — that custom build is what gives bed-vs-room zone detection.
+
+**This repo does not currently include that ESPHome device config.** The instructions below cover what the packages and dashboard expect from the sensor; they don't cover flashing it, because the firmware source isn't published here yet. If you're setting this up, either build your own LD2450-based ESPHome config with zone/occupancy entities matching the names below, or wait for that piece to be published.
+
 ### Why Configure It?
 
 Proper configuration ensures:
 - Accurate wake-up time detection
-- Sleep state monitoring (detects breathing)
+- Sleep state monitoring
 - Nighttime bathroom trip logging
 - Minimal false positives/negatives
 
@@ -50,123 +54,31 @@ Proper configuration ensures:
 
 | Entity | Description |
 |--------|-------------|
-| `binary_sensor.haiven_bedroom_occupancy` | Main presence (on/off) |
+| `binary_sensor.haiven_bedroom_occupancy` | Main presence (on/off) — this is the one the packages and dashboard actually read |
 | `binary_sensor.haiven_bedroom_moving_target` | Movement detected |
 | `binary_sensor.haiven_bedroom_still_target` | Stationary presence |
 | `sensor.haiven_bedroom_detection_distance` | Distance to target (cm) |
 
-### Configuration via Add-on
+### Zone Configuration
 
-1. **Add repository:**
-   - Settings > Add-ons > Add-on Store > ... (menu) > Repositories
-   - Add: `https://github.com/EverythingSmartHome/everything-presence-addons`
-
-2. **Install configurator:**
-   - Find "Everything Presence Configurator" in Add-on Store
-   - Install, Start, Enable "Show in sidebar"
-
-3. **Configure settings:**
-   - Open configurator from sidebar
-   - Select your device
-
-### Recommended Bedroom Settings
-
-| Setting | Value | Why |
-|---------|-------|-----|
-| Detection Distance | 3-4 meters | Covers bed area, prevents hallway detection |
-| Still Sensitivity | 85% | Detects breathing while sleeping |
-| Movement Sensitivity | 65% | Detects getting up without false triggers |
-| Presence Timeout | 45 seconds | Balance between responsive and stable |
-| Zones 1-3 | Enabled | Bed and immediate area |
-| Zones 4-8 | Disabled | Prevents door/hallway detection |
-| LED Brightness | 0-10% | Avoid disturbing sleep |
-
-### Room Size Presets
-
-**Small bedroom (< 10 sq m):**
-```
-Distance: 3m, Still: 85%, Move: 70%, Timeout: 30s, Zones: 1-2
-```
-
-**Medium bedroom (10-15 sq m):**
-```
-Distance: 4m, Still: 85%, Move: 65%, Timeout: 45s, Zones: 1-3
-```
-
-**Large bedroom (> 15 sq m):**
-```
-Distance: 5m, Still: 90%, Move: 60%, Timeout: 60s, Zones: 1-4
-```
-
-### Testing Your Configuration
-
-**Test 1: Sleep Detection**
-1. Lie still in bed for 2 minutes
-2. Check sensor stays "on" (occupied)
-3. If fails: Increase still sensitivity
-
-**Test 2: Wake-up Detection**
-1. Get out of bed
-2. Check sensor detects immediately
-3. `last_changed` should update within 1-2 seconds
-
-**Test 3: Room Exit**
-1. Leave bedroom
-2. Wait for timeout (45 seconds)
-3. Sensor should change to "off"
-
-**Test 4: Nighttime Movement**
-1. Get up at night
-2. Check activity is logged in Haiven
+Bed-vs-room detection comes from zone coordinates (a bed zone, a bathroom-door/side zone), configured as number entities and typically set up through the [Everything Presence add-ons](https://github.com/EverythingSmartHome/everything-presence-addons) zone configurator, which discovers the device and writes zone coordinates directly. That's a separate tool from a stock LD2410 sensitivity/timeout configurator — don't confuse the two.
 
 ### Troubleshooting
 
 **Always shows "Occupied":**
-- Detection distance too far (reduce to 3m)
-- Zones 4-8 enabled (disable them)
-- Air vent causing movement (reposition sensor)
+- Zone boundaries too generous — tighten them in the zone configurator
+- Air vent or fan causing movement in a monitored zone
 
 **Never shows "Occupied":**
-- Sensitivity too low (increase to 90%)
-- Sensor not aimed at bed (reposition)
-- Firmware issue (update via configurator)
+- Sensor not aimed at the bed
+- Zone doesn't actually cover where the person sleeps
 
 **False wake-ups during sleep:**
-- Movement sensitivity too high (reduce to 50-60%)
-- Fan/AC detected (disable far zones)
+- A zone extends into a doorway or hallway — narrow it
 
-### Known Warning (Ignore This)
+### Firmware
 
-```
-[W][ld2410:598]: Max command length exceeded; ignoring
-```
-
-This is **normal** with LD2410 firmware 2.04.x. The warning is intentionally suppressed. The sensor works fine.
-
-### Hard Reset Procedure
-
-If sensor becomes unresponsive:
-
-1. **Factory reset:**
-   - Hold reset button (small hole on bottom) for 10-15 seconds
-   - LED flashes red, then cycles through colors
-   - Wait 30 seconds for boot
-
-2. **Connect to setup WiFi:**
-   - Find network "everything-presence-lite" on phone/laptop
-   - Connect (no password)
-
-3. **Configure:**
-   - Open browser: `http://192.168.4.1`
-   - Select your WiFi network
-   - Enter password
-   - Device restarts and connects
-
-4. **Re-add to Home Assistant:**
-   - Settings > Integrations > should auto-discover
-   - Or manually add via ESPHome integration
-
-Reference: https://docs.everythingsmart.io/s/products/doc/restore-or-update-your-epl-to-factory-settings-using-a-computer-orj7PBBOJZ
+Do not factory-reset this device expecting to just reconnect it to WiFi afterwards. A factory reset returns it to Everything Smart Home's stock firmware, not the custom LD2450 build Haiven needs — recovering from that means reflashing the custom ESPHome config, which (per the gap above) isn't published in this repo yet. If the device is genuinely unresponsive, treat it as a hardware-recovery problem, not a quick reset-and-reconnect.
 
 ---
 
@@ -314,40 +226,6 @@ Kitchen is **not used for bedtime detection** — evening activity in shared spa
 
 ---
 
-## Data Extraction (Advanced)
-
-For detailed MMW sensor analysis, you can enable comprehensive logging.
-
-### Enable Enhanced Entities
-
-Add to ESPHome config to expose all MMW data:
-- Gate energy levels (zones 0-8)
-- Distance measurements
-- Movement vs stillness energy
-- WiFi signal strength
-
-### CSV Logging
-
-Create automation to log sensor changes to file:
-```yaml
-shell_command:
-  log_mmw_data: 'echo "{{ timestamp }},{{ entity }},{{ state }}" >> /config/mmw_data.csv'
-```
-
-### Analysis
-
-```bash
-# Count events by hour
-cat mmw_data.csv | cut -d, -f1 | cut -d' ' -f2 | cut -d: -f1 | sort | uniq -c
-
-# Average energy levels
-cat mmw_data.csv | grep "moving_energy" | awk -F, '{sum+=$3; count++} END {print sum/count}'
-```
-
-See full documentation: `docs/internal/ESP_MMW_DATA_EXTRACTION.md`
-
----
-
 ## Maintenance Schedule
 
 ### Weekly
@@ -367,4 +245,4 @@ See full documentation: `docs/internal/ESP_MMW_DATA_EXTRACTION.md`
 
 ---
 
-*Last Updated: 2026-02-04*
+*Last Updated: 2026-09-19*

@@ -2,7 +2,7 @@
 
 Complete guide for configuring caregivers, the elderly person, and location tracking.
 
-**Updated:** 2026-02-04
+**Updated:** 2026-09-19
 **Architecture:** Numbered Contact System (contact_1, contact_2, etc.)
 
 ---
@@ -15,7 +15,7 @@ The care circle is your network of people who monitor and receive alerts about t
 - **Elderly Person:** The person being monitored
 - **Contacts:** Caregivers numbered as contact_1, contact_2, etc.
 - **Contact Types:** "primary" (full data) or "secondary" (limited data)
-- **Central Config:** All settings in `haiven_inputs.yaml`
+- **Central Config:** All settings in `packages/haiven_care_circle_inputs.yaml`
 
 **Time required:** ~10 minutes per person
 
@@ -137,7 +137,7 @@ On each person's phone:
 
 ## Step 4: Edit Central Configuration
 
-**Edit ONE file:** `haiven_inputs.yaml`
+**Edit ONE file:** `packages/haiven_care_circle_inputs.yaml`
 
 Find the `initial:` values and update them:
 
@@ -288,7 +288,7 @@ zone:
    - Settings > People > Add Person
    - Note the actual entity_id created
 
-2. **Add input_text helpers to `haiven_inputs.yaml`**
+2. **Add input_text helpers to `packages/haiven_care_circle_inputs.yaml`**
    ```yaml
    contact_3_name:
      name: Contact 3 Name
@@ -325,14 +325,14 @@ zone:
 ## Modifying Existing Contacts
 
 ### Update Phone Number
-1. Edit `haiven_inputs.yaml` > `contact_N_phone`
+1. Edit `packages/haiven_care_circle_inputs.yaml` > `contact_N_phone`
 2. Restart HA
 3. If value doesn't update, manually set via Developer Tools > Actions
 
 ### Change Device (New Phone)
 1. Install HA mobile app on new phone
 2. Find new device_tracker and notification service names
-3. Edit `haiven_inputs.yaml`:
+3. Edit `packages/haiven_care_circle_inputs.yaml`:
    - Update `contact_N_device_tracker`
    - Update `contact_N_notification`
 4. Edit `haiven_persons.yaml`:
@@ -363,10 +363,10 @@ zone:
 
 | File | Purpose | What to Edit |
 |------|---------|--------------|
-| `haiven_inputs.yaml` | **Central config** | **All contact details** |
+| `packages/haiven_care_circle_inputs.yaml` | **Central config** | **All contact details** |
 | `haiven_persons.yaml` | Person entities | Device tracker links |
-| `scripts.yaml` | Notifications | Auto-reads from haiven_inputs.yaml |
-| `automations.yaml` | Automations | Auto-reads from haiven_inputs.yaml |
+| `scripts.yaml` | Notifications | Auto-reads from packages/haiven_care_circle_inputs.yaml |
+| `automations.yaml` | Automations | Auto-reads from packages/haiven_care_circle_inputs.yaml |
 | `packages/haiven_circle_tracking.yaml` | Location sensors | Add new contact sensors |
 
 ---
