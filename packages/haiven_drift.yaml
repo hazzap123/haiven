@@ -1,0 +1,370 @@
+# Haiven Drift Watch
+#
+# The slow layer. Everything else judges one day against a rolling average,
+# which absorbs a gradual change inside a week. scripts/drift_stats.py runs a
+# CUSUM per metric over the nights night_stats.py already builds, against a
+# baseline frozen for 28 nights, and trips when a run of slightly-off nights
+# adds up. Three charts: bathroom visits a night (Poisson, rise to 1.5x
+# usual), wake time (later only, sigma floored at 15 min) and daytime
+# activity (kitchen motion 05:00-20:00, less only, sigma floored at 20% of
+# usual). Design and the replay of real nights against the model:
+# docs/planning/DRIFT_WATCH.md.
+#
+# Alerts go out once per trip, in the morning, passive priority, with two
+# buttons: "Noted, keep watching" (accumulate again from tonight) and "Seen
+# GP, reset usual" (refreeze the baseline on the next 28 nights). Both write
+# /config/haiven_drift_state.json through the script; nothing else does.
+#
+# sensor.drift_stats is excluded from the recorder in configuration.yaml.
+
+command_line:
+  - sensor:
+      name: "Drift Stats"
+      unique_id: drift_stats
+      command: "python3 /config/scripts/drift_stats.py"
+      scan_interval: 1800
+      command_timeout: 60
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - visits
+        - wake
+        - activity
+        - nights
+        - days
+        - generated
+
+shell_command:
+  # {{ chart }} in visits|wake|activity; {{ kind }} in noted|reset
+  drift_ack: "python3 /config/scripts/drift_stats.py --ack {{ chart }} {{ kind }}"
+  drift_notified: "python3 /config/scripts/drift_stats.py --notified {{ chart }} {{ trip_date }}"
+
+template:
+  - sensor:
+      # ---- night bathroom ------------------------------------------------
+      # Smoothed current level (EWMA over nights since the baseline), the
+      # number the compare row shows against "usually".
+      - name: "Drift Night Bathroom"
+        unique_id: drift_night_bathroom
+        icon: mdi:toilet
+        unit_of_measurement: "visits"
+        availability: "{{ (state_attr('sensor.drift_stats', 'visits') or {}).get('level') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'visits').level | round(1) }}"
+        attributes:
+          usual: "{{ state_attr('sensor.drift_stats', 'visits').usual }}"
+          run: "{{ state_attr('sensor.drift_stats', 'visits').run }}"
+          recent: "{{ state_attr('sensor.drift_stats', 'visits').recent }}"
+          since: "{{ state_attr('sensor.drift_stats', 'visits').since }}"
+          accumulator: "{{ state_attr('sensor.drift_stats', 'visits').S }}"
+          trip_point: "{{ state_attr('sensor.drift_stats', 'visits').h }}"
+          baseline: >
+            {{ state_attr('sensor.drift_stats', 'visits').base_from }} to
+            {{ state_attr('sensor.drift_stats', 'visits').base_to }}
+
+      - name: "Drift Night Bathroom Usual"
+        unique_id: drift_night_bathroom_usual
+        icon: mdi:toilet
+        unit_of_measurement: "visits"
+        availability: "{{ (state_attr('sensor.drift_stats', 'visits') or {}).get('usual') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'visits').usual | round(1) }}"
+
+      # Learning / Steady / Watching / Changed, with the one line under it.
+      - name: "Drift Night Bathroom State"
+        unique_id: drift_night_bathroom_state
+        icon: mdi:chart-timeline-variant
+        availability: "{{ state_attr('sensor.drift_stats', 'visits') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'visits').state | capitalize }}"
+        attributes:
+          detail: >
+            {% set v = state_attr('sensor.drift_stats', 'visits') %}
+            {% if v.state == 'learning' %}
+              {{ v.days_learned }} of 28 nights recorded
+            {% elif v.state == 'changed' %}
+              {{ v.recent }} a night for {{ v.run }} nights, usual {{ v.usual }}
+            {% elif v.state == 'watching' %}
+              above usual for {{ v.run }} nights
+            {% else %}
+              steady since {{ v.base_to }}
+            {% endif %}
+
+      # ---- wake ------------------------------------------------------------
+      - name: "Drift Wake"
+        unique_id: drift_wake
+        icon: mdi:weather-sunset-up
+        availability: "{{ (state_attr('sensor.drift_stats', 'wake') or {}).get('level_text') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'wake').level_text }}"
+        attributes:
+          usual: "{{ state_attr('sensor.drift_stats', 'wake').usual_text }}"
+          run: "{{ state_attr('sensor.drift_stats', 'wake').run }}"
+          recent: "{{ state_attr('sensor.drift_stats', 'wake').recent_text }}"
+          since: "{{ state_attr('sensor.drift_stats', 'wake').since }}"
+          accumulator: "{{ state_attr('sensor.drift_stats', 'wake').S }}"
+          trip_point: "{{ state_attr('sensor.drift_stats', 'wake').h }}"
+          spread_minutes: "{{ state_attr('sensor.drift_stats', 'wake').sd }}"
+          baseline: >
+            {{ state_attr('sensor.drift_stats', 'wake').base_from }} to
+            {{ state_attr('sensor.drift_stats', 'wake').base_to }}
+
+      - name: "Drift Wake Usual"
+        unique_id: drift_wake_usual
+        icon: mdi:weather-sunset-up
+        availability: "{{ (state_attr('sensor.drift_stats', 'wake') or {}).get('usual_text') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'wake').usual_text }}"
+
+      - name: "Drift Wake State"
+        unique_id: drift_wake_state
+        icon: mdi:chart-timeline-variant
+        availability: "{{ state_attr('sensor.drift_stats', 'wake') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'wake').state | capitalize }}"
+        attributes:
+          detail: >
+            {% set w = state_attr('sensor.drift_stats', 'wake') %}
+            {% if w.state == 'learning' %}
+              {{ w.days_learned }} of 28 mornings recorded
+            {% elif w.state == 'changed' %}
+              up around {{ w.recent_text }} for {{ w.run }} mornings, usual {{ w.usual_text }}
+            {% elif w.state == 'watching' %}
+              later than usual for {{ w.run }} mornings
+            {% else %}
+              steady since {{ w.base_to }}
+            {% endif %}
+
+      # ---- activity --------------------------------------------------------
+      # Kitchen motion events 05:00-20:00 a day. The Home card shows today so
+      # far from the activity attribute directly; these are the month view.
+      - name: "Drift Activity"
+        unique_id: drift_activity
+        icon: mdi:walk
+        unit_of_measurement: "triggers"
+        availability: "{{ (state_attr('sensor.drift_stats', 'activity') or {}).get('level') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'activity').level | round(0) | int }}"
+        attributes:
+          usual: "{{ state_attr('sensor.drift_stats', 'activity').usual }}"
+          today: "{{ state_attr('sensor.drift_stats', 'activity').today }}"
+          usual_by_now: "{{ state_attr('sensor.drift_stats', 'activity').usual_by_now }}"
+          run: "{{ state_attr('sensor.drift_stats', 'activity').run }}"
+          recent: "{{ state_attr('sensor.drift_stats', 'activity').recent }}"
+          since: "{{ state_attr('sensor.drift_stats', 'activity').since }}"
+          accumulator: "{{ state_attr('sensor.drift_stats', 'activity').S }}"
+          trip_point: "{{ state_attr('sensor.drift_stats', 'activity').h }}"
+          spread: "{{ state_attr('sensor.drift_stats', 'activity').sd }}"
+          baseline: >
+            {{ state_attr('sensor.drift_stats', 'activity').base_from }} to
+            {{ state_attr('sensor.drift_stats', 'activity').base_to }}
+
+      - name: "Drift Activity Usual"
+        unique_id: drift_activity_usual
+        icon: mdi:walk
+        unit_of_measurement: "triggers"
+        availability: "{{ (state_attr('sensor.drift_stats', 'activity') or {}).get('usual') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'activity').usual | round(0) | int }}"
+
+      - name: "Drift Activity State"
+        unique_id: drift_activity_state
+        icon: mdi:chart-timeline-variant
+        availability: "{{ state_attr('sensor.drift_stats', 'activity') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'activity').state | capitalize }}"
+        attributes:
+          detail: >
+            {% set a = state_attr('sensor.drift_stats', 'activity') %}
+            {% if a.state == 'learning' %}
+              {{ a.days_learned }} of 28 days recorded
+            {% elif a.state == 'changed' %}
+              about {{ a.recent | round(0) | int }} a day for {{ a.run }} days, usual {{ a.usual | round(0) | int }}
+            {% elif a.state == 'watching' %}
+              quieter than usual for {{ a.run }} days
+            {% else %}
+              steady since {{ a.base_to }}
+            {% endif %}
+
+  - binary_sensor:
+      - name: "Drift Night Bathroom Changed"
+        unique_id: drift_night_bathroom_changed
+        device_class: problem
+        icon: mdi:trending-up
+        availability: "{{ state_attr('sensor.drift_stats', 'visits') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'visits').state == 'changed' }}"
+        attributes:
+          trip_date: "{{ state_attr('sensor.drift_stats', 'visits').trip_date }}"
+          notify_pending: "{{ state_attr('sensor.drift_stats', 'visits').notify }}"
+
+      - name: "Drift Wake Changed"
+        unique_id: drift_wake_changed
+        device_class: problem
+        icon: mdi:trending-up
+        availability: "{{ state_attr('sensor.drift_stats', 'wake') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'wake').state == 'changed' }}"
+        attributes:
+          trip_date: "{{ state_attr('sensor.drift_stats', 'wake').trip_date }}"
+          notify_pending: "{{ state_attr('sensor.drift_stats', 'wake').notify }}"
+
+      - name: "Drift Activity Changed"
+        unique_id: drift_activity_changed
+        device_class: problem
+        icon: mdi:trending-down
+        availability: "{{ state_attr('sensor.drift_stats', 'activity') is not none }}"
+        state: "{{ state_attr('sensor.drift_stats', 'activity').state == 'changed' }}"
+        attributes:
+          trip_date: "{{ state_attr('sensor.drift_stats', 'activity').trip_date }}"
+          notify_pending: "{{ state_attr('sensor.drift_stats', 'activity').notify }}"
+
+automation:
+  # Morning delivery. A night completes at wake, the sensor refreshes every
+  # 30 min, so by 09:00 last night is in; 12:30 catches the odd late morning.
+  # One message per trip: the script marks the trip date notified, and the
+  # binary sensor's notify_pending goes false on the next refresh.
+  - id: haiven_drift_alert
+    alias: "Haiven: Drift Alert"
+    description: One morning message when a slow change in routine trips a drift chart.
+    triggers:
+      - trigger: time
+        at: "09:00:00"
+      - trigger: time
+        at: "12:30:00"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.haiven_monitoring_enabled
+        state: "on"
+      - condition: template
+        value_template: >
+          {{ is_state_attr('binary_sensor.drift_night_bathroom_changed', 'notify_pending', true)
+             or is_state_attr('binary_sensor.drift_wake_changed', 'notify_pending', true)
+             or is_state_attr('binary_sensor.drift_activity_changed', 'notify_pending', true) }}
+    actions:
+      - variables:
+          name: "{{ states('input_text.elderly_person_name') }}"
+          v: "{{ state_attr('sensor.drift_stats', 'visits') }}"
+          w: "{{ state_attr('sensor.drift_stats', 'wake') }}"
+          a: "{{ state_attr('sensor.drift_stats', 'activity') }}"
+      - if:
+          - condition: template
+            value_template: "{{ v.notify }}"
+        then:
+          - action: "{{ states('input_text.contact_1_notification') }}"
+            data:
+              title: "{{ name }} is getting up more at night"
+              message: >
+                About {{ v.recent | round(1) }} bathroom visits a night for the last
+                {{ v.run }} nights, against her usual {{ v.usual | round(1) }}.
+                This pattern often comes before a water infection. Worth a GP call this week.
+              data:
+                push:
+                  interruption-level: passive
+                tag: haiven-drift-visits
+                actions:
+                  - action: "DRIFT_VISITS_NOTED"
+                    title: "Noted, keep watching"
+                  - action: "DRIFT_VISITS_RESET"
+                    title: "Seen GP, reset usual"
+          - action: shell_command.drift_notified
+            data:
+              chart: visits
+              trip_date: "{{ v.trip_date }}"
+          - action: shell_command.log_haiven_event
+            data:
+              event_type: DRIFT
+              detail: "visits tripped {{ v.trip_date }} run {{ v.run }} recent {{ v.recent }} usual {{ v.usual }}"
+      - if:
+          - condition: template
+            value_template: "{{ w.notify }}"
+        then:
+          - action: "{{ states('input_text.contact_1_notification') }}"
+            data:
+              title: "{{ name }} has been getting up later"
+              message: >
+                Up around {{ w.recent_text }} for the last {{ w.run }} mornings, against
+                her usual {{ w.usual_text }}. Later starts over a week can mean she is
+                under the weather or sleeping badly. Worth asking how she is.
+              data:
+                push:
+                  interruption-level: passive
+                tag: haiven-drift-wake
+                actions:
+                  - action: "DRIFT_WAKE_NOTED"
+                    title: "Noted, keep watching"
+                  - action: "DRIFT_WAKE_RESET"
+                    title: "New normal, reset usual"
+          - action: shell_command.drift_notified
+            data:
+              chart: wake
+              trip_date: "{{ w.trip_date }}"
+          - action: shell_command.log_haiven_event
+            data:
+              event_type: DRIFT
+              detail: "wake tripped {{ w.trip_date }} run {{ w.run }} recent {{ w.recent_text }} usual {{ w.usual_text }}"
+      - if:
+          - condition: template
+            value_template: "{{ a.notify }}"
+        then:
+          - action: "{{ states('input_text.contact_1_notification') }}"
+            data:
+              title: "{{ name }} has been quieter around the house"
+              message: >
+                About {{ a.recent | round(0) | int }} kitchen movements a day for the last
+                {{ a.run }} days, against her usual {{ a.usual | round(0) | int }}. A quieter
+                week can mean she is under the weather or less steady on her feet.
+                Worth asking how she is.
+              data:
+                push:
+                  interruption-level: passive
+                tag: haiven-drift-activity
+                actions:
+                  - action: "DRIFT_ACTIVITY_NOTED"
+                    title: "Noted, keep watching"
+                  - action: "DRIFT_ACTIVITY_RESET"
+                    title: "New normal, reset usual"
+          - action: shell_command.drift_notified
+            data:
+              chart: activity
+              trip_date: "{{ a.trip_date }}"
+          - action: shell_command.log_haiven_event
+            data:
+              event_type: DRIFT
+              detail: "activity tripped {{ a.trip_date }} run {{ a.run }} recent {{ a.recent }} usual {{ a.usual }}"
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.drift_stats
+    mode: single
+
+  - id: haiven_drift_action
+    alias: "Haiven: Drift Alert Buttons"
+    description: Noted keeps the baseline and restarts the chart; Reset refreezes the baseline on the next 28 nights.
+    triggers:
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: DRIFT_VISITS_NOTED
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: DRIFT_VISITS_RESET
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: DRIFT_WAKE_NOTED
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: DRIFT_WAKE_RESET
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: DRIFT_ACTIVITY_NOTED
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: DRIFT_ACTIVITY_RESET
+    actions:
+      - variables:
+          parts: "{{ trigger.event.data.action.lower().split('_') }}"
+      - action: shell_command.drift_ack
+        data:
+          chart: "{{ parts[1] }}"
+          kind: "{{ parts[2] }}"
+      - action: shell_command.log_haiven_event
+        data:
+          event_type: DRIFT
+          detail: "{{ parts[1] }} {{ parts[2] }} by carer"
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.drift_stats
+    mode: queued
