@@ -15,6 +15,9 @@ homeassistant:
     haiven_sensors_3sensor: !include haiven_sensors_3sensor.yaml
     haiven_bathroom_night: !include packages/haiven_bathroom_night.yaml
     haiven_circle_tracking: !include packages/haiven_circle_tracking.yaml
+    haiven_drift: !include packages/haiven_drift.yaml
+    haiven_night_insights: !include packages/haiven_night_insights.yaml
+    haiven_movement: !include packages/haiven_movement.yaml
  
 automation: !include automations.yaml
 script: !include scripts.yaml
@@ -164,6 +167,9 @@ recorder:
   exclude:
     entities:
       - sensor.activity_log_48h
+      - sensor.drift_stats
+      - sensor.night_stats
+      - sensor.movement_stats
 
 # Lovelace configuration
 lovelace:

@@ -1,0 +1,28 @@
+# Haiven Movement (all rooms)
+#
+# The Home card's "Movement, all rooms" row: today's kitchen + bedroom +
+# bathroom trigger count so far, against a plain 7-day average by the same
+# clock time. scripts/movement_today.py.
+#
+# Deliberately not part of Drift Watch (packages/haiven_drift.yaml): no
+# state, no accumulator, no alerting, no frozen baseline - this only
+# describes today, it does not detect a change. The Drift Watch "activity"
+# chart stays kitchen-only for the reason docs/planning/DRIFT_WATCH.md
+# gives (a combined signal saturates for CUSUM detection); that reason does
+# not apply to a plain description, so this one covers all three rooms.
+#
+# sensor.movement_stats is excluded from the recorder in configuration.yaml.
+
+command_line:
+  - sensor:
+      name: "Movement Stats"
+      unique_id: movement_stats
+      command: "python3 /config/scripts/movement_today.py"
+      scan_interval: 1800
+      command_timeout: 60
+      value_template: "{{ value_json.today }}"
+      json_attributes:
+        - today
+        - usual_by_now
+        - series
+        - generated
