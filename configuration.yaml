@@ -26,8 +26,18 @@ person: !include haiven_persons.yaml
 zone: !include haiven_zones.yaml
 
 frontend:
+  # Without this key the themes/ directory is never read and `theme: Haiven`
+  # at the top of the dashboard silently does nothing.
+  themes: !include_dir_merge_named themes
   extra_module_url:
     - /hacsfiles/kiosk-mode/kiosk-mode.js
+    # Haiven Native card library. Loaded here rather than as a Lovelace
+    # resource so the URL lives in git instead of .storage. The loader
+    # revalidates www/haiven-cards.js and imports it under its current ETag,
+    # so shipping a card change is a file copy with no restart and no UI step.
+    # ?v= is bumped ONLY when haiven-loader.js itself changes, which is rare.
+    # Card changes need no bump: the loader handles those.
+    - /local/haiven-loader.js?v=2
 
 # Haiven Elderly Care Monitoring
 
@@ -179,7 +189,7 @@ lovelace:
       title: Haiven
       icon: mdi:heart-pulse
       show_in_sidebar: true
-      filename: lovelace/dashboard_default.yaml
+      filename: lovelace/haiven_default.yaml
 
 # History Stats - Rolling averages for activity baselines
 sensor:
