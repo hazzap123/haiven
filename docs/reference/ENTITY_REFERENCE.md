@@ -2,7 +2,7 @@
 
 Single source of truth for all entity IDs used in the Haiven monitoring system.
 
-**Updated:** 2026-02-04
+**Updated:** 2026-09-19
 
 ---
 
@@ -13,7 +13,7 @@ Single source of truth for all entity IDs used in the Haiven monitoring system.
 | Entity ID | Type | Location | Description |
 |-----------|------|----------|-------------|
 | `event.kitchen_motion` | Event | Kitchen | Kitchen motion detection |
-| `binary_sensor.haiven_bedroom_occupancy` | Binary | Bedroom | MMW presence (LD2410 radar) |
+| `binary_sensor.haiven_bedroom_occupancy` | Binary | Bedroom | MMW presence (LD2450 radar — not LD2410, a different sensor with a different ESPHome component) |
 | `binary_sensor.haiven_bathroom_motion` | Binary | Bathroom | Shelly BLU PIR motion |
 
 ### MMW Sensor Extended Entities
@@ -61,7 +61,8 @@ These sensors provide centralized logic used by multiple other sensors and autom
 
 | Entity ID | Purpose |
 |-----------|---------|
-| `sensor.elderly_care_status` | Main status: all_good, potential_deviation, alert |
+| `sensor.elderly_care_status` | Main status: `normal`, `monitoring`, `caution`, `concern`, `critical`, or `away` — see [STATUS_SPEC.md](STATUS_SPEC.md) |
+| `sensor.status_severity_score` | The weighted score behind the status above (0-100+) |
 | `sensor.last_activity_location` | Kitchen, Bedroom, or Bathroom |
 | `sensor.last_activity_time` | "X minutes ago" format |
 | `sensor.last_activity_display` | Combined location and time |
@@ -71,6 +72,37 @@ These sensors provide centralized logic used by multiple other sensors and autom
 | `sensor.sensor_health_status` | "All Sensors Online" or issues |
 | `sensor.room_activity_summary` | Summary of today's activity |
 | `binary_sensor.bedtime_pattern_detected` | Triggers bedtime automation |
+| `sensor.elderly_person_location` | Human-readable location text ("Home", "Out", a zone name) for the dashboard's presence word and the Circles screen. Not created by any package — build it yourself from a device_tracker's zone/state, or leave it unset; the dashboard degrades gracefully without it. |
+
+### Drift Watch (`packages/haiven_drift.yaml`)
+
+Raw stats come from `sensor.drift_stats` (excluded from the recorder — read its attributes, not its state). Everything else is derived from it:
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `sensor.drift_night_bathroom` / `_usual` / `_state` | Smoothed level, usual, and Learning/Steady/Watching/Changed state — bathroom visits |
+| `sensor.drift_wake` / `_usual` / `_state` | Same, for first stirring |
+| `sensor.drift_activity` / `_usual` / `_state` | Same, for daytime kitchen activity |
+| `binary_sensor.drift_night_bathroom_changed` | On when the bathroom chart has tripped |
+| `binary_sensor.drift_wake_changed` | On when the wake chart has tripped |
+| `binary_sensor.drift_activity_changed` | On when the activity chart has tripped |
+
+### Night Insights (`packages/haiven_night_insights.yaml`)
+
+Raw stats come from `sensor.night_stats` (also excluded from the recorder):
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `sensor.bathroom_night_visits_avg` | 14-night baseline |
+| `sensor.bathroom_night_visits_3n` | Average of the last 3 completed nights |
+| `sensor.night_downstairs_trips` / `_avg` | Tonight's (or last night's) downstairs trips, and the 14-night average |
+| `sensor.bathroom_night_trend` | "Rising" or "Steady" |
+
+### Movement (`packages/haiven_movement.yaml`)
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `sensor.movement_stats` | Raw stats (excluded from the recorder); `today` and `usual_by_now` attributes power the Home card's "Movement, all rooms" row |
 
 ---
 
@@ -185,8 +217,13 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 
 | File | Contains |
 |------|----------|
-| `haiven_inputs.yaml` | All input helpers (central config) |
-| `haiven_sensors_3sensor.yaml` | Template sensors |
+| `packages/haiven_care_circle_inputs.yaml` | Carer/contact input helpers |
+| `packages/haiven_monitoring_inputs.yaml` | Thresholds and state machines |
+| `packages/haiven_comms_inputs.yaml` | Summary and alert text |
+| `packages/haiven_drift.yaml` | Drift Watch sensors and alert |
+| `packages/haiven_night_insights.yaml` | Nightly bathroom-visit and downstairs-trip stats |
+| `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
+| `haiven_sensors_3sensor.yaml` | Core template sensors |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Action scripts |
 | `automations.yaml` | Monitoring automations |
@@ -219,4 +256,4 @@ Developer Tools > Actions > Search: notify
 
 ---
 
-*Last Updated: 2026-02-04*
+*Last Updated: 2026-09-19*

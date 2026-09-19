@@ -30,19 +30,6 @@ Elderly care monitoring system for Home Assistant.
 | [TROUBLESHOOTING](reference/TROUBLESHOOTING.md) | Common problems and solutions |
 | [SENSOR_GUIDES](reference/SENSOR_GUIDES.md) | Hardware setup, configuration, reset procedures |
 
-### Planning
-
-| Document | Description |
-|----------|-------------|
-| [PRD_AI_AGENT](planning/PRD_AI_AGENT.md) | Product requirements for AI agent features |
-| [STRATEGIC_ANALYSIS](planning/STRATEGIC_ANALYSIS.md) | System analysis and roadmap |
-
-### Internal
-
-| Document | Description |
-|----------|-------------|
-| [BEDTIME_DETECTION_V4](internal/BEDTIME_DETECTION_V4.md) | Technical notes on bedtime algorithm |
-
 ---
 
 ## What Do You Need?
@@ -70,13 +57,16 @@ Bathroom (PIR Motion)    -> Routine, bathroom breaks
 
 ### Status Indicators
 
-- **Green:** Routine normal
-- **Orange:** Potential deviation (1-2 hours off)
-- **Red:** Alert (4+ hours, needs attention)
+Five levels, not three — see [STATUS_SPEC](reference/STATUS_SPEC.md) for the full severity scoring:
+
+- **Normal / Monitoring:** green / teal, no action needed
+- **Caution:** orange, worth a look
+- **Concern / Critical:** red, needs attention
+- **Away:** grey, person isn't home
 
 ### Configuration Architecture
 
-- **Central config:** `haiven_inputs.yaml`
+- **Config lives in `packages/`:** `haiven_care_circle_inputs.yaml` (contacts), `haiven_monitoring_inputs.yaml` (thresholds), `haiven_comms_inputs.yaml` (alert and summary text)
 - **Contact pattern:** `contact_1_*`, `contact_2_*`, etc.
 - **Single source of truth:** All scripts/automations read from input helpers
 
@@ -86,21 +76,23 @@ Bathroom (PIR Motion)    -> Routine, bathroom breaks
 
 | File | Purpose |
 |------|---------|
-| `haiven_inputs.yaml` | All input helpers (central config) |
-| `haiven_sensors_3sensor.yaml` | Template sensors |
+| `packages/haiven_care_circle_inputs.yaml` | Carer/contact input helpers |
+| `packages/haiven_monitoring_inputs.yaml` | Thresholds and state machines |
+| `packages/haiven_comms_inputs.yaml` | Summary and alert text |
+| `packages/haiven_drift.yaml` | Drift Watch: a month of nights against a frozen baseline |
+| `packages/haiven_night_insights.yaml` | Nightly bathroom-visit and downstairs-trip stats |
+| `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
+| `haiven_sensors_3sensor.yaml` | Core template sensors (status, scoring, timing) |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Notification scripts |
 | `automations.yaml` | Monitoring automations |
-| `CLAUDE.md` | Development instructions |
+| `www-src/haiven-cards.js` | Dashboard card library — deployed to `www/` by `scripts/setup.sh` |
+| `lovelace/haiven_default.yaml` | The dashboard itself |
 
 ---
 
 ## Version
 
-**Haiven v1.0** - 3-Sensor Configuration
-**Updated:** 2026-02-04
+**Haiven** - 3-Sensor Configuration
+**Updated:** 2026-09-19
 **Home Assistant:** 2024.1+
-
----
-
-*For development instructions, see `/CLAUDE.md` in the project root.*

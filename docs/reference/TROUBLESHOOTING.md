@@ -2,7 +2,7 @@
 
 Consolidated troubleshooting for all Haiven components.
 
-**Updated:** 2026-02-04
+**Updated:** 2026-09-19
 
 ---
 
@@ -72,9 +72,17 @@ sensor.deviation_count: 0 = normal
    ```yaml
    homeassistant:
      packages:
-       haiven_inputs: !include haiven_inputs.yaml
+       haiven_care_circle_inputs: !include packages/haiven_care_circle_inputs.yaml
+       haiven_monitoring_inputs: !include packages/haiven_monitoring_inputs.yaml
+       haiven_comms_inputs: !include packages/haiven_comms_inputs.yaml
        haiven_sensors_3sensor: !include haiven_sensors_3sensor.yaml
+       haiven_bathroom_night: !include packages/haiven_bathroom_night.yaml
+       haiven_circle_tracking: !include packages/haiven_circle_tracking.yaml
+       haiven_drift: !include packages/haiven_drift.yaml
+       haiven_night_insights: !include packages/haiven_night_insights.yaml
+       haiven_movement: !include packages/haiven_movement.yaml
    ```
+   If yours is shorter than this, `git pull` — a package is missing.
 
 4. **Force reload**
    - Developer Tools > YAML > All YAML configuration
@@ -119,7 +127,7 @@ sensor.deviation_count: 0 = normal
 
 ### Symptoms
 - Alerts when everything is fine
-- Status changes to orange frequently
+- Status frequently reaches caution or above for no real reason
 - Wake-up alerts even when person is up
 
 ### Solutions
@@ -307,40 +315,77 @@ sensor.deviation_count: 0 = normal
 
 ## MMW Bedroom Sensor Issues
 
+This is an LD2450 radar on a custom ESPHome build (not the stock firmware, not LD2410) — see [SENSOR_GUIDES.md](SENSOR_GUIDES.md) for the full architecture note and the gap in what this repo currently publishes for it.
+
 ### Always Shows "Occupied"
 
 **Causes:**
-- Detection distance too far (detecting hallway)
-- Far zones enabled (detecting door area)
-- Air vent causing constant movement
+- A zone boundary extends into a hallway or doorway
+- Air vent causing constant movement inside a zone
 
 **Fixes:**
-1. Reduce detection distance to 3 meters
-2. Disable zones 4-8 (via Everything Presence Configurator)
-3. Reposition sensor away from vents
+1. Tighten the zone in the [Everything Presence zone configurator](https://github.com/EverythingSmartHome/everything-presence-addons)
+2. Reposition the sensor away from vents
 
 ### Never Shows "Occupied"
 
 **Causes:**
-- Sensitivity too low
-- Sensor not aimed at bed
-- Firmware issue
+- Sensor not aimed at the bed
+- Zone doesn't cover where the person actually sleeps
 
 **Fixes:**
-1. Increase both sensitivities to 90%
-2. Check sensor physical positioning
-3. Update firmware via configurator
+1. Check sensor physical positioning
+2. Redraw the zone in the configurator to actually cover the bed
 
 ### False Wake-ups During Sleep
 
 **Causes:**
-- Movement sensitivity too high
-- Fan/AC movement detected
+- A zone extends too far, catching movement outside the bed
 
 **Fixes:**
-1. Decrease movement sensitivity to 50-60%
-2. Disable far zones
-3. Adjust sensor angle
+1. Narrow the zone
+2. Check for a fan or AC unit inside the zone boundary
+
+---
+
+## Dashboard Shows No Cards
+
+### Symptoms
+- The "Haiven" sidebar item exists and opens, but the page is blank or shows raw card-not-found errors
+- Browser console shows a 404 for `/local/haiven-cards.js` or `/local/haiven-loader.js`
+
+### Solutions
+
+1. **Check the files actually deployed**
+   - `www-src/haiven-cards.js` and `www-src/haiven-loader.js` are the source; Home Assistant serves from `www/`, which is gitignored and empty on a fresh clone
+   - `scripts/setup.sh` copies them across as its last step — if you skipped it or ran it before this deploy step existed, re-run it, or manually: `cp www-src/haiven-cards.js www-src/haiven-loader.js www/`
+
+2. **Check `frontend.extra_module_url` in `configuration.yaml`**
+   - Should include `/local/haiven-loader.js?v=2`
+   - Restart required after adding it — a YAML reload alone won't pick up a new frontend module
+
+3. **Hard-refresh the browser**
+   - The card loader deliberately busts its own cache on every load, but a stale service worker can still serve an old copy once — reload twice if the first load after a deploy looks wrong
+
+---
+
+## Drift Watch / Night Insights / Movement Not Working
+
+### Symptoms
+- `sensor.drift_stats`, `sensor.night_stats`, or `sensor.movement_stats` shows "unavailable"
+- The dashboard's Drift Watch row shows "Learning" indefinitely
+
+### Solutions
+
+1. **"Learning" is expected, not a bug, for the first 28 nights**
+   - Drift Watch needs 28 completed nights before it has a baseline. Night insights and movement need much less history (a few nights, a week respectively) — if those are also stuck, that's a real problem; Drift Watch alone showing "Learning" for under a month is normal.
+
+2. **Check the command_line sensor itself**
+   - Developer Tools > States > `sensor.drift_stats` / `sensor.night_stats` / `sensor.movement_stats`
+   - "unavailable" means the underlying script failed — check `python3 /config/scripts/drift_stats.py` (or `night_stats.py`, `movement_today.py`) runs cleanly from a terminal on the HA host
+
+3. **Check `mum_activity.log` exists and has entries**
+   - All three scripts read from this log; an empty or missing log means no data to build a baseline from
 
 ---
 
@@ -414,4 +459,4 @@ For hardware-specific issues:
 
 ---
 
-*Last Updated: 2026-02-04*
+*Last Updated: 2026-09-19*
