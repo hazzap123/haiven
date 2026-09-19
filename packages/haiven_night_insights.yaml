@@ -1,0 +1,106 @@
+# Haiven Night Insights
+#
+# Rebuilds every night from activity.log with scripts/night_stats.py so
+# tonight's count and the 14-night baseline come from the same rule.
+# Replaces the SQL "Bathroom Night Visits 14d Avg" sensor, which counted raw
+# PIR edges in a fixed 22:00-06:00 window and did not match how the live
+# count groups visits.
+#
+# sensor.night_stats is excluded from the recorder in configuration.yaml
+# (its attributes carry 14 nights of detail).
+
+command_line:
+  - sensor:
+      name: "Night Stats"
+      unique_id: night_stats
+      command: "python3 /config/scripts/night_stats.py"
+      scan_interval: 300
+      command_timeout: 30
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - avg14
+        - n14
+        - trips_avg14
+        - rising
+        - rise_base
+        - last3
+        - last
+        - tonight
+        - nights
+        - generated
+
+template:
+  - sensor:
+      # 14-night baseline for the "Bathroom visits" compare rows.
+      - name: "Bathroom Night Visits Avg"
+        unique_id: bathroom_night_visits_avg
+        icon: mdi:toilet
+        unit_of_measurement: "visits"
+        availability: "{{ state_attr('sensor.night_stats', 'avg14') is not none }}"
+        state: "{{ state_attr('sensor.night_stats', 'avg14') }}"
+        attributes:
+          nights_counted: "{{ state_attr('sensor.night_stats', 'n14') }}"
+
+      # Last 3 completed nights, for the "Last 3 nights" compare row. The
+      # Rising rule below is the same comparison against the 14 nights
+      # before them.
+      - name: "Bathroom Night Visits 3n"
+        unique_id: bathroom_night_visits_3n
+        icon: mdi:toilet
+        unit_of_measurement: "visits"
+        availability: "{{ (state_attr('sensor.night_stats', 'last3') or []) | length == 3 }}"
+        state: >
+          {% set l = state_attr('sensor.night_stats', 'last3') %}
+          {{ ((l | sum) / 3) | round(1) }}
+
+      # Downstairs trips in the night: tonight while it is in progress, else
+      # last night. Kitchen motion between bedtime+30 min and wake-30 min,
+      # grouped 15 min. Dogs can register here, so this is a pattern
+      # number, not an alarm.
+      - name: "Night Downstairs Trips"
+        unique_id: night_downstairs_trips
+        icon: mdi:stairs-down
+        unit_of_measurement: "trips"
+        availability: >
+          {{ state_attr('sensor.night_stats', 'tonight') is not none
+             or state_attr('sensor.night_stats', 'last') is not none }}
+        state: >
+          {% set n = state_attr('sensor.night_stats', 'tonight') or state_attr('sensor.night_stats', 'last') %}
+          {{ n.trips }}
+        attributes:
+          night: >
+            {% set n = state_attr('sensor.night_stats', 'tonight') or state_attr('sensor.night_stats', 'last') %}
+            {{ n.date }}
+          in_progress: "{{ state_attr('sensor.night_stats', 'tonight') is not none }}"
+          times: >
+            {% set n = state_attr('sensor.night_stats', 'tonight') or state_attr('sensor.night_stats', 'last') %}
+            {{ n.trip_times | join(', ') }}
+          bedtime: >
+            {% set n = state_attr('sensor.night_stats', 'tonight') or state_attr('sensor.night_stats', 'last') %}
+            {{ n.bed }}
+          wake: >
+            {% set n = state_attr('sensor.night_stats', 'tonight') or state_attr('sensor.night_stats', 'last') %}
+            {{ n.wake or 'not yet' }}
+
+      - name: "Night Downstairs Trips Avg"
+        unique_id: night_downstairs_trips_avg
+        icon: mdi:stairs-down
+        unit_of_measurement: "trips"
+        availability: "{{ state_attr('sensor.night_stats', 'trips_avg14') is not none }}"
+        state: "{{ state_attr('sensor.night_stats', 'trips_avg14') }}"
+        attributes:
+          nights_counted: "{{ state_attr('sensor.night_stats', 'n14') }}"
+
+      # Rising = last 3 completed nights average at least 1.5 visits above
+      # the 14 nights before them, and at least 3. Fired 4 times in 203
+      # recorded nights. A sustained rise in night bathroom visits is
+      # non-specific (drinks, sleep, infection) - it is a prompt to ask
+      # how she is, not a diagnosis.
+      - name: "Bathroom Night Trend"
+        unique_id: bathroom_night_trend
+        icon: mdi:trending-up
+        availability: "{{ state_attr('sensor.night_stats', 'rising') is not none }}"
+        state: "{{ 'Rising' if state_attr('sensor.night_stats', 'rising') else 'Steady' }}"
+        attributes:
+          last3: "{{ state_attr('sensor.night_stats', 'last3') | join(', ') }}"
+          baseline: "{{ state_attr('sensor.night_stats', 'rise_base') }}"
