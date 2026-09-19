@@ -22,7 +22,6 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 
 **Software:**
 - Home Assistant 2024.1+
-- HACS (for dashboard card dependencies)
 - Optional: Anthropic API key (for AI-generated summaries via Claude) or any other llm you like
 
 ## Quick start
@@ -78,16 +77,26 @@ configuration.yaml               # Main config — includes all packages
 ├── automations.yaml              # All automation logic
 ├── haiven_sensors_3sensor.yaml   # Template sensors (status, scoring, timing)
 ├── scripts.yaml                  # Notification and utility scripts
+├── scripts/                      # Python helpers the packages below shell out to
+│   ├── night_stats.py            # Rebuilds each night from the activity log
+│   ├── drift_stats.py            # Slow-drift detection over a month of nights
+│   └── movement_today.py         # Today's movement vs a 7-day average
 ├── packages/
 │   ├── haiven_care_circle_inputs.yaml   # Contact configuration
 │   ├── haiven_monitoring_inputs.yaml    # Thresholds and state machines
 │   ├── haiven_comms_inputs.yaml         # Summary and alert text
 │   ├── haiven_bathroom_night.yaml       # Night bathroom monitoring
-│   └── haiven_circle_tracking.yaml      # Care circle location sensors
+│   ├── haiven_circle_tracking.yaml      # Care circle location sensors
+│   ├── haiven_drift.yaml                # Drift Watch: a month of nights vs a frozen baseline
+│   ├── haiven_night_insights.yaml       # Nightly bathroom-visit and downstairs-trip stats
+│   └── haiven_movement.yaml             # Today's all-room movement vs a 7-day average
 ├── haiven_persons.yaml           # Person entities
 ├── haiven_zones.yaml             # Geographic zones
+├── www-src/                      # Dashboard card source (deployed to www/ by setup.sh)
+│   ├── haiven-cards.js
+│   └── haiven-loader.js
 └── lovelace/
-    └── dashboard_default.yaml    # Dashboard
+    └── haiven_default.yaml       # Dashboard
 ```
 
 ## Licence

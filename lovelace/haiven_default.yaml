@@ -1,0 +1,508 @@
+title: Haiven
+theme: Haiven
+
+# kiosk-mode strips Home Assistant's own chrome from this dashboard only.
+# The top tab strip and the left sidebar are both replaced by haiven-nav, the
+# fixed bottom bar in haiven-cards.js, which is where a thumb actually reaches
+# on a phone. Home Assistant itself stays one tap away under More.
+#
+# This is scoped to the Haiven dashboard: every other dashboard, and all of
+# /config, keeps its header and sidebar.
+kiosk_mode:
+  hide_header: true
+  hide_sidebar: true
+
+views:
+  - title: Home
+    path: home
+    icon: mdi:home
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          # Haiven Native. Every card below is a custom element from
+          # /local/haiven-cards.js. No card-mod, no Mushroom, no stock cards.
+          # A new visual need becomes a new element in that file, never a CSS
+          # patch on someone else's card.
+
+          - type: custom:haiven-status
+            summary_entity: input_text.current_summary
+
+          - type: custom:haiven-facts
+            cells:
+              - label: Woke
+                entity: sensor.today_wake_time
+                sub: first activity
+              - label: Overnight
+                entity: sensor.overnight_bathroom_count
+                sub: bathroom visits
+              - label: Last seen
+                entity: sensor.activity_data
+                sub: room
+
+          # Today's kitchen + bedroom + bathroom trigger count so far,
+          # against a plain 7-day average by this time. Not the Drift Watch
+          # "activity" chart (kitchen-only, calibrated, alerting) - that one
+          # duplicated the Activity tab and is kitchen-only for a reason
+          # (DRIFT_WATCH.md); this is a plain description, all three rooms,
+          # no alerting. scripts/movement_today.py.
+          - type: custom:haiven-section
+            title: Activity
+
+          - type: custom:haiven-movement
+            label: Movement, all rooms
+
+          - type: custom:haiven-section
+            title: Rooms
+
+          - type: custom:haiven-rooms
+
+          - type: custom:haiven-section
+            title: Carers
+
+          # Roster comes from CIRCLE in haiven-cards.js, so Home and Circle
+          # cannot list different people. Tapping opens the Circle view.
+          - type: custom:haiven-nearest
+            count: 2
+            stale_hours: 6
+
+  - title: Activity
+    path: activity
+    icon: mdi:chart-timeline-variant
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          # Three questions, three sub-tabs, one view. Where is she right now,
+          # is today like her other days, and what happened last night.
+          - type: custom:haiven-tabs
+            id: activity
+            default_tab: Today
+            tabs:
+
+              # ------------------------------------------------------------
+              - name: Today
+                cards:
+                  - type: custom:haiven-where
+
+                  - type: custom:haiven-section
+                    title: Last 8 hours
+
+                  # One band, not three lanes. Eight hours is what "what has
+                  # she been doing" actually means; a whole day belongs under
+                  # Patterns.
+                  - type: custom:haiven-ribbon
+                    hours: 8
+
+                  - type: custom:haiven-section
+                    title: Against her usual
+
+                  # Kitchen counts are compared against what the day should
+                  # have produced BY NOW, not against the daily total, so the
+                  # row is readable at 09:00 as well as at 22:00.
+                  - type: custom:haiven-compare
+                    rows:
+                      - label: Woke
+                        entity: sensor.today_wake_time
+                        baseline: sensor.average_wake_time_week
+                        kind: time
+                        flag: 90
+                      - label: Kitchen activity
+                        entity: counter.kitchen_triggers_today
+                        baseline: sensor.kitchen_expected_by_now
+                        kind: count
+                        unit: by now
+
+                  - type: custom:haiven-facts
+                    cells:
+                      - label: Score
+                        entity: sensor.daily_activity_score
+                        sub: activity today
+                      - label: Deviations
+                        entity: sensor.deviation_count
+                        sub: from her routine
+                      - label: Gap
+                        entity: sensor.average_activity_gap
+                        sub: minutes between rooms
+                        unit: false
+
+                  - type: custom:haiven-section
+                    title: Camera
+
+                  # Answers the question everything above provokes: it has
+                  # been quiet, is that fine? The frame, what the model made
+                  # of it, and a button to take a fresh one.
+                  - type: custom:haiven-camera
+
+              # ------------------------------------------------------------
+              - name: Patterns
+                cards:
+                  - type: custom:haiven-section
+                    title: Last 7 days
+
+                  - type: custom:haiven-ribbon
+                    hours: 168
+
+                  - type: custom:haiven-section
+                    title: Her rhythm
+
+                  - type: custom:haiven-compare
+                    rows:
+                      - label: Woke
+                        entity: sensor.today_wake_time
+                        baseline: sensor.average_wake_time_week
+                        kind: time
+                        flag: 90
+                      - label: Bedtime
+                        entity: sensor.today_bedtime
+                        baseline: sensor.average_bedtime_week
+                        kind: time
+                        flag: 90
+                      - label: Kitchen activity
+                        entity: counter.kitchen_triggers_today
+                        baseline: sensor.kitchen_triggers_daily_average
+                        kind: count
+                        unit: a day
+                      - label: Overnight bathroom
+                        entity: sensor.overnight_bathroom_count
+                        baseline: sensor.bathroom_night_visits_avg
+                        kind: count
+                        unit: a night
+                        flag: 2
+
+                  - type: custom:haiven-facts
+                    cells:
+                      - label: Wake
+                        entity: sensor.average_wake_time_week
+                        sub: 7-day average
+                      - label: Bed
+                        entity: sensor.average_bedtime_week
+                        sub: 7-day average
+                      - label: Kitchen
+                        entity: sensor.kitchen_triggers_daily_average
+                        unit: false
+                        sub: triggers a day
+
+                  # The slow layer: a month of nights against a baseline that
+                  # does not move, so a creeping change cannot hide inside its
+                  # own average. Steady / Watching / Changed; Changed has
+                  # already sent its one morning message. See
+                  # docs/planning/DRIFT_WATCH.md.
+                  - type: custom:haiven-section
+                    title: Over the month
+
+                  - type: custom:haiven-drift
+                    rows:
+                      - label: Night bathroom
+                        chart: visits
+                        kind: count
+                        unit: a night
+                      - label: Wake
+                        chart: wake
+                        kind: time
+                      - label: Kitchen movements
+                        chart: activity
+                        kind: count
+                        unit: a day
+                        period: day
+                        direction: below
+
+              # ------------------------------------------------------------
+              - name: Nights
+                cards:
+                  - type: custom:haiven-section
+                    title: Last 12 hours
+
+                  - type: custom:haiven-ribbon
+                    hours: 12
+
+                  - type: custom:haiven-section
+                    title: Overnight
+
+                  - type: custom:haiven-compare
+                    rows:
+                      - label: Bathroom visits
+                        entity: sensor.overnight_bathroom_count
+                        baseline: sensor.bathroom_night_visits_avg
+                        kind: count
+                        unit: a night
+                        flag: 2
+                      - label: Last 3 nights
+                        entity: sensor.bathroom_night_visits_3n
+                        baseline: sensor.bathroom_night_visits_avg
+                        kind: count
+                        unit: visits a night
+                        flag: 1.5
+                      - label: Downstairs trips
+                        entity: sensor.night_downstairs_trips
+                        baseline: sensor.night_downstairs_trips_avg
+                        kind: count
+                        unit: a night
+                        flag: 2
+                      - label: Bedtime
+                        entity: sensor.today_bedtime
+                        baseline: sensor.average_bedtime_week
+                        kind: time
+                        flag: 90
+
+                  - type: custom:haiven-facts
+                    cells:
+                      - label: Bed
+                        entity: sensor.bed_status
+                        sub: right now
+                      - label: In bed
+                        entity: sensor.time_in_bed_minutes
+                        sub: minutes so far
+                        unit: false
+                      - label: Visit length
+                        entity: sensor.bathroom_night_duration_14d_avg
+                        sub: minutes, 14-day average
+                        unit: false
+  - title: Sensors
+    path: sensors
+    icon: mdi:pulse
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:haiven-section
+            title: Coverage
+
+          - type: custom:haiven-rooms
+
+          - type: custom:haiven-section
+            title: Devices
+
+          # `covers` is the point of this screen. A dead sensor is not a red
+          # dot, it is a named piece of monitoring that has stopped.
+          - type: custom:haiven-devices
+            devices:
+              - key: kitchen
+                kind: Motion sensor
+                covers: wake detection, daytime activity, the kitchen baseline
+              - key: bedroom
+                kind: mmWave presence, LD2450 radar
+                covers: bedtime detection, bed state, time in bed
+              - key: bathroom
+                kind: PIR motion, Shelly BLU, battery
+                battery: sensor.haiven_bathroom_battery
+                battery_low: 20
+                covers: overnight bathroom count, extended-visit and fall alerts
+
+  - title: Circles
+    path: circles
+    icon: mdi:account-group
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:haiven-section
+            title: Where everyone is
+
+          # No `people:` here: the roster lives in CIRCLE in haiven-cards.js so
+          # this screen and the Home summary cannot list different people.
+          - type: custom:haiven-people
+            stale_hours: 6
+            subject:
+              name_entity: input_text.elderly_person_name
+              location_entity: sensor.elderly_person_location
+
+          - type: custom:haiven-section
+            title: Today
+
+          - type: custom:haiven-rows
+            rows:
+              - label: Daily note
+                entity: input_text.daily_note
+                sub: tap to write
+              - label: Carer on duty
+                entity: input_text.carer_name
+              - label: Carer schedule
+                entity: input_text.carer_schedule
+
+          - type: custom:haiven-actions
+            buttons:
+              - label: Mark safe
+                action: script.mark_safe
+                tone: accent
+                done: Marked
+              - label: Check in
+                action: script.manual_checkin
+                done: Sent
+
+  - title: Alerts
+    path: alerts
+    icon: mdi:bell
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          # One card, ordered by severity, rather than five conditional cards
+          # whose on-screen order was their order in this file.
+          - type: custom:haiven-alerts
+            enabled_entity: input_boolean.haiven_monitoring_enabled
+            alerts:
+              - entity: binary_sensor.no_return_from_bathroom_possible_fall
+                level: critical
+                title: No return from the bathroom
+                note: Possible fall. Check now, or call for help.
+                detail:
+                  - label: Went in
+                    entity: input_datetime.bathroom_night_last_entry
+                    format: time
+                  - label: In there
+                    entity: sensor.time_since_bathroom_entry_night
+                    format: mins
+
+              - entity: binary_sensor.extended_night_bathroom_visit
+                level: critical
+                title: Long bathroom visit overnight
+                detail:
+                  - label: So far
+                    entity: sensor.current_night_bathroom_duration
+                    format: mins
+                  - label: Her usual
+                    entity: input_number.bathroom_night_baseline_duration
+                    format: mins
+
+              - entity: sensor.deviation_count
+                above: 0
+                level: warning
+                title: Off her routine
+                body_entity: sensor.current_deviation_message
+
+              - entity: binary_sensor.high_night_bathroom_frequency
+                level: warning
+                title: Up more than usual overnight
+                body_entity: sensor.night_bathroom_status
+                detail:
+                  - label: Her usual
+                    entity: input_number.bathroom_night_baseline_visits
+
+          - type: custom:haiven-actions
+            buttons:
+              - label: Mark safe
+                action: script.mark_safe
+                tone: accent
+                done: Marked
+              - label: Check in
+                action: script.manual_checkin
+                done: Sent
+
+          - type: custom:haiven-section
+            title: Rooms
+
+          - type: custom:haiven-rooms
+
+  - title: Settings
+    path: settings
+    icon: mdi:cog
+    type: sections
+    max_columns: 1
+    sections:
+      - type: grid
+        cards:
+          - type: custom:haiven-tabs
+            id: settings
+            default_tab: Basics
+            tabs:
+
+              - name: Basics
+                cards:
+                  - type: custom:haiven-rows
+                    rows:
+                      - label: Monitoring
+                        entity: input_boolean.haiven_monitoring_enabled
+                        toggle: true
+                        sub: every automation is gated on this
+                      - label: Who is monitored
+                        entity: input_text.elderly_person_name
+                      - label: Sensors
+                        entity: sensor.sensor_health_status
+                      - label: Tracking
+                        entity: sensor.activity_tracking_status
+
+                  - type: custom:haiven-section
+                    title: Her routine
+
+                  - type: custom:haiven-rows
+                    rows:
+                      - label: Expected wake
+                        entity: input_datetime.expected_wake_time
+                        format: time
+                      - label: Wake variance
+                        entity: input_number.wake_time_variance_minutes
+                        format: mins
+                      - label: Expected bedtime
+                        entity: input_datetime.expected_bedtime
+                        format: time
+                      - label: Bedtime variance
+                        entity: input_number.bedtime_variance_minutes
+                        format: mins
+
+              - name: Contacts
+                cards:
+                  - type: custom:haiven-rows
+                    rows:
+                      - label: First contact
+                        entity: input_text.contact_1_name
+                      - label: Their number
+                        entity: input_text.contact_1_phone
+                      - label: Second contact
+                        entity: input_text.contact_2_name
+                      - label: Their number
+                        entity: input_text.contact_2_phone
+                      - label: Carer
+                        entity: input_text.carer_name
+                      - label: Carer schedule
+                        entity: input_text.carer_schedule
+
+              - name: Thresholds
+                cards:
+                  - type: custom:haiven-section
+                    title: How long before it worries
+
+                  # These four are the status ladder. They must stay in
+                  # ascending order or the state machine can never reach the
+                  # level above the one that fires first.
+                  - type: custom:haiven-rows
+                    rows:
+                      - label: Monitoring
+                        entity: input_number.status_gap_monitoring_mins
+                        format: mins
+                        sub: first level
+                      - label: Caution
+                        entity: input_number.status_gap_caution_mins
+                        format: mins
+                      - label: Concern
+                        entity: input_number.status_gap_concern_mins
+                        format: mins
+                      - label: Critical
+                        entity: input_number.status_gap_critical_mins
+                        format: mins
+                      - label: No-activity alert
+                        entity: input_number.no_activity_alert_hours
+                        format: hours
+
+                  - type: custom:haiven-section
+                    title: Overnight bathroom
+
+                  - type: custom:haiven-rows
+                    rows:
+                      - label: Baseline visits
+                        entity: input_number.bathroom_night_baseline_visits
+                        sub: a night
+                      - label: Baseline visit length
+                        entity: input_number.bathroom_night_baseline_duration
+                        format: mins
+                      - label: Room transition timeout
+                        entity: input_number.transition_timeout_mins
+                        format: mins
+                      - label: Safe-status duration
+                        entity: input_number.safe_status_duration_hours
+                        format: hours
