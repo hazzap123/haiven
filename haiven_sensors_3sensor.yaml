@@ -1078,9 +1078,12 @@ template:
         state: >
           {% set in_bed_states = ['in_bed', 'sleeping'] %}
           {% set current_state = states('input_select.bed_state') %}
-          {% set entered = states('input_datetime.zone1_entered_time') %}
-          {% if current_state in in_bed_states and entered not in ['unknown', 'unavailable'] %}
-            {{ ((now() - as_datetime(entered)).total_seconds() / 60) | round(0) }}
+          {# The helper's state is a naive local string; now() is tz-aware, and
+             subtracting the two raised TypeError every minute she was in bed.
+             The timestamp attribute is already epoch seconds. #}
+          {% set entered = state_attr('input_datetime.zone1_entered_time', 'timestamp') %}
+          {% if current_state in in_bed_states and entered %}
+            {{ ((now().timestamp() - entered) / 60) | round(0) }}
           {% else %}
             0
           {% endif %}
