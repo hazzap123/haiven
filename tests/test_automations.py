@@ -148,7 +148,7 @@ class TestHaivenAutomations:
             'haiven_no_activity_alert',
             'haiven_bedtime_confirmation_v2',
             'haiven_daily_reset',
-            'haiven_evening_report',
+            'haiven_evening_summary',
             'haiven_bathroom_night_entry',
             'haiven_bathroom_night_exit',
         ]
@@ -163,7 +163,7 @@ class TestHaivenAutomations:
             'haiven_morning_activity_check',
             'haiven_no_activity_alert',
             'haiven_bedtime_confirmation_v2',
-            'haiven_evening_report',
+            'haiven_evening_summary',
             'haiven_bathroom_night_extended_alert',
         ]
 
@@ -177,23 +177,29 @@ class TestHaivenAutomations:
                 assert has_monitoring_check, f"'{auto['alias']}' should check monitoring_enabled"
 
     def test_alert_automations_have_once_per_day(self, automations):
-        """Alert automations should fire only once per day."""
-        should_be_once_daily = [
-            'haiven_morning_activity_check',
-            'haiven_no_activity_alert',
-            'haiven_bedtime_confirmation_v2',
-            'haiven_evening_report',
-        ]
+        """Alert automations should fire only once per day. Each one has the
+        guard that fits how it triggers."""
+        by_id = {a['id']: a for a in automations}
 
-        for auto in automations:
-            if auto['id'] in should_be_once_daily:
-                conditions = auto.get('conditions', [])
-                conditions_text = yaml.dump(conditions)
-                has_once_daily = (
-                    'last_triggered' in conditions_text or
-                    'as_datetime(last).date()' in conditions_text
-                )
-                assert has_once_daily, f"'{auto['alias']}' should have once-per-day condition"
+        # Polled: a last_triggered guard on the local date.
+        conditions_text = yaml.dump(by_id['haiven_morning_activity_check'].get('conditions', []), width=1000)
+        assert 'last_triggered' in conditions_text and 'now().date()' in conditions_text, \
+            "'haiven_morning_activity_check' should have a last_triggered once-per-day condition"
+
+        # A long silence can outlast a day, so this one re-alerts, but no
+        # sooner than 4 hours after the last alert.
+        conditions_text = yaml.dump(by_id['haiven_no_activity_alert'].get('conditions', []), width=1000)
+        assert 'last_triggered' in conditions_text and '14400' in conditions_text, \
+            "'haiven_no_activity_alert' should wait 4 hours before re-alerting"
+
+        # Bedtime is recorded once; the guard is "not already recorded today".
+        conditions_text = yaml.dump(by_id['haiven_bedtime_confirmation_v2'].get('conditions', []), width=1000)
+        assert 'actual_bedtime_today' in conditions_text and '00:00:00' in conditions_text
+
+        # A single fixed-time trigger fires once a day by construction.
+        triggers = by_id['haiven_evening_summary']['triggers']
+        assert len(triggers) == 1 and triggers[0].get('trigger') == 'time', \
+            "'haiven_evening_summary' should fire from one daily time trigger"
 
     def test_bedtime_v2_checks_not_already_recorded(self, automations):
         """Bedtime V2 should check if bedtime was already recorded today."""
@@ -342,7 +348,8 @@ class TestNotificationActions:
                 has_notification = (
                     'notify.' in actions_text or
                     'primary_contact_notification' in actions_text or
-                    'script.notify_care_circle' in actions_text
+                    'script.notify_care_circle' in actions_text or
+                    'script.send_haiven_notification' in actions_text
                 )
                 assert has_notification, f"'{auto['alias']}' should send notification"
 
@@ -359,17 +366,21 @@ class TestNotificationActions:
                     f"'{auto['alias']}' should have high/critical priority"
 
     def test_passive_notifications_marked_correctly(self, automations):
-        """Non-urgent notifications should use passive interruption level."""
+        """Non-urgent notifications should use passive interruption level.
+        Only unconditional steps are checked: the morning confirmation also
+        has a late-wake branch that is time-sensitive on purpose."""
         passive_ids = [
             'haiven_morning_activity_confirmation',
-            'haiven_evening_report',
+            'haiven_evening_summary',
         ]
 
         for auto in automations:
             if auto['id'] in passive_ids:
-                actions_text = yaml.dump(auto.get('actions', []))
-                if 'interruption-level' in actions_text:
-                    assert 'passive' in actions_text, \
+                sends = [s for s in auto.get('actions', [])
+                         if s.get('action') == 'script.send_haiven_notification']
+                assert sends, f"'{auto['alias']}' should send a notification"
+                for s in sends:
+                    assert s['data'].get('level') == 'passive', \
                         f"'{auto['alias']}' should use passive interruption"
 
 
@@ -444,7 +455,7 @@ class TestAutomationCompleteness:
 
     def test_has_care_circle_tracking(self, automations):
         """Should have care circle location tracking."""
-        circle_ids = [a['id'] for a in automations if 'circle' in a['id'].lower() or 'contact' in a['id'].lower()]
+        circle_ids = [a['id'] for a in automations if a['alias'].startswith('Circle Tracking:')]
         assert len(circle_ids) >= 3, "Should have at least 3 care circle automations"
 
 
