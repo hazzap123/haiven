@@ -131,3 +131,30 @@ class TestRoomTransitionTimeout:
         text = (ROOT / "haiven_sensors_3sensor.yaml").read_text()
         uses = [l for l in text.splitlines() if "input_number.transition_timeout_mins" in l]
         assert uses and all("| int(90)" in l for l in uses), uses
+
+
+class TestOvernightActivitySummary:
+    """A sensor state is capped at 255 characters; HA marks a longer one
+    unknown. The AI summaries read this state (Conversation sees states, not
+    attributes), so an overnight with many events went to the AI as unknown."""
+
+    @pytest.fixture
+    def tpl(self):
+        return template_entity('overnight_activity_summary_from_log', ROOT / "configuration.yaml")['state']
+
+    def _log(self, entries):
+        return {'sensor.activity_log_48h': {'log': '|'.join(entries)}}
+
+    def test_short_night_is_listed(self, tpl):
+        out = render(tpl, attrs=self._log(['20:10 Kitchen (on)', '23:40 Bathroom (on)', '02:15 Bathroom (on)']))
+        assert out == '23:40 Bathroom (on), 02:15 Bathroom (on)'
+
+    def test_busy_night_fits_and_keeps_the_latest(self, tpl):
+        entries = ['%02d:%02d Bathroom (on)' % (h, m) for h in (22, 23, 0, 1, 2, 3, 4) for m in (5, 20, 40)]
+        out = render(tpl, attrs=self._log(entries))
+        assert len(out) <= 255
+        assert out.endswith(entries[-1])
+        assert out.startswith('…')
+
+    def test_no_data(self, tpl):
+        assert render(tpl) == 'No data'

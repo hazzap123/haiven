@@ -100,21 +100,34 @@ template:
         unique_id: overnight_activity_summary_from_log
         icon: mdi:weather-night
         state: >
+          {# A state over 255 characters is rejected, and the AI summaries read
+             this state, so a busy night is cut to the latest entries that fit,
+             marked with a leading ellipsis. A namespace, because a plain
+             `set` inside a for loop does not survive the loop. #}
           {% set log = state_attr('sensor.activity_log_48h', 'log') %}
           {% if log %}
             {% set entries = log.split('|') %}
-            {% set night = [] %}
+            {% set ns = namespace(night=[]) %}
             {% for entry in entries %}
               {% set parts = entry.strip().split(' ') %}
               {% if parts | length >= 2 %}
                 {% set time = parts[0] %}
                 {% if time >= '21:00' or time < '06:00' %}
-                  {% set night = night + [entry.strip()] %}
+                  {% set ns.night = ns.night + [entry.strip()] %}
                 {% endif %}
               {% endif %}
             {% endfor %}
-            {% if night %}
-              {{ night | join(', ') }}
+            {% set fit = namespace(items=[], length=0, full=false) %}
+            {% for entry in ns.night | reverse %}
+              {% if not fit.full and fit.length + (entry | length) + 2 <= 250 %}
+                {% set fit.items = [entry] + fit.items %}
+                {% set fit.length = fit.length + (entry | length) + 2 %}
+              {% else %}
+                {% set fit.full = true %}
+              {% endif %}
+            {% endfor %}
+            {% if fit.items %}
+              {{ ('… ' if fit.full else '') ~ fit.items | join(', ') }}
             {% else %}
               No overnight activity recorded
             {% endif %}
