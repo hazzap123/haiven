@@ -104,8 +104,8 @@ On each person's phone:
 3. Look for entries like:
    ```
    notify.mobile_app_your_phone        <- Carer 1's phone
-   notify.mobile_app_your_phone      <- Another iPhone
-   notify.mobile_app_other_phone         <- Android device
+   notify.mobile_app_carer_2_phone    <- Carer 2's phone
+   notify.mobile_app_your_android     <- An Android device
    ```
 4. **Copy the exact service name**
 

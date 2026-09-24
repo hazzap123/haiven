@@ -63,7 +63,9 @@ See [docs/setup/QUICKSTART.md](docs/setup/QUICKSTART.md) for the full 30-minute 
 
 Haiven triangulates location from 3 sensors to build a picture of daily activity:
 
-| Time | Typical Pattern | Primary Sensor |
+An example day (your times will differ):
+
+| Time | Example Pattern | Primary Sensor |
 |------|----------------|----------------|
 | 04:30-05:30 | Wake — first kitchen motion | Kitchen |
 | Daytime | Kitchen/living room activity | Kitchen |
