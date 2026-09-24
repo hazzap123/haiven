@@ -82,7 +82,7 @@ ACT_Z_CAP = 3.0
 EWMA = 0.1
 SERIES_N = 28             # nights the card draws
 CHARTS = ("visits", "wake", "activity")
-LOC_LINE = re.compile(r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \w+ \S+ Location \((left home|arrived home)\)")
+LOC_LINE = re.compile(r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \w+ .+? Location \((left home|arrived home)\)")
 
 
 # ---------------------------------------------------------------- helpers
