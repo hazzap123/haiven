@@ -5,6 +5,8 @@ Tests YAML syntax, Jinja2 template logic, and automation structure.
 Run with: pytest tests/test_automations.py -v
 """
 
+import re
+
 import pytest
 import yaml
 from pathlib import Path
@@ -526,3 +528,34 @@ class TestSummaryLength:
             out = jinja_env.from_string(tpl).render(
                 ai_response={'response': {'speech': {'plain': {'speech': speech}}}})
             assert len(out) <= 255
+
+
+# =============================================================================
+# LOCAL-TIME COMPARISONS
+# =============================================================================
+
+class TestLocalTimeComparisons:
+    """last_triggered and last_changed are UTC; now() is local. Comparing an
+    unconverted UTC date against now().date() reads "yesterday" for anything
+    that happened in the first hour after local midnight during summer time,
+    so a restart re-ran the daily reset and wiped that day's wake time."""
+
+    @pytest.fixture
+    def text(self):
+        return AUTOMATIONS_PATH.read_text()
+
+    def test_no_utc_calendar_reads(self, text):
+        bad = re.findall(r"as_datetime\(\w+\)\.(?:date\(\)|hour|strftime)", text)
+        assert not bad, f"read the local date/hour: (as_datetime(x) | as_local) - {bad}"
+
+    def test_no_utc_last_changed_formatting(self, text):
+        bad = re.findall(r"last_changed\.strftime", text)
+        assert not bad, "last_changed is UTC; format (x | as_local)"
+
+    def test_once_a_day_guards_are_local(self, automations):
+        guards = [c['value_template'] for a in automations for c in a.get('conditions', [])
+                  if isinstance(c, dict) and 'last_triggered' in str(c.get('value_template', ''))
+                  and '.date()' in str(c.get('value_template', ''))]
+        assert len(guards) >= 10
+        for g in guards:
+            assert 'as_local' in g, g

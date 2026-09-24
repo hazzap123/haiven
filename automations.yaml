@@ -251,7 +251,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_morning_activity_check', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     # Check if person is away - send different notification
     - if:
@@ -425,9 +425,15 @@
   conditions:
     - condition: template
       alias: Only if last reset was on a different day
+      # last_triggered is UTC and now() is local. "Haiven: Daily Reset" fires
+      # at local midnight, which during summer time is the PREVIOUS calendar
+      # day in UTC, so the unconverted comparison read "the last reset was
+      # yesterday" on every restart and re-ran the reset, wiping that day's
+      # wake time, bedtime and first kitchen time. as_local makes the two
+      # sides comparable.
       value_template: >-
         {% set last = state_attr('automation.haiven_daily_reset', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - delay:
         seconds: 30
@@ -505,7 +511,7 @@
       alias: Only log once each morning
       value_template: >-
         {% set last = this.attributes.last_triggered %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: logbook.log
       data:
@@ -537,7 +543,7 @@
         {% set to_state = trigger.to_state %}
         {% set event_state = to_state.state if to_state else none %}
         {% set valid_motion = event_state not in ['idle', 'unknown', 'unavailable', 'off', none] %}
-        {{ valid_motion and (last is none or as_datetime(last).date() < now().date()) }}
+        {{ valid_motion and (last is none or (as_datetime(last) | as_local).date() < now().date()) }}
   actions:
     # Record wake time first so deviation sensors reflect actual wake time
     - action: input_datetime.set_datetime
@@ -612,8 +618,10 @@
       value_template: >-
         {% set kitchen_last = states.event.kitchen_motion.last_changed %}
         {% if kitchen_last %}
-          {% set activity_date = as_datetime(kitchen_last).date() %}
-          {% set activity_hour = as_datetime(kitchen_last).hour %}
+          {# last_changed is UTC. The 4-10 window below is written in local
+             hours, so it has to be compared against a local datetime. #}
+          {% set activity_date = (as_datetime(kitchen_last) | as_local).date() %}
+          {% set activity_hour = (as_datetime(kitchen_last) | as_local).hour %}
           {# Must be from today and in morning hours (4-10) #}
           {{ activity_date == now().date() and activity_hour >= 4 and activity_hour < 10 }}
         {% else %}
@@ -625,8 +633,10 @@
         entity_id: input_datetime.actual_wake_time_today
       data:
         time: >-
+          {# Local, or the recovered wake time is written an hour early all
+             summer. #}
           {% set kitchen_last = states.event.kitchen_motion.last_changed %}
-          {{ as_datetime(kitchen_last).strftime('%H:%M:%S') }}
+          {{ (as_datetime(kitchen_last) | as_local).strftime('%H:%M:%S') }}
     - action: input_boolean.turn_on
       target:
         entity_id: input_boolean.manual_safe_status
@@ -640,7 +650,7 @@
       data:
         name: Haiven Wake Time Catch-Up
         message: >-
-          Wake time recovered from kitchen sensor: {{ states.event.kitchen_motion.last_changed.strftime('%H:%M') }}
+          Wake time recovered from kitchen sensor: {{ (states.event.kitchen_motion.last_changed | as_local).strftime('%H:%M') }}
           (primary detection was missed)
         entity_id: input_datetime.actual_wake_time_today
     - action: script.send_haiven_notification
@@ -648,7 +658,7 @@
         title: "☀️ Haiven - Wake Time Recovered"
         message: >-
           {{ states('input_text.elderly_person_name') }}'s wake time was recovered from sensor data:
-          {{ states.event.kitchen_motion.last_changed.strftime('%I:%M %p') }}
+          {{ (states.event.kitchen_motion.last_changed | as_local).strftime('%I:%M %p') }}
           (primary detection missed - possible integration issue)
         level: passive
   mode: single
@@ -848,7 +858,7 @@
       alias: Only reset once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_bathroom_night_reset', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: counter.reset
       target:
@@ -971,7 +981,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_evening_activity_check', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
     - condition: template
       alias: No activity in last 3 hours
       value_template: >-
@@ -1016,7 +1026,7 @@
       alias: Only fire once (not already sent)
       value_template: >-
         {% set last = state_attr('automation.haiven_bedtime_routine_check', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -1507,7 +1517,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_no_kitchen_activity_by_noon', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -1542,7 +1552,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_low_activity_alert', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -1887,7 +1897,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_upstairs_only_alert', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:
