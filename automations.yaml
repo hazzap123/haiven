@@ -461,6 +461,13 @@
         - caution
         - concern
         - critical
+      # The state has to HOLD. A template reload blanks every input for a
+      # second; the severity maths falls back to 9999 minutes when an input
+      # is missing, which scores critical, and this sent a time-sensitive
+      # "CRITICAL - unavailable at unavailable" push. Two minutes is longer
+      # than any reload artefact and the entity-restore window after a
+      # restart, and costs a real alert two minutes against a 60-minute ladder.
+      for: "00:02:00"
   conditions:
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
@@ -468,6 +475,34 @@
     - condition: state
       entity_id: input_boolean.deviation_alert_sent
       state: "off"
+
+    - condition: template
+      alias: While she is asleep, only a genuinely long silence may wake anyone
+      value_template: >-
+        {# The ladder runs identically at 04:37 and at 14:37, so a normal
+           night of sleep escalates and pushed "Needs Attention" before she
+           got up.
+
+           Asleep means the night window, or the morning before her wake time
+           has been recorded. That morning assumption expires two hours after
+           her expected wake, so a failed wake detection cannot mute the
+           system for a whole day.
+
+           The bathroom fall and long-visit alerts are separate automations
+           and are deliberately untouched: those still fire at 3am. #}
+        {% set wake = states('input_datetime.actual_wake_time_today') %}
+        {% set wake_unset = wake in ['unknown', 'unavailable', 'none', '', '00:00:00'] %}
+        {% set wake_base = states('input_datetime.expected_wake_time') %}
+        {% set wake_var = states('input_number.wake_time_variance_minutes') | float(30) %}
+        {% set grace = today_at(wake_base) + timedelta(minutes=wake_var + 120)
+                       if wake_base not in ['unknown', 'unavailable'] else now() %}
+        {% set asleep = is_state('binary_sensor.night_window_active', 'on')
+                        or (wake_unset and now() < grace) %}
+        {% set k = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+        {% set b = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+        {% set t = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+        {% set limit = (states('input_number.no_activity_alert_hours') | float(4)) * 60 %}
+        {{ not asleep or ([k, b, t] | min) >= limit }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -477,9 +512,17 @@
           {% elif s == 'concern' %}🔴 Haiven - Check Required
           {% else %}⚠️ Haiven - Needs Attention{% endif %}
         message: >
-          {{ state_attr('sensor.elderly_care_status', 'status_text') }}.
-          {{ states('sensor.current_deviation_message') }}
-          Last: {{ states('sensor.last_activity_location') }} at {{ states('sensor.last_activity_time') }}
+          {# Read the attribute off the TRIGGERING state, not live. Re-reading
+             the sensor a moment later could find it a level lower, so the
+             title said "Needs Attention" while the body said "Monitoring". #}
+          {% set s = trigger.to_state %}
+          {{ s.attributes.get('status_text', 'Status: ' ~ s.state) }}.
+          {# An unknown deviation message was printed as the word "unknown"
+             in the middle of the sentence. #}
+          {% set d = states('sensor.current_deviation_message') %}
+          {% if d not in ['unknown', 'unavailable', 'none', 'None', ''] %}{{ d }}.{% endif %}
+          Last seen: {{ states('sensor.last_activity_location') }},
+          {{ states('sensor.last_activity_time') }}.
         level: >
           {% set s = trigger.to_state.state %}
           {% if s in ['critical', 'concern'] %}time-sensitive{% else %}active{% endif %}
@@ -1737,6 +1780,12 @@
             {% set problems = problems + ['kitchen_triggers_baseline input'] %}
           {% endif %}
           {{ problems }}
+    # A passing self-test goes to the logbook, not to a phone. This runs two
+    # minutes after EVERY restart and omitted `level`, which the notification
+    # script defaults to time-sensitive, so a green tick broke through Do Not
+    # Disturb for no reason but a restart.
+    #
+    # A FAILING self-test still notifies: that one means monitoring is broken.
     - choose:
         - conditions:
             - condition: template
@@ -1746,11 +1795,18 @@
               data:
                 title: "🔧 Haiven - Sensor Issues"
                 message: "Missing: {{ issues | join(', ') }}. Check YAML and reload."
+                level: time-sensitive
       default:
-        - action: script.send_haiven_notification
+        - action: logbook.log
           data:
-            title: "✅ Haiven - Sensors OK"
-            message: "Counters: K={{ states('counter.kitchen_triggers_today') }} B={{ states('counter.bedroom_triggers_today') }} Bath={{ states('counter.bathroom_triggers_today') }} | Status: {{ states('sensor.activity_level_status') }}"
+            name: Haiven Sensor Health Check
+            message: >-
+              All tracked entities present after restart.
+              Counters: K={{ states('counter.kitchen_triggers_today') }}
+              B={{ states('counter.bedroom_triggers_today') }}
+              Bath={{ states('counter.bathroom_triggers_today') }}.
+              Status: {{ states('sensor.activity_level_status') }}
+            entity_id: sensor.sensor_health_status
   mode: single
 # ============================================================================
 # BED STATE MACHINE - EPL Zone-Based Detection

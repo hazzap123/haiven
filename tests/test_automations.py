@@ -583,3 +583,37 @@ class TestKitchenRestartArtefacts:
             text = yaml.dump(a.get('conditions', []), width=1000)
             for part in self.GUARD:
                 assert part in text, f"{a['id']} lacks '{part}'"
+
+
+# =============================================================================
+# OVERNIGHT ALERT NOISE
+# =============================================================================
+
+class TestOvernightNoise:
+    """Overnight pushes that carried nothing true: a one-second reload
+    artefact scored critical, a normal night's sleep climbed the inactivity
+    ladder to "Needs Attention", and a restart self-test pushed a green tick
+    at time-sensitive."""
+
+    def _auto(self, automations, auto_id):
+        return next(a for a in automations if a['id'] == auto_id)
+
+    def test_status_change_must_hold(self, automations):
+        trig = self._auto(automations, 'haiven_status_change')['triggers'][0]
+        h, m, s = (int(x) for x in str(trig.get('for', '0:0:0')).split(':'))
+        assert h * 3600 + m * 60 + s >= 120
+
+    def test_status_change_quiet_while_asleep(self, automations):
+        conds = yaml.dump(self._auto(automations, 'haiven_status_change')['conditions'], width=1000)
+        assert 'binary_sensor.night_window_active' in conds
+        assert 'input_number.no_activity_alert_hours' in conds
+
+    def test_status_change_reads_the_triggering_state(self, automations):
+        msg = self._auto(automations, 'haiven_status_change')['actions'][0]['data']['message']
+        assert "state_attr('sensor.elderly_care_status'" not in msg
+        assert 'trigger.to_state' in msg
+
+    def test_passing_health_check_does_not_push(self, automations):
+        choose = next(s for s in self._auto(automations, 'haiven_new_sensors_health_check')['actions']
+                      if 'choose' in s)
+        assert all(s.get('action') != 'script.send_haiven_notification' for s in choose['default'])
