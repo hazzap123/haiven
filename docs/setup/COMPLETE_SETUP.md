@@ -242,7 +242,7 @@ Day 1:
 **Emergency procedures:**
 - [ ] What to do if RED alert
 - [ ] Who to call first
-- [ ] How to access camera views
+- [ ] How to open the Haiven dashboard
 
 ---
 
@@ -268,7 +268,7 @@ Level: Passive
 Title: "Haiven Alert - [Name]"
 Message: "No morning activity detected by expected time"
 Level: Time-sensitive
-Actions: [Mark Safe, View Dashboard, View Camera]
+Actions: [View Dashboard, Mark Safe]
 ```
 
 ### Daily Summary

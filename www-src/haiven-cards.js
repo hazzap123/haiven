@@ -1917,160 +1917,6 @@ class HaivenNearest extends HaivenCard {
   }
 }
 
-/* ------------------------------ haiven-camera ---------------------------
- * The last camera frame, what the model made of it, and a button to take a
- * fresh one. Together, because separately they are three cards that each
- * answer a third of the question.
- *
- * The image is fetched through media_source, which hands back a SIGNED,
- * expiring URL and requires authentication. The obvious alternative was to
- * copy the frame into /config/www and point an <img> at /local/latest.jpg,
- * which would have worked in one line and published a photo of an elderly
- * woman in her living room to anyone holding the Nabu Casa hostname, with no
- * login. Home Assistant serves /local with no auth at all.
- * --------------------------------------------------------------------- */
-
-const FRAME_ID = "media-source://media_source/haiven/latest.jpg";
-
-class HaivenCamera extends HaivenCard {
-  get css() { return `
-    .card{background:var(--surface);border:1px solid var(--line)}
-    .shot{position:relative;background:var(--surface-2);aspect-ratio:16/9;overflow:hidden}
-    .shot img{width:100%;height:100%;object-fit:cover;display:block}
-    .none{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-          font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
-    .when{position:absolute;left:0;bottom:0;padding:5px 9px;font-size:10.5px;
-          letter-spacing:.08em;text-transform:uppercase;font-weight:700;
-          color:var(--on-status);background:rgba(0,0,0,.55)}
-    .body{padding:14px 16px;display:flex;flex-direction:column;gap:11px}
-    .v{font-size:14.5px;line-height:1.45;color:var(--ink)}
-    .v.none{position:static;display:block;color:var(--faint);text-transform:none;
-            letter-spacing:0;font-size:14px}
-    .btns{display:flex;gap:8px}
-    .b{appearance:none;border:1px solid var(--accent);background:var(--accent);
-       color:var(--on-status);font:inherit;font-size:14px;font-weight:600;
-       padding:13px 10px;cursor:pointer;min-height:48px;flex:1 1 0}
-    .b.alt{background:var(--surface);color:var(--ink);border-color:var(--line)}
-    .b.alt:hover{background:var(--surface-2)}
-    .b:hover{filter:brightness(1.1)}
-    .b:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-    .b[disabled]{opacity:.6;cursor:default}
-    .live{position:absolute;inset:0}
-    .live > *{width:100%;height:100%;display:block}
-    .stamp{font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-           font-weight:700;color:var(--faint)}
-  `; }
-
-  signature(hass) {
-    const e = hass.states[this._config.verdict_entity || "input_text.camera_check_verdict"];
-    return `${this._looking ? "L" : ""}|${e ? e.state : ""}|${e ? e.last_changed : ""}`;
-  }
-
-  // media_source hands back a signed path that expires, so it is re-resolved
-  // whenever the frame changes rather than cached for the life of the card.
-  async _resolve() {
-    try {
-      const r = await this._hass.callWS({ type: "media_source/resolve_media", media_content_id: FRAME_ID });
-      return r && r.url ? r.url : null;
-    } catch (e) { return null; }
-  }
-
-  render(hass) {
-    const vId = this._config.verdict_entity || "input_text.camera_check_verdict";
-    const btn = this._config.button_entity || "input_button.check_camera";
-    const e = hass.states[vId];
-    const missing = isUn(e);
-    const age = ageMin(hass, vId);
-
-    // No battery row for a mains-powered camera: a percentage that reads 100%
-    // forever looks like information and carries none. A value that never
-    // changes is the stuck case, and printing it teaches the reader to trust a
-    // reading that would not move if the camera were dying.
-
-    this.paint(`<div class="card">
-      <div class="shot">
-        <div class="none" id="ph">${this._looking ? "Taking a fresh look&hellip;" : "No frame yet " + DASH}</div>
-        <img id="img" alt="" style="display:none">
-        ${age !== null && !missing ? `<div class="when" id="when">${esc(relTime(age))}</div>` : ""}
-      </div>
-      <div class="body">
-        <div class="v ${missing ? "none" : ""}">${missing
-          ? `Nothing looked at yet ${DASH}`
-          : (this._live && age !== null
-              // Live is showing now; the sentence is not. Without the stamp
-              // "No person is visible" sits under a feed with someone in it.
-              ? `<span class="stamp">${esc(relTime(age))}</span> ${esc(e.state)}`
-              : esc(e.state))}</div>
-        <div class="btns">
-          <button class="b alt" id="live" type="button">${this._live ? "Stop live" : "Live view"}</button>
-          <button class="b" id="check" type="button" ${this._looking ? "disabled" : ""}>${
-            this._looking ? "Looking&hellip;" : "Check now"}</button>
-        </div>
-      </div>
-    </div>`);
-
-    if (this._live) this._mountLive();
-    else this._resolve().then((url) => {
-      if (!url || this._live) return;
-      const img = this.shadowRoot.querySelector("#img");
-      const ph = this.shadowRoot.querySelector("#ph");
-      if (!img) return;
-      img.onload = () => { img.style.display = "block"; if (ph) ph.remove(); };
-      img.src = url;
-    });
-
-    this.shadowRoot.querySelector("#live").addEventListener("click", () => {
-      this._live = !this._live; this._sig = null; this.render(this._hass);
-    });
-
-    this.shadowRoot.querySelector("#check").addEventListener("click", () => {
-      if (this._looking) return;
-      this._looking = true; this._sig = null; this.render(this._hass);
-      this._hass.callService("input_button", "press", { entity_id: btn });
-      // The camera has to wake and take the picture, then the model has to
-      // look at it. Cleared by the verdict changing; this only unsticks the
-      // button if that never happens.
-      clearTimeout(this._t);
-      this._t = setTimeout(() => { this._looking = false; this._sig = null; this.render(this._hass); }, 60000);
-    });
-
-    // A new verdict means the look finished.
-    if (this._looking && e && e.last_changed !== this._seenAt) this._looking = false;
-    this._seenAt = e ? e.last_changed : null;
-  }
-
-  // Home Assistant already knows how to play this camera: WebRTC live view is
-  // what the phone app shows. Rather than reimplement the peer connection,
-  // its own picture-entity card is built and dropped into the frame. That is
-  // also why live works at all when every server-side path fails; the browser
-  // talks to Ring directly and Home Assistant never decodes anything.
-  async _mountLive() {
-    const shot = this.shadowRoot.querySelector(".shot");
-    if (!shot) return;
-    const helpers = await window.loadCardHelpers();
-    if (!this._live) return;
-    const el = helpers.createCardElement({
-      type: "picture-entity",
-      entity: this._config.camera_entity || "camera.ring_camera_live_view",
-      camera_view: "live",
-      show_name: false,
-      show_state: false,
-    });
-    el.hass = this._hass;
-    const wrap = document.createElement("div");
-    wrap.className = "live";
-    wrap.appendChild(el);
-    shot.replaceChildren(wrap);
-    this._liveEl = el;
-  }
-
-  set hass(h) {
-    super.hass = h;
-    if (this._liveEl) this._liveEl.hass = h;   // keep the stream card fed
-  }
-  get hass() { return this._hass; }
-}
-
 /* ------------------------------- haiven-nav -----------------------------
  * The bottom bar, same idea as Willow Bank's wb2-nav. Home Assistant puts its
  * navigation in a top tab strip that is fine on a desktop and wrong on a
@@ -2279,7 +2125,6 @@ define("haiven-alerts",  HaivenAlerts);
 define("haiven-actions", HaivenActions);
 define("haiven-rows",    HaivenRows);
 define("haiven-nearest", HaivenNearest);
-define("haiven-camera",  HaivenCamera);
 define("haiven-nav",     HaivenNav);
 
 window.customCards = window.customCards || [];
@@ -2300,7 +2145,6 @@ window.customCards.push(
   { type: "haiven-actions", name: "Haiven Actions", description: "Buttons that call a service" },
   { type: "haiven-rows",    name: "Haiven Rows",    description: "Entity list, tap for more-info" },
   { type: "haiven-nearest", name: "Haiven Nearest", description: "Closest carers, freshness included" },
-  { type: "haiven-camera",  name: "Haiven Camera",  description: "Last frame, the verdict on it, and a fresh look" },
 );
 
 // The bar is not a card and is never placed in a view; it mounts itself.

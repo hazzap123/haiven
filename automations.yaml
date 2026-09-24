@@ -1263,7 +1263,7 @@
       data:
         title: "⚠️ URGENT: No One Nearby"
         message: >
-          Status: {{ states('sensor.haiven_status') | title }}
+          Status: {{ states('sensor.elderly_care_status') | title }}
 
           No care circle members are currently nearby or at home.
 
@@ -1316,25 +1316,6 @@
               value_template: "{{ nearest_person == 'Contact 2' }}"
           sequence:
             - action: "{{ states('input_text.contact_2_notification') }}"
-              data:
-                title: "🚨 ALERT: You're Closest"
-                message: >
-                  Status: ALERT
-
-                  You are the nearest care circle member ({{ nearest_distance }} km away).
-
-                  Last activity: {{ states('sensor.last_activity_display') }}
-
-                  Please check on {{ states('input_text.elderly_person_name') }} as soon as possible.
-                data:
-                  push:
-                    interruption-level: time-sensitive
-
-        - conditions:
-            - condition: template
-              value_template: "{{ nearest_person == 'Professional Carer' }}"
-          sequence:
-            - action: "{{ states('input_text.carer_notification') }}"
               data:
                 title: "🚨 ALERT: You're Closest"
                 message: >

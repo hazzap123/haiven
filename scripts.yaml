@@ -27,7 +27,6 @@ notify_care_circle:
         alert_priority: "{{ priority | default('time-sensitive') }}"
         primary_service: "{{ states('input_text.contact_1_notification') }}"
         secondary_service: "{{ states('input_text.contact_2_notification') }}"
-        carer_service: "{{ states('input_text.carer_notification') }}"
 
     # Notify primary contact
     - if:
@@ -41,11 +40,10 @@ notify_care_circle:
             data:
               push:
                 interruption-level: "{{ alert_priority }}"
-              entity_id: camera.kitchen_live_view
               actions:
                 - action: URI
                   title: View Dashboard
-                  uri: /lovelace/haiven_dashboard/home
+                  uri: /lovelace-haiven/home
                 - action: MARK_SAFE
                   title: Mark Safe
 
@@ -61,16 +59,6 @@ notify_care_circle:
             data:
               push:
                 interruption-level: "{{ alert_priority }}"
-
-    # Notify carer (if configured)
-    - if:
-        - condition: template
-          value_template: "{{ carer_service != '' and carer_service != 'unknown' }}"
-      then:
-        - action: "{{ carer_service }}"
-          data:
-            title: "{{ alert_title }}"
-            message: "{{ alert_message }}"
 
     # Set flag that alert was sent
     - action: input_boolean.turn_on

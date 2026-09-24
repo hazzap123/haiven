@@ -22,9 +22,10 @@ Single source of truth for all entity IDs used in the Haiven monitoring system.
 |-----------|-------------|
 | `binary_sensor.haiven_bedroom_moving_target` | Movement detected |
 | `binary_sensor.haiven_bedroom_still_target` | Stationary presence (breathing) |
-| `sensor.haiven_bedroom_detection_distance` | Distance to target (cm) |
-| `sensor.haiven_bedroom_moving_energy` | Movement intensity (0-100) |
-| `sensor.haiven_bedroom_still_energy` | Stationary intensity (0-100) |
+| `binary_sensor.haiven_bedroom_zone_1_occupancy` | Someone in zone 1 (the bed) |
+| `binary_sensor.haiven_bedroom_zone_2_occupancy` | Someone in zone 2 (the rest of the room) |
+| `binary_sensor.haiven_bedroom_target_1_active` | Target 1 is being tracked |
+| `sensor.haiven_bedroom_target_1_speed` | Target 1 speed |
 
 ### Bathroom Sensor Extended
 
@@ -72,7 +73,7 @@ These sensors provide centralized logic used by multiple other sensors and autom
 | `sensor.sensor_health_status` | "All Sensors Online" or issues |
 | `sensor.room_activity_summary` | Summary of today's activity |
 | `binary_sensor.bedtime_pattern_detected` | Triggers bedtime automation |
-| `sensor.elderly_person_location` | Human-readable location text ("Home", "Out", a zone name) for the dashboard's presence word and the Circles screen. Not created by any package — build it yourself from a device_tracker's zone/state, or leave it unset; the dashboard degrades gracefully without it. |
+| `sensor.elderly_person_location` | Human-readable location ("At Home", "Away", a zone name, or "Not Configured") for the dashboard's presence word and the Circles screen. Built by `packages/haiven_circle_tracking.yaml` from the person entity named in `input_text.elderly_person_entity`. |
 
 ### Drift Watch (`packages/haiven_drift.yaml`)
 
@@ -114,7 +115,6 @@ Raw stats come from `sensor.night_stats` (also excluded from the recorder):
 |-----------|---------|---------|
 | `input_datetime.expected_wake_time` | Expected wake time | 05:30 |
 | `input_datetime.expected_bedtime` | Expected bedtime | 21:00 |
-| `input_datetime.expected_breakfast_time` | Expected breakfast | 07:00 |
 | `input_datetime.next_appointment` | Upcoming appointment | - |
 | `input_datetime.actual_bedtime_today` | Recorded bedtime | Resets noon |
 
@@ -196,8 +196,8 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 | Entity ID | Description |
 |-----------|-------------|
 | `zone.home` | Elderly person's home (primary monitored location) |
-| `zone.carer_1_home` | Carer 1's home |
-| `zone.carer_1_office` | Carer 1's workplace |
+
+`haiven_zones.yaml` has commented-out examples (a contact's home and work, GP surgery, pharmacy). Uncomment and edit the ones you want; they are not created by default.
 
 ---
 
