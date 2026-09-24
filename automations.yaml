@@ -906,7 +906,7 @@
   description: Alert when bathroom visit exceeds baseline duration
   triggers:
     - trigger: state
-      entity_id: binary_sensor.bathroom_night_visit_extended
+      entity_id: binary_sensor.extended_night_bathroom_visit
       to: "on"
   conditions:
     - condition: state
@@ -933,7 +933,7 @@
   description: CRITICAL alert for possible fall or medical emergency in bathroom
   triggers:
     - trigger: state
-      entity_id: binary_sensor.bathroom_night_no_return
+      entity_id: binary_sensor.no_return_from_bathroom_possible_fall
       to: "on"
   conditions:
     - condition: state
@@ -943,6 +943,7 @@
     - action: script.notify_care_circle
       data:
         title: "🚨 URGENT: No Return From Bathroom"
+        priority: critical
         message: >
           {{ states('input_text.elderly_person_name') }} entered bathroom at
           {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }}

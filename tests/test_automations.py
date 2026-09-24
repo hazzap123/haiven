@@ -452,3 +452,41 @@ class TestAutomationCompleteness:
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
+
+
+# =============================================================================
+# BATHROOM ALERT TRIGGERS
+# =============================================================================
+
+SCRIPTS_PATH = Path(__file__).parent.parent / "scripts.yaml"
+
+
+class TestBathroomAlertTriggers:
+    """HA names a template entity from its `name`, not its unique_id. Both
+    alerts triggered on the unique_id form, which never exists, so neither
+    the extended-visit alert nor the possible-fall alert could ever fire."""
+
+    def _trigger_entities(self, automations, auto_id):
+        a = next(a for a in automations if a['id'] == auto_id)
+        return [t.get('entity_id') for t in a['triggers']]
+
+    def test_extended_visit_alert_watches_the_real_entity(self, automations):
+        assert self._trigger_entities(automations, 'haiven_bathroom_night_extended_alert') == \
+            ['binary_sensor.extended_night_bathroom_visit']
+
+    def test_possible_fall_alert_watches_the_real_entity(self, automations):
+        assert self._trigger_entities(automations, 'haiven_bathroom_night_no_return_alert') == \
+            ['binary_sensor.no_return_from_bathroom_possible_fall']
+
+    def test_possible_fall_alert_is_critical(self, automations):
+        a = next(a for a in automations if a['id'] == 'haiven_bathroom_night_no_return_alert')
+        notify = next(s for s in a['actions'] if s.get('action') == 'script.notify_care_circle')
+        assert notify['data'].get('priority') == 'critical'
+
+    def test_notify_script_uses_the_priority_it_is_given(self):
+        with open(SCRIPTS_PATH) as f:
+            script = yaml.safe_load(f)['notify_care_circle']
+        assert 'priority' in script['fields']
+        text = yaml.dump(script['sequence'])
+        assert 'interruption-level: time-sensitive' not in text, \
+            "interruption level is hardcoded, so a critical alert goes out as time-sensitive"

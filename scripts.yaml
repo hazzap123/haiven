@@ -13,6 +13,9 @@ notify_care_circle:
     message:
       description: "Custom notification message"
       example: "Issue detected"
+    priority:
+      description: "iOS interruption level: passive, active, time-sensitive or critical"
+      example: "critical"
   sequence:
     - variables:
         person_name: "{{ states('input_text.elderly_person_name') }}"
@@ -21,6 +24,7 @@ notify_care_circle:
         status: "{{ states('sensor.elderly_care_status') }}"
         alert_title: "{{ title | default('⚠️ Haiven Alert - ' ~ person_name) }}"
         alert_message: "{{ message | default(deviation_msg ~ '\n\nLast activity: ' ~ last_activity ~ '\nStatus: ' ~ status) }}"
+        alert_priority: "{{ priority | default('time-sensitive') }}"
         primary_service: "{{ states('input_text.contact_1_notification') }}"
         secondary_service: "{{ states('input_text.contact_2_notification') }}"
         carer_service: "{{ states('input_text.carer_notification') }}"
@@ -36,7 +40,7 @@ notify_care_circle:
             message: "{{ alert_message }}"
             data:
               push:
-                interruption-level: time-sensitive
+                interruption-level: "{{ alert_priority }}"
               entity_id: camera.kitchen_live_view
               actions:
                 - action: URI
@@ -56,7 +60,7 @@ notify_care_circle:
             message: "{{ alert_message }}"
             data:
               push:
-                interruption-level: time-sensitive
+                interruption-level: "{{ alert_priority }}"
 
     # Notify carer (if configured)
     - if:

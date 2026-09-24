@@ -57,9 +57,9 @@ input_number:
 
 # NOTE: Template binary_sensors have been migrated to modern syntax in configuration.yaml
 # See template: section for:
-# - binary_sensor.bathroom_night_visit_extended
+# - binary_sensor.extended_night_bathroom_visit
 # - binary_sensor.bathroom_night_visits_high
-# - binary_sensor.bathroom_night_no_return
+# - binary_sensor.no_return_from_bathroom_possible_fall
 
 # SQL sensor for 14-day baseline
 # Note: SQL queries use 22:00-06:00 fixed window for historical data analysis
