@@ -9,7 +9,7 @@
 # - Nearest available responder
 #
 # Configuration:
-# - Person entities are configured via input_text helpers in haiven_inputs.yaml
+# - Person entities are configured via input_text helpers in haiven_care_circle_inputs.yaml
 # - input_text.elderly_person_entity → person.elderly_person
 # - input_text.contact_1_person → person.contact_1
 # - input_text.contact_2_person → person.contact_2

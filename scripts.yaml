@@ -298,10 +298,10 @@ reset_daily_flags:
   icon: mdi:refresh
 
 # Script: Send Haiven Notification
-# Centralized notification script for simple alerts
+# Centralised notification script for simple alerts
 send_haiven_notification:
   alias: "Haiven: Send Notification"
-  description: "Centralized notification script for simple alerts with configurable interruption level"
+  description: "Centralised notification script for simple alerts with configurable interruption level"
   fields:
     title:
       description: "Notification title"

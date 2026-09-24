@@ -210,7 +210,11 @@
 
 - id: haiven_backup_activity_log
   alias: "Haiven: Backup Activity Log to Git"
-  description: Commits and pushes activity.log to GitHub three times daily for backup redundancy.
+  description: >-
+    Commits activity.log to the local git repository three times daily. Nothing
+    is pushed. activity.log is in .gitignore, so this commits nothing unless you
+    remove it from there; the log holds her daily routine, so never do that in a
+    clone with a public remote.
   triggers:
     - trigger: time
       at: "08:00:00"
@@ -224,7 +228,7 @@
     - action: logbook.log
       data:
         name: Haiven Log Backup
-        message: "Activity log backed up to GitHub"
+        message: "Activity log backup ran (local commit only)"
         entity_id: input_boolean.haiven_monitoring_enabled
   mode: single
 - id: haiven_morning_activity_check
@@ -1916,7 +1920,7 @@
   mode: single
 
 # ============================================================================
-# DATA CAPTURE - Tracking automations for behavioral dataset
+# DATA CAPTURE - Tracking automations for behavioural dataset
 # ============================================================================
 
 - id: haiven_track_first_kitchen

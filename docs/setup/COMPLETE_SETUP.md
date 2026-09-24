@@ -39,8 +39,10 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 
 ### Software
 - Home Assistant 2024.1+
-- No HACS, no custom Lovelace cards to install — the dashboard is a self-contained card library (`www-src/haiven-cards.js`) that `scripts/setup.sh` deploys for you
-- Optional: Anthropic API key for AI-generated summaries (or any LLM you like)
+- [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), installed through HACS. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`; the dashboard uses it to hide Home Assistant's header and sidebar. The dashboard's own cards are a self-contained library (`www-src/haiven-cards.js`) that `scripts/setup.sh` deploys for you
+- The Anthropic Conversation integration, with its agent at `conversation.claude_conversation`. **Required:** the morning, afternoon and evening summaries, the summary refresh, and the deviation and no-activity alerts all call it, and fail without it. About ten calls a day, roughly $1-5 a month on Claude Haiku 4.5 ($1/$5 per million input/output tokens); most of each call is the entity list Assist sends, so expose only what Haiven needs
+
+**Privacy:** each of those calls sends the monitored person's recent activity (rooms, times, bathroom visits, wake and bedtime) to Anthropic's API.
 
 ---
 
@@ -51,15 +53,25 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 - [ ] Home Assistant running (2024.1+)
 - [ ] Your three sensors are producing state changes in **Developer Tools > States**
 
-### Step 1: Clone and run setup (10 min)
+### Step 1: Clone, run setup, copy into /config (10 min)
 
 ```bash
-git clone https://github.com/hazzap123/haiven.git /config
-cd /config
+# 1. Clone somewhere OTHER than /config (it already holds your setup)
+git clone https://github.com/hazzap123/haiven.git ~/haiven
+cd ~/haiven
+
+# 2. Set your sensor entity IDs. This rewrites every .yaml and .js file in
+#    the clone, so run it here, never inside /config.
 bash scripts/setup.sh
+
+# 3. Copy the Haiven files into /config
+cp -r packages scripts www www-src lovelace themes /config/
+cp haiven_sensors_3sensor.yaml haiven_persons.yaml haiven_zones.yaml /config/
 ```
 
-The script prompts for your three entity IDs, rewrites every `.yaml` and `.js` file that references the defaults (the dashboard card reads the same three entities directly, so it has to go through the same substitution), and copies `www-src/haiven-cards.js` and `www-src/haiven-loader.js` into `www/` — the directory Home Assistant actually serves from.
+> **Do not overwrite your own `configuration.yaml`, `automations.yaml`, `scripts.yaml` or `scenes.yaml`.** If you have none of your own yet, copy Haiven's. Otherwise merge by hand: add Haiven's `homeassistant.packages`, `frontend`, `lovelace`, `shell_command`, `command_line`, `recorder` and `sensor` blocks to your `configuration.yaml`, and append Haiven's automations and scripts to yours. Copying over them deletes every automation and script you made in the UI.
+
+The script prompts for your three entity IDs, rewrites every `.yaml` and `.js` file in the clone that references the defaults (the dashboard card reads the same three entities directly, so it has to go through the same substitution), and copies `www-src/haiven-cards.js` and `www-src/haiven-loader.js` into the clone's `www/`. Copying `www/` into `/config` puts them where Home Assistant serves them from.
 
 ### Step 2: Verify Configuration Files (5 min)
 
@@ -104,14 +116,16 @@ See [CARE_CIRCLE.md](CARE_CIRCLE.md) for detailed instructions.
 
 `packages/haiven_monitoring_inputs.yaml` already defines every threshold helper below — nothing to create by hand. Adjust the values either in **Settings > Helpers**, or on the dashboard's own Settings tab once it's up:
 
+These helpers have **no defaults**: without `initial:` Home Assistant keeps the value you set across restarts. On a fresh install they start at 00:00 or at the slider's minimum, so set them before relying on alerts.
+
 **Time Baselines:**
-- `input_datetime.expected_wake_time` - Default: 06:00
-- `input_datetime.expected_bedtime` - Default: 22:00
+- `input_datetime.expected_wake_time` - starts at 00:00; set to her usual wake time
+- `input_datetime.expected_bedtime` - starts at 00:00; set to her usual bedtime
 
 **Alert Thresholds:**
-- `input_number.wake_time_variance_minutes` - Default: 120 (2 hours)
-- `input_number.bedtime_variance_minutes` - Default: 60 (1 hour)
-- `input_number.no_activity_alert_hours` - Default: 4 hours
+- `input_number.wake_time_variance_minutes` - starts at 15; 120 (the maximum) is a sensible start
+- `input_number.bedtime_variance_minutes` - starts at 15; 60 is a sensible start
+- `input_number.no_activity_alert_hours` - starts at 2; 4 is a sensible start
 
 **System Flags:**
 - `input_boolean.haiven_monitoring_enabled` - Default: ON
@@ -171,16 +185,16 @@ If the sidebar item is missing, check `lovelace.dashboards` in `configuration.ya
 Set these to match actual daily routine:
 
 ```yaml
-Expected Wake Time: 06:00  # When typically gets out of bed
-Expected Bedtime: 22:00    # When goes to bed
+Expected Wake Time: 07:00  # Example: when she typically gets out of bed
+Expected Bedtime: 22:00    # Example: when she goes to bed
 ```
 
 ### Threshold Tuning
 
 **Conservative (fewer false alarms):**
 ```yaml
-wake_time_variance_minutes: 180  # 3 hours
-bedtime_variance_minutes: 90     # 1.5 hours
+wake_time_variance_minutes: 120  # 2 hours, the maximum
+bedtime_variance_minutes: 120    # 2 hours
 no_activity_alert_hours: 6
 ```
 Best for: Variable routines
@@ -203,7 +217,7 @@ Best for: Very consistent routines
 
 ---
 
-## Week 1: Tune & Optimize
+## Week 1: Tune & Optimise
 
 ### Daily Tracking
 

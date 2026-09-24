@@ -24,27 +24,35 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 
 **Software:**
 - Home Assistant 2024.1+
-- Optional: Anthropic API key (for AI-generated summaries via Claude) or any other llm you like
+- [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), installed through HACS. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`, and the dashboard uses it to hide Home Assistant's header and sidebar.
+- The Anthropic Conversation integration, with its conversation agent at `conversation.claude_conversation`. **Required, not optional:** the morning, afternoon and evening summaries and the deviation and no-activity alerts are all written by it, and without it those automations fail. Expect roughly $1-5 a month on Claude Haiku 4.5 ($1 per million input tokens, $5 per million output) for about ten calls a day; most of the cost is the entity list Assist sends with each call, so expose only what Haiven needs.
+
+**Privacy:** every AI summary and AI alert sends the monitored person's recent activity (room, time, bathroom visits, wake and bedtime) to Anthropic's API. If that is not acceptable for the person you care for, do not install Haiven as it stands.
 
 ## Quick start
 
 ```bash
-# 1. Clone into your HA config directory
-git clone https://github.com/hazzap123/haiven.git /config
+# 1. Clone somewhere OTHER than /config (it already holds your setup)
+git clone https://github.com/hazzap123/haiven.git ~/haiven
+cd ~/haiven
 
-# 2. Run the setup script to configure your sensor entity IDs
+# 2. Set your sensor entity IDs. This rewrites every .yaml and .js file in
+#    the clone, so run it here, never inside /config.
 bash scripts/setup.sh
 
-# 3. Copy and configure secrets
-cp secrets.yaml.example secrets.yaml
-# Edit secrets.yaml with your values
-
-# 4. Edit person and contact configuration
-# Edit haiven_persons.yaml with your household members
-# Edit packages/haiven_care_circle_inputs.yaml with carer details
-
-# 5. Restart Home Assistant
+# 3. Copy the Haiven files into /config
+cp -r packages scripts www www-src lovelace themes /config/
+cp haiven_sensors_3sensor.yaml haiven_persons.yaml haiven_zones.yaml /config/
 ```
+
+> **Do not overwrite your own `configuration.yaml`, `automations.yaml`, `scripts.yaml` or `scenes.yaml`.** If you have none of your own yet, copy Haiven's. Otherwise merge by hand: add Haiven's `homeassistant.packages`, `frontend`, `lovelace`, `shell_command`, `command_line`, `recorder` and `sensor` blocks to your `configuration.yaml`, and append Haiven's automations and scripts to yours. Copying over them deletes every automation and script you made in the UI.
+
+Then, in `/config`:
+
+1. Copy `~/haiven/secrets.yaml.example` to `/config/secrets.yaml` (or merge it into yours) and fill in your values.
+2. Edit `haiven_persons.yaml` with your household members and `packages/haiven_care_circle_inputs.yaml` with carer details.
+3. Restart Home Assistant.
+4. Set the expected wake time, bedtime and thresholds on the dashboard's Settings screen (see the Quick Start). They have no defaults.
 
 See [docs/setup/QUICKSTART.md](docs/setup/QUICKSTART.md) for the full 30-minute setup guide.
 

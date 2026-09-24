@@ -7,7 +7,7 @@
 template:
   # ============================================================================
   # FOUNDATIONAL SENSORS - Used by multiple other sensors/automations
-  # These provide centralized logic to avoid duplication
+  # These provide centralised logic to avoid duplication
   # ============================================================================
 
   # Elderly Person Home Status
@@ -30,7 +30,7 @@ template:
             mdi:home-off-outline
           {% endif %}
 
-  # Activity Data - Centralized 3-sensor activity gathering
+  # Activity Data - Centralised 3-sensor activity gathering
   # Replaces 6+ duplicated blocks that gather kitchen/bedroom/bathroom timestamps
   - sensor:
       - name: "Activity Data"

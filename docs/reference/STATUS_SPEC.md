@@ -6,7 +6,7 @@
 
 ## Status Hierarchy
 
-| Level | State | Triggers | Color | Icon |
+| Level | State | Triggers | Colour | Icon |
 |-------|-------|----------|-------|------|
 | 0 | `normal` | No deviations, activity within bounds | Green (#6BBD6B) | mdi:check-circle |
 | 1 | `monitoring` | Minor variance (1hr gap, wake slightly late) | Teal (#26A69A) | mdi:information |
@@ -87,7 +87,7 @@ Detects the "fell between rooms" scenario - person left one room but didn't appe
 
 ---
 
-## Notification Behavior
+## Notification Behaviour
 
 ### Trigger Levels
 
@@ -140,7 +140,7 @@ When enabled:
 **sensor.elderly_care_status:**
 - `status_text` - Human-readable status label
 - `severity_score` - Current score value
-- `color` - Hex color for UI
+- `color` - Hex colour for UI
 - `level` - Numeric level (0-4)
 
 **sensor.status_severity_score:**
@@ -155,7 +155,7 @@ When enabled:
 
 ### Header Card
 
-Icon color changes based on status:
+Icon colour changes based on status:
 - normal → green
 - monitoring → teal
 - caution → orange
@@ -168,11 +168,11 @@ Shows when status is not normal/away:
 - Primary: Status text
 - Secondary: Reason + last activity
 - Tap action: Mark Safe with confirmation
-- Background color indicates severity
+- Background colour indicates severity
 
 ### Severity Score Chip
 
-Shows current score with color-coded icon.
+Shows current score with colour-coded icon.
 
 ---
 

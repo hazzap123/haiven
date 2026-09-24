@@ -37,7 +37,7 @@ Single source of truth for all entity IDs used in the Haiven monitoring system.
 
 ## Foundational Sensors
 
-These sensors provide centralized logic used by multiple other sensors and automations. **Do not remove them** - many entities depend on them.
+These sensors provide centralised logic used by multiple other sensors and automations. **Do not remove them** - many entities depend on them.
 
 | Entity ID | Purpose | Key Attributes |
 |-----------|---------|----------------|
@@ -70,7 +70,7 @@ These sensors provide centralized logic used by multiple other sensors and autom
 | `sensor.deviation_count` | Current deviation count (0, 1, 2+) |
 | `sensor.current_deviation_message` | Text description of issue |
 | `sensor.today_wake_time` | First activity time today |
-| `sensor.sensor_health_status` | "All Sensors Online" or issues |
+| `sensor.sensor_health_status` | "All online", or which sensors are offline |
 | `sensor.room_activity_summary` | Summary of today's activity |
 | `binary_sensor.bedtime_pattern_detected` | Triggers bedtime automation |
 | `sensor.elderly_person_location` | Human-readable location ("At Home", "Away", a zone name, or "Not Configured") for the dashboard's presence word and the Circles screen. Built by `packages/haiven_circle_tracking.yaml` from the person entity named in `input_text.elderly_person_entity`. |
@@ -113,8 +113,8 @@ Raw stats come from `sensor.night_stats` (also excluded from the recorder):
 
 | Entity ID | Purpose | Default |
 |-----------|---------|---------|
-| `input_datetime.expected_wake_time` | Expected wake time | 05:30 |
-| `input_datetime.expected_bedtime` | Expected bedtime | 21:00 |
+| `input_datetime.expected_wake_time` | Expected wake time | None: set it (starts 00:00) |
+| `input_datetime.expected_bedtime` | Expected bedtime | None: set it (starts 00:00) |
 | `input_datetime.next_appointment` | Upcoming appointment | - |
 | `input_datetime.actual_bedtime_today` | Recorded bedtime | Resets noon |
 
@@ -122,9 +122,9 @@ Raw stats come from `sensor.night_stats` (also excluded from the recorder):
 
 | Entity ID | Purpose | Default |
 |-----------|---------|---------|
-| `input_number.wake_time_variance_minutes` | Acceptable wake variance | 120 min |
-| `input_number.bedtime_variance_minutes` | Acceptable bedtime variance | 60 min |
-| `input_number.no_activity_alert_hours` | Hours before alert | 4 hours |
+| `input_number.wake_time_variance_minutes` | Acceptable wake variance | None: starts at 15 min; 120 suggested |
+| `input_number.bedtime_variance_minutes` | Acceptable bedtime variance | None: starts at 15 min; 60 suggested |
+| `input_number.no_activity_alert_hours` | Hours before alert | None: starts at 2 h; 4 suggested |
 
 ### System Flags
 

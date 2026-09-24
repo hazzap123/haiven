@@ -36,7 +36,7 @@ House Layout:
 
 ## Everything Presence Lite (Bedroom)
 
-The millimeter wave radar sensor detects presence through breathing and micro-movements.
+The millimetre wave radar sensor detects presence through breathing and micro-movements.
 
 **Sensor model matters here.** This is an **LD2450** radar, not LD2410 — they're different chips with different ESPHome components, and mixing them up has broken this exact setup before. The reference build runs a custom ESPHome firmware (esp-idf framework, raw UART parsing of the LD2450 protocol, not the stock `ld2410` component) rather than Everything Smart Home's default firmware — that custom build is what gives bed-vs-room zone detection.
 
@@ -117,7 +117,7 @@ Battery-powered PIR motion sensor for bathroom activity tracking.
    - Device shows "Online"
 
 3. **Re-add to Home Assistant:**
-   - Wait 1-2 minutes for device to stabilize
+   - Wait 1-2 minutes for device to stabilise
    - Settings > Integrations > should see Shelly discovery
    - Click Configure
    - If not discovered: add manually with device IP
@@ -154,7 +154,7 @@ Any motion or presence sensor that exposes an entity to Home Assistant will work
 |--------|-------------|
 | `event.kitchen_motion` | Motion detection event (entity ID is configurable via setup.sh) |
 
-### Sensor Behavior
+### Sensor Behaviour
 
 - **Event-based sensors** (e.g. Ring, some Zigbee PIRs): trigger on motion, no persistent on/off state
 - **Binary sensors** (e.g. MMW radar, occupancy sensors): have on/off state; both types are supported
@@ -241,7 +241,7 @@ Kitchen is **not used for bedtime detection** — evening activity in shared spa
 ### Quarterly
 - [ ] Review zone configuration (seasonal changes)
 - [ ] Test all detection scenarios
-- [ ] Optimize based on patterns
+- [ ] Optimise based on patterns
 
 ---
 

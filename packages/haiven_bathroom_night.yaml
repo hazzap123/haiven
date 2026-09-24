@@ -43,7 +43,7 @@ input_number:
     initial: 30
     mode: box
 
-# NOTE: bathroom_visits_night counter moved to haiven_inputs.yaml to consolidate all counters
+# NOTE: bathroom_visits_night counter moved to haiven_monitoring_inputs.yaml to consolidate all counters
 
 # NOTE: Automations for bathroom monitoring have been moved to automations.yaml
 # See automations with IDs: haiven_bathroom_night_entry, haiven_bathroom_night_reset,

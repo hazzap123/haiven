@@ -9,7 +9,7 @@ Complete guide for configuring caregivers, the elderly person, and location trac
 
 ## Overview
 
-The care circle is your network of people who monitor and receive alerts about the elderly person. Haiven uses a centralized configuration file for all contact settings.
+The care circle is your network of people who monitor and receive alerts about the elderly person. Haiven uses a centralised configuration file for all contact settings.
 
 **Key concepts:**
 - **Elderly Person:** The person being monitored
@@ -383,7 +383,7 @@ zone:
 - Check phone notification settings are enabled
 - Check Do Not Disturb is off
 - Test with simple message in Developer Tools
-- Check battery optimization (Android)
+- Check battery optimisation (Android)
 
 ### Location showing "Unknown"
 - Verify person entity exists

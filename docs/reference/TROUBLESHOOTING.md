@@ -15,7 +15,7 @@ Before diving into specific issues, verify these basics:
 input_boolean.haiven_monitoring_enabled: should be "on"
 
 # Check sensor health
-sensor.sensor_health_status: should show "All Sensors Online"
+sensor.sensor_health_status: should show "All online"
 
 # Check for deviations
 sensor.deviation_count: 0 = normal
@@ -118,7 +118,7 @@ sensor.deviation_count: 0 = normal
 4. **Check Do Not Disturb**
    - Ensure phone isn't in silent/DND mode
 
-5. **Check battery optimization (Android)**
+5. **Check battery optimisation (Android)**
    - Settings > Apps > Home Assistant > Battery > Unrestricted
 
 ---
@@ -134,7 +134,7 @@ sensor.deviation_count: 0 = normal
 
 1. **Increase thresholds**
    ```yaml
-   wake_time_variance_minutes: 180 (try 3 hours)
+   wake_time_variance_minutes: 120 (2 hours, the maximum)
    no_activity_alert_hours: 6 (try 6 hours)
    ```
 
@@ -279,7 +279,7 @@ sensor.deviation_count: 0 = normal
 
 3. **Restart the HA mobile app**
 
-4. **Disable battery optimization for HA app**
+4. **Disable battery optimisation for HA app**
    - Android: Settings > Apps > Home Assistant > Battery > Unrestricted
    - iOS: Ensure Low Power Mode is OFF
 
