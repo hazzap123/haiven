@@ -166,10 +166,18 @@ input_number:
 
   transition_timeout_mins:
     name: "Room transition timeout (minutes)"
-    min: 5
-    max: 60
+    min: 30
+    max: 180
     step: 5
-    initial: 30
+    # No `initial:`. An input_number with one is reset to it on EVERY restart,
+    # which silently undoes any tuning done from the Settings screen.
+    #
+    # Without it, a fresh install starts at the minimum (30); set 90 from the
+    # Settings screen if the main room has a motion-only sensor such as a
+    # camera. Motion detection does not fire on someone sitting still at the
+    # far end of the room, so at 30 minutes this can assert "left a room and
+    # never arrived" most afternoons. A genuine collapse still escalates
+    # through the inactivity ladder at 60/120/180/240 minutes.
     unit_of_measurement: "min"
     icon: mdi:swap-horizontal
 

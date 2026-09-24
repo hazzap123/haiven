@@ -61,7 +61,7 @@ All thresholds are configurable via input_number helpers in Settings.
 | `status_gap_caution_mins` | 120 | 60-300 | Minutes of inactivity → caution |
 | `status_gap_concern_mins` | 180 | 90-360 | Minutes of inactivity → concern |
 | `status_gap_critical_mins` | 240 | 120-480 | Minutes of inactivity → critical |
-| `transition_timeout_mins` | 15 | 5-60 | Minutes to wait for arrival in another room |
+| `transition_timeout_mins` | 30 on a fresh install; 90 recommended | 30-180 | Minutes to wait for arrival in another room. Kept across restarts. Use 90 if the main room sensor is motion-only (it misses someone sitting still) |
 | `safe_status_duration_hours` | 2 | 1-8 | Hours before "Mark Safe" auto-expires |
 
 ---

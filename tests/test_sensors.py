@@ -103,3 +103,31 @@ class TestCircleFreshness:
         out = render(tpl, states={person_input: 'person.contact'},
                      objects={'person.contact': Person()})
         assert dt.datetime.fromisoformat(out) == fix
+
+
+class TestRoomTransitionTimeout:
+    """A motion-only main-room sensor does not fire on someone sitting still,
+    so a 30-minute timeout asserted "left a room and never arrived" most
+    afternoons. The helper also carried `initial:`, which HA reapplies on
+    every restart, silently undoing any tuning from the Settings screen."""
+
+    @pytest.fixture
+    def helper(self):
+        doc = _load(ROOT / "packages" / "haiven_monitoring_inputs.yaml")
+        return doc['input_number']['transition_timeout_mins']
+
+    def test_not_reset_on_restart(self, helper):
+        assert 'initial' not in helper
+
+    def test_ninety_is_settable(self, helper):
+        assert helper['min'] <= 90 <= helper['max']
+
+    def test_fresh_install_does_not_start_at_five(self, helper):
+        # With no initial and nothing to restore, HA starts an input_number
+        # at its minimum.
+        assert helper['min'] >= 30
+
+    def test_template_fallback_is_ninety(self):
+        text = (ROOT / "haiven_sensors_3sensor.yaml").read_text()
+        uses = [l for l in text.splitlines() if "input_number.transition_timeout_mins" in l]
+        assert uses and all("| int(90)" in l for l in uses), uses

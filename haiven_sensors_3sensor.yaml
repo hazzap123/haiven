@@ -177,7 +177,7 @@ template:
             {% if bedroom_active or bathroom_active %}
               false
             {% else %}
-              {% set timeout = states('input_number.transition_timeout_mins') | int(15) %}
+              {% set timeout = states('input_number.transition_timeout_mins') | int(90) %}
               {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
               {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
               {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
@@ -207,7 +207,7 @@ template:
             {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
             {{ [kitchen_mins, bedroom_mins, bathroom_mins] | min }}
           last_active_room: "{{ states('sensor.activity_data') }}"
-          transition_timeout_mins: "{{ states('input_number.transition_timeout_mins') | int(15) }}"
+          transition_timeout_mins: "{{ states('input_number.transition_timeout_mins') | int(90) }}"
 
   # ============================================================================
   # MORNING CONTEXT - Contextual morning status for upstairs-only detection
