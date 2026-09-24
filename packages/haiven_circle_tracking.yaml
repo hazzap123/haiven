@@ -99,8 +99,11 @@ template:
             {% endif %}
           phone_url: "tel:{{ states('input_text.contact_1_phone') }}"
           last_updated: >
+            {# The person's last_updated moves on every position fix; last_changed
+               is not an attribute and read as None. #}
             {% set entity = states('input_text.contact_1_person') %}
-            {{ state_attr(entity, 'last_changed') if entity else 'unknown' }}
+            {% set found = expand(entity) if entity else [] %}
+            {{ found[0].last_updated.isoformat(timespec='seconds') if found else 'unknown' }}
           latitude: >
             {% set entity = states('input_text.contact_1_person') %}
             {{ state_attr(entity, 'latitude') if entity else none }}
@@ -176,8 +179,11 @@ template:
             {% endif %}
           phone_url: "tel:{{ states('input_text.contact_2_phone') }}"
           last_updated: >
+            {# The person's last_updated moves on every position fix; last_changed
+               is not an attribute and read as None. #}
             {% set entity = states('input_text.contact_2_person') %}
-            {{ state_attr(entity, 'last_changed') if entity else 'unknown' }}
+            {% set found = expand(entity) if entity else [] %}
+            {{ found[0].last_updated.isoformat(timespec='seconds') if found else 'unknown' }}
           latitude: >
             {% set entity = states('input_text.contact_2_person') %}
             {{ state_attr(entity, 'latitude') if entity else none }}
