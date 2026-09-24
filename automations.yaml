@@ -396,6 +396,18 @@
         - binary_sensor.haiven_bedroom_occupancy
         - binary_sensor.haiven_bathroom_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: state
       entity_id: input_boolean.manual_safe_status
       state: "on"
@@ -503,6 +515,18 @@
     - trigger: state
       entity_id: event.kitchen_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: state
       entity_id: binary_sensor.morning_window_active
       state: "on"
@@ -526,6 +550,18 @@
     - trigger: state
       entity_id: event.kitchen_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
@@ -1046,7 +1082,19 @@
   triggers:
     - trigger: state
       entity_id: event.kitchen_motion
-  conditions: []
+  conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
   actions:
     - action: input_boolean.turn_on
       target:
@@ -1428,6 +1476,18 @@
     - trigger: state
       entity_id: event.kitchen_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: template
       alias: Ignore unknown/unavailable states
       value_template: >-
@@ -1829,6 +1889,18 @@
     - trigger: state
       entity_id: event.kitchen_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: template
       alias: Valid motion event
       value_template: >-

@@ -559,3 +559,27 @@ class TestLocalTimeComparisons:
         assert len(guards) >= 10
         for g in guards:
             assert 'as_local' in g, g
+
+
+# =============================================================================
+# RESTART AND RELOAD ARTEFACTS
+# =============================================================================
+
+class TestKitchenRestartArtefacts:
+    """An entity goes unavailable -> value on every restart and a template
+    sensor unknown -> value on every reload. Kitchen-triggered automations
+    that checked only to_state counted each restart as kitchen activity:
+    a block on the timeline, a bump to the daily counter, the manual safe
+    flag cleared, and inside the morning window a wake time."""
+
+    GUARD = ("trigger.from_state is not none", "trigger.from_state.state not in",
+             "trigger.to_state.state != trigger.from_state.state")
+
+    def test_kitchen_triggers_need_a_real_change(self, automations):
+        kitchen = [a for a in automations
+                   if any('event.kitchen_motion' in str(t.get('entity_id', '')) for t in a['triggers'])]
+        assert len(kitchen) >= 6
+        for a in kitchen:
+            text = yaml.dump(a.get('conditions', []), width=1000)
+            for part in self.GUARD:
+                assert part in text, f"{a['id']} lacks '{part}'"
