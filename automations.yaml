@@ -44,11 +44,11 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Morning Update"
-        message: "{{ states('input_text.current_summary') }}"
+        message: "{{ ai_response.response.speech.plain.speech }}"
         level: time-sensitive
   mode: single
 
@@ -91,11 +91,11 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Afternoon Update"
-        message: "{{ states('input_text.current_summary') }}"
+        message: "{{ ai_response.response.speech.plain.speech }}"
         level: passive
   mode: single
 
@@ -142,11 +142,11 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Evening Update"
-        message: "{{ states('input_text.current_summary') }}"
+        message: "{{ ai_response.response.speech.plain.speech }}"
         level: passive
   mode: single
 
@@ -205,7 +205,7 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
   mode: single
 
 - id: haiven_backup_activity_log

@@ -490,3 +490,39 @@ class TestBathroomAlertTriggers:
         text = yaml.dump(script['sequence'])
         assert 'interruption-level: time-sensitive' not in text, \
             "interruption level is hardcoded, so a critical alert goes out as time-sensitive"
+
+
+# =============================================================================
+# SUMMARY LENGTH
+# =============================================================================
+
+class TestSummaryLength:
+    """input_text.current_summary holds 255 characters. HA rejects a longer
+    value with only a warning, so a summary that notified by reading the
+    helper back sent the previous summary instead of the new one."""
+
+    def _walk(self, node):
+        if isinstance(node, dict):
+            yield node
+            for v in node.values():
+                yield from self._walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                yield from self._walk(v)
+
+    def test_no_notification_reads_the_summary_helper(self, automations):
+        for a in automations:
+            for step in self._walk(a.get('actions', [])):
+                msg = step.get('data', {}).get('message', '') if isinstance(step.get('data'), dict) else ''
+                assert "states('input_text.current_summary')" not in str(msg), a['id']
+
+    def test_summary_writes_fit_the_helper(self, automations, jinja_env):
+        writes = [s['data']['value'] for a in automations for s in self._walk(a.get('actions', []))
+                  if s.get('action') == 'input_text.set_value'
+                  and s.get('target', {}).get('entity_id') == 'input_text.current_summary']
+        assert len(writes) >= 4, "morning, afternoon, evening and refresh all write the summary"
+        speech = ("word " * 80).strip()  # 399 characters
+        for tpl in writes:
+            out = jinja_env.from_string(tpl).render(
+                ai_response={'response': {'speech': {'plain': {'speech': speech}}}})
+            assert len(out) <= 255
