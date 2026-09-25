@@ -32,6 +32,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # To add contact_3, contact_4, etc:
 # 1. Add person entry here with id: contact_N
-# 2. Add corresponding input_text helpers in haiven_inputs.yaml
+# 2. Add corresponding input_text helpers in packages/haiven_care_circle_inputs.yaml
 # 3. Add template sensors in packages/haiven_circle_tracking.yaml
 # 4. Restart Home Assistant

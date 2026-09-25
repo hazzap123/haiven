@@ -1,8 +1,8 @@
 # Haiven Theme
-# Color scheme matching the Haiven elderly care monitoring app
+# Colour scheme matching the Haiven elderly care monitoring app
 
 haiven:
-  # Primary Colors
+  # Primary Colours
   primary-color: "#6BBD6B"              # Green - All Good status
   accent-color: "#7FC7C7"               # Teal - Neutral actions
   warning-color: "#F5A647"              # Orange/Amber - Warning/Deviation
@@ -10,12 +10,12 @@ haiven:
   success-color: "#6BBD6B"              # Green - Success
   info-color: "#7FC7C7"                 # Teal - Info
 
-  # Background Colors
+  # Background Colours
   primary-background-color: "#FAFAFA"   # Off-white background
   secondary-background-color: "#F5F5F5" # Light gray for cards
   card-background-color: "#FFFFFF"      # White cards
 
-  # Text Colors
+  # Text Colours
   primary-text-color: "#212121"         # Dark text
   secondary-text-color: "#757575"       # Gray text for secondary info
   disabled-text-color: "#BDBDBD"        # Disabled text
@@ -37,7 +37,7 @@ haiven:
   ha-card-border-radius: "12px"
   ha-card-box-shadow: "0 2px 4px rgba(0,0,0,0.1)"
 
-  # Status Colors for Entities
+  # Status Colours for Entities
   state-icon-color: "#757575"
   state-icon-active-color: "#6BBD6B"
   state-icon-unavailable-color: "#BDBDBD"

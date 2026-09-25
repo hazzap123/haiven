@@ -5,6 +5,8 @@ Tests YAML syntax, Jinja2 template logic, and automation structure.
 Run with: pytest tests/test_automations.py -v
 """
 
+import re
+
 import pytest
 import yaml
 from pathlib import Path
@@ -146,7 +148,7 @@ class TestHaivenAutomations:
             'haiven_no_activity_alert',
             'haiven_bedtime_confirmation_v2',
             'haiven_daily_reset',
-            'haiven_evening_report',
+            'haiven_evening_summary',
             'haiven_bathroom_night_entry',
             'haiven_bathroom_night_exit',
         ]
@@ -161,7 +163,7 @@ class TestHaivenAutomations:
             'haiven_morning_activity_check',
             'haiven_no_activity_alert',
             'haiven_bedtime_confirmation_v2',
-            'haiven_evening_report',
+            'haiven_evening_summary',
             'haiven_bathroom_night_extended_alert',
         ]
 
@@ -175,23 +177,29 @@ class TestHaivenAutomations:
                 assert has_monitoring_check, f"'{auto['alias']}' should check monitoring_enabled"
 
     def test_alert_automations_have_once_per_day(self, automations):
-        """Alert automations should fire only once per day."""
-        should_be_once_daily = [
-            'haiven_morning_activity_check',
-            'haiven_no_activity_alert',
-            'haiven_bedtime_confirmation_v2',
-            'haiven_evening_report',
-        ]
+        """Alert automations should fire only once per day. Each one has the
+        guard that fits how it triggers."""
+        by_id = {a['id']: a for a in automations}
 
-        for auto in automations:
-            if auto['id'] in should_be_once_daily:
-                conditions = auto.get('conditions', [])
-                conditions_text = yaml.dump(conditions)
-                has_once_daily = (
-                    'last_triggered' in conditions_text or
-                    'as_datetime(last).date()' in conditions_text
-                )
-                assert has_once_daily, f"'{auto['alias']}' should have once-per-day condition"
+        # Polled: a last_triggered guard on the local date.
+        conditions_text = yaml.dump(by_id['haiven_morning_activity_check'].get('conditions', []), width=1000)
+        assert 'last_triggered' in conditions_text and 'now().date()' in conditions_text, \
+            "'haiven_morning_activity_check' should have a last_triggered once-per-day condition"
+
+        # A long silence can outlast a day, so this one re-alerts, but no
+        # sooner than 4 hours after the last alert.
+        conditions_text = yaml.dump(by_id['haiven_no_activity_alert'].get('conditions', []), width=1000)
+        assert 'last_triggered' in conditions_text and '14400' in conditions_text, \
+            "'haiven_no_activity_alert' should wait 4 hours before re-alerting"
+
+        # Bedtime is recorded once; the guard is "not already recorded today".
+        conditions_text = yaml.dump(by_id['haiven_bedtime_confirmation_v2'].get('conditions', []), width=1000)
+        assert 'actual_bedtime_today' in conditions_text and '00:00:00' in conditions_text
+
+        # A single fixed-time trigger fires once a day by construction.
+        triggers = by_id['haiven_evening_summary']['triggers']
+        assert len(triggers) == 1 and triggers[0].get('trigger') == 'time', \
+            "'haiven_evening_summary' should fire from one daily time trigger"
 
     def test_bedtime_v2_checks_not_already_recorded(self, automations):
         """Bedtime V2 should check if bedtime was already recorded today."""
@@ -340,7 +348,8 @@ class TestNotificationActions:
                 has_notification = (
                     'notify.' in actions_text or
                     'primary_contact_notification' in actions_text or
-                    'script.notify_care_circle' in actions_text
+                    'script.notify_care_circle' in actions_text or
+                    'script.send_haiven_notification' in actions_text
                 )
                 assert has_notification, f"'{auto['alias']}' should send notification"
 
@@ -357,17 +366,21 @@ class TestNotificationActions:
                     f"'{auto['alias']}' should have high/critical priority"
 
     def test_passive_notifications_marked_correctly(self, automations):
-        """Non-urgent notifications should use passive interruption level."""
+        """Non-urgent notifications should use passive interruption level.
+        Only unconditional steps are checked: the morning confirmation also
+        has a late-wake branch that is time-sensitive on purpose."""
         passive_ids = [
             'haiven_morning_activity_confirmation',
-            'haiven_evening_report',
+            'haiven_evening_summary',
         ]
 
         for auto in automations:
             if auto['id'] in passive_ids:
-                actions_text = yaml.dump(auto.get('actions', []))
-                if 'interruption-level' in actions_text:
-                    assert 'passive' in actions_text, \
+                sends = [s for s in auto.get('actions', [])
+                         if s.get('action') == 'script.send_haiven_notification']
+                assert sends, f"'{auto['alias']}' should send a notification"
+                for s in sends:
+                    assert s['data'].get('level') == 'passive', \
                         f"'{auto['alias']}' should use passive interruption"
 
 
@@ -442,7 +455,7 @@ class TestAutomationCompleteness:
 
     def test_has_care_circle_tracking(self, automations):
         """Should have care circle location tracking."""
-        circle_ids = [a['id'] for a in automations if 'circle' in a['id'].lower() or 'contact' in a['id'].lower()]
+        circle_ids = [a['id'] for a in automations if a['alias'].startswith('Circle Tracking:')]
         assert len(circle_ids) >= 3, "Should have at least 3 care circle automations"
 
 
@@ -452,3 +465,166 @@ class TestAutomationCompleteness:
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
+
+
+# =============================================================================
+# BATHROOM ALERT TRIGGERS
+# =============================================================================
+
+SCRIPTS_PATH = Path(__file__).parent.parent / "scripts.yaml"
+
+
+class TestBathroomAlertTriggers:
+    """HA names a template entity from its `name`, not its unique_id. Both
+    alerts triggered on the unique_id form, which never exists, so neither
+    the extended-visit alert nor the possible-fall alert could ever fire."""
+
+    def _trigger_entities(self, automations, auto_id):
+        a = next(a for a in automations if a['id'] == auto_id)
+        return [t.get('entity_id') for t in a['triggers']]
+
+    def test_extended_visit_alert_watches_the_real_entity(self, automations):
+        assert self._trigger_entities(automations, 'haiven_bathroom_night_extended_alert') == \
+            ['binary_sensor.extended_night_bathroom_visit']
+
+    def test_possible_fall_alert_watches_the_real_entity(self, automations):
+        assert self._trigger_entities(automations, 'haiven_bathroom_night_no_return_alert') == \
+            ['binary_sensor.no_return_from_bathroom_possible_fall']
+
+    def test_possible_fall_alert_is_critical(self, automations):
+        a = next(a for a in automations if a['id'] == 'haiven_bathroom_night_no_return_alert')
+        notify = next(s for s in a['actions'] if s.get('action') == 'script.notify_care_circle')
+        assert notify['data'].get('priority') == 'critical'
+
+    def test_notify_script_uses_the_priority_it_is_given(self):
+        with open(SCRIPTS_PATH) as f:
+            script = yaml.safe_load(f)['notify_care_circle']
+        assert 'priority' in script['fields']
+        text = yaml.dump(script['sequence'])
+        assert 'interruption-level: time-sensitive' not in text, \
+            "interruption level is hardcoded, so a critical alert goes out as time-sensitive"
+
+
+# =============================================================================
+# SUMMARY LENGTH
+# =============================================================================
+
+class TestSummaryLength:
+    """input_text.current_summary holds 255 characters. HA rejects a longer
+    value with only a warning, so a summary that notified by reading the
+    helper back sent the previous summary instead of the new one."""
+
+    def _walk(self, node):
+        if isinstance(node, dict):
+            yield node
+            for v in node.values():
+                yield from self._walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                yield from self._walk(v)
+
+    def test_no_notification_reads_the_summary_helper(self, automations):
+        for a in automations:
+            for step in self._walk(a.get('actions', [])):
+                msg = step.get('data', {}).get('message', '') if isinstance(step.get('data'), dict) else ''
+                assert "states('input_text.current_summary')" not in str(msg), a['id']
+
+    def test_summary_writes_fit_the_helper(self, automations, jinja_env):
+        writes = [s['data']['value'] for a in automations for s in self._walk(a.get('actions', []))
+                  if s.get('action') == 'input_text.set_value'
+                  and s.get('target', {}).get('entity_id') == 'input_text.current_summary']
+        assert len(writes) >= 4, "morning, afternoon, evening and refresh all write the summary"
+        speech = ("word " * 80).strip()  # 399 characters
+        for tpl in writes:
+            out = jinja_env.from_string(tpl).render(
+                ai_response={'response': {'speech': {'plain': {'speech': speech}}}})
+            assert len(out) <= 255
+
+
+# =============================================================================
+# LOCAL-TIME COMPARISONS
+# =============================================================================
+
+class TestLocalTimeComparisons:
+    """last_triggered and last_changed are UTC; now() is local. Comparing an
+    unconverted UTC date against now().date() reads "yesterday" for anything
+    that happened in the first hour after local midnight during summer time,
+    so a restart re-ran the daily reset and wiped that day's wake time."""
+
+    @pytest.fixture
+    def text(self):
+        return AUTOMATIONS_PATH.read_text()
+
+    def test_no_utc_calendar_reads(self, text):
+        bad = re.findall(r"as_datetime\(\w+\)\.(?:date\(\)|hour|strftime)", text)
+        assert not bad, f"read the local date/hour: (as_datetime(x) | as_local) - {bad}"
+
+    def test_no_utc_last_changed_formatting(self, text):
+        bad = re.findall(r"last_changed\.strftime", text)
+        assert not bad, "last_changed is UTC; format (x | as_local)"
+
+    def test_once_a_day_guards_are_local(self, automations):
+        guards = [c['value_template'] for a in automations for c in a.get('conditions', [])
+                  if isinstance(c, dict) and 'last_triggered' in str(c.get('value_template', ''))
+                  and '.date()' in str(c.get('value_template', ''))]
+        assert len(guards) >= 10
+        for g in guards:
+            assert 'as_local' in g, g
+
+
+# =============================================================================
+# RESTART AND RELOAD ARTEFACTS
+# =============================================================================
+
+class TestKitchenRestartArtefacts:
+    """An entity goes unavailable -> value on every restart and a template
+    sensor unknown -> value on every reload. Kitchen-triggered automations
+    that checked only to_state counted each restart as kitchen activity:
+    a block on the timeline, a bump to the daily counter, the manual safe
+    flag cleared, and inside the morning window a wake time."""
+
+    GUARD = ("trigger.from_state is not none", "trigger.from_state.state not in",
+             "trigger.to_state.state != trigger.from_state.state")
+
+    def test_kitchen_triggers_need_a_real_change(self, automations):
+        kitchen = [a for a in automations
+                   if any('event.kitchen_motion' in str(t.get('entity_id', '')) for t in a['triggers'])]
+        assert len(kitchen) >= 6
+        for a in kitchen:
+            text = yaml.dump(a.get('conditions', []), width=1000)
+            for part in self.GUARD:
+                assert part in text, f"{a['id']} lacks '{part}'"
+
+
+# =============================================================================
+# OVERNIGHT ALERT NOISE
+# =============================================================================
+
+class TestOvernightNoise:
+    """Overnight pushes that carried nothing true: a one-second reload
+    artefact scored critical, a normal night's sleep climbed the inactivity
+    ladder to "Needs Attention", and a restart self-test pushed a green tick
+    at time-sensitive."""
+
+    def _auto(self, automations, auto_id):
+        return next(a for a in automations if a['id'] == auto_id)
+
+    def test_status_change_must_hold(self, automations):
+        trig = self._auto(automations, 'haiven_status_change')['triggers'][0]
+        h, m, s = (int(x) for x in str(trig.get('for', '0:0:0')).split(':'))
+        assert h * 3600 + m * 60 + s >= 120
+
+    def test_status_change_quiet_while_asleep(self, automations):
+        conds = yaml.dump(self._auto(automations, 'haiven_status_change')['conditions'], width=1000)
+        assert 'binary_sensor.night_window_active' in conds
+        assert 'input_number.no_activity_alert_hours' in conds
+
+    def test_status_change_reads_the_triggering_state(self, automations):
+        msg = self._auto(automations, 'haiven_status_change')['actions'][0]['data']['message']
+        assert "state_attr('sensor.elderly_care_status'" not in msg
+        assert 'trigger.to_state' in msg
+
+    def test_passing_health_check_does_not_push(self, automations):
+        choose = next(s for s in self._auto(automations, 'haiven_new_sensors_health_check')['actions']
+                      if 'choose' in s)
+        assert all(s.get('action') != 'script.send_haiven_notification' for s in choose['default'])

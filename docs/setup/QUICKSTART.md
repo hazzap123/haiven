@@ -18,22 +18,40 @@ You don't need these exact entity IDs — `setup.sh` asks for yours and substitu
 
 ---
 
+## Before you start
+
+- **kiosk-mode** installed through HACS. The dashboard uses it to hide Home Assistant's header and sidebar.
+- **The Anthropic Conversation integration**, with its agent at `conversation.claude_conversation`. This is required: the daily summaries and the deviation and no-activity alerts are written by it. Roughly $1-5 a month on Claude Haiku 4.5.
+- **Privacy:** those summaries and alerts send the person's recent activity (rooms, times, bathroom visits) to Anthropic's API.
+
+---
+
 ## Step 1: Clone and configure (5 min)
 
 ```bash
-git clone https://github.com/hazzap123/haiven.git /config
-cd /config
+# 1. Clone somewhere OTHER than /config (it already holds your setup)
+git clone https://github.com/hazzap123/haiven.git ~/haiven
+cd ~/haiven
+
+# 2. Set your sensor entity IDs. This rewrites every .yaml and .js file in
+#    the clone, so run it here, never inside /config.
 bash scripts/setup.sh
+
+# 3. Copy the Haiven files into /config
+cp -r packages scripts www www-src lovelace themes /config/
+cp haiven_sensors_3sensor.yaml haiven_persons.yaml haiven_zones.yaml /config/
 ```
 
-The script asks for your kitchen, bedroom and bathroom entity IDs, rewrites every `.yaml` and `.js` file that references the defaults, and deploys the dashboard card into `www/`.
+> **Do not overwrite your own `configuration.yaml`, `automations.yaml`, `scripts.yaml` or `scenes.yaml`.** If you have none of your own yet, copy Haiven's. Otherwise merge by hand: add Haiven's `homeassistant.packages`, `frontend`, `lovelace`, `shell_command`, `command_line`, `recorder` and `sensor` blocks to your `configuration.yaml`, and append Haiven's automations and scripts to yours. Copying over them deletes every automation and script you made in the UI.
+
+`setup.sh` asks for your kitchen, bedroom and bathroom entity IDs, rewrites every `.yaml` and `.js` file in the clone that references the defaults, and deploys the dashboard card into the clone's `www/`, which step 3 copies across.
 
 ---
 
 ## Step 2: Fill in secrets and people (10 min)
 
 ```bash
-cp secrets.yaml.example secrets.yaml
+cp ~/haiven/secrets.yaml.example /config/secrets.yaml   # or merge it into yours
 # edit secrets.yaml with your values
 ```
 
@@ -81,16 +99,20 @@ Full severity scoring: [STATUS_SPEC.md](../reference/STATUS_SPEC.md)
 
 ## Tuning Recommendations
 
-Defaults, in **Settings** on the dashboard's Thresholds tab:
+In **Settings** on the dashboard. The four status gaps have defaults. The routine helpers have none, so Home Assistant keeps whatever you set across restarts; on a fresh install they start at 00:00 or at the slider's minimum, and the morning check would fire just after midnight. **Set them before relying on alerts.**
 
-| Helper | Default |
-|--------|---------|
-| `status_gap_monitoring_mins` | 60 |
-| `status_gap_caution_mins` | 120 |
-| `status_gap_concern_mins` | 180 |
-| `status_gap_critical_mins` | 240 |
-| `no_activity_alert_hours` | 4 |
-| `wake_time_variance_minutes` | 120 |
+| Helper | Default | Suggested start |
+|--------|---------|-----------------|
+| `status_gap_monitoring_mins` | 60 | |
+| `status_gap_caution_mins` | 120 | |
+| `status_gap_concern_mins` | 180 | |
+| `status_gap_critical_mins` | 240 | |
+| `expected_wake_time` | none (00:00) | her usual wake time |
+| `expected_bedtime` | none (00:00) | her usual bedtime |
+| `wake_time_variance_minutes` | none (15, the minimum) | 120 |
+| `bedtime_variance_minutes` | none (15, the minimum) | 60 |
+| `no_activity_alert_hours` | none (2, the minimum) | 4 |
+| `transition_timeout_mins` | none (30, the minimum) | 90 with a motion-only main-room sensor |
 
 **Too many alerts:** raise the relevant threshold. **Missing real issues:** lower it. Give it a week on the defaults before tuning — you need false alarms to actually see, not guess at.
 

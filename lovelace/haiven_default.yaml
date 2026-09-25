@@ -128,14 +128,6 @@ views:
                         sub: minutes between rooms
                         unit: false
 
-                  - type: custom:haiven-section
-                    title: Camera
-
-                  # Answers the question everything above provokes: it has
-                  # been quiet, is that fine? The frame, what the model made
-                  # of it, and a button to take a fresh one.
-                  - type: custom:haiven-camera
-
               # ------------------------------------------------------------
               - name: Patterns
                 cards:
@@ -319,10 +311,6 @@ views:
               - label: Daily note
                 entity: input_text.daily_note
                 sub: tap to write
-              - label: Carer on duty
-                entity: input_text.carer_name
-              - label: Carer schedule
-                entity: input_text.carer_schedule
 
           - type: custom:haiven-actions
             buttons:
@@ -356,7 +344,7 @@ views:
                     entity: input_datetime.bathroom_night_last_entry
                     format: time
                   - label: In there
-                    entity: sensor.time_since_bathroom_entry_night
+                    entity: sensor.bathroom_night_current_duration
                     format: mins
 
               - entity: binary_sensor.extended_night_bathroom_visit
@@ -364,7 +352,7 @@ views:
                 title: Long bathroom visit overnight
                 detail:
                   - label: So far
-                    entity: sensor.current_night_bathroom_duration
+                    entity: sensor.bathroom_night_current_duration
                     format: mins
                   - label: Her usual
                     entity: input_number.bathroom_night_baseline_duration
@@ -376,10 +364,10 @@ views:
                 title: Off her routine
                 body_entity: sensor.current_deviation_message
 
-              - entity: binary_sensor.high_night_bathroom_frequency
+              - entity: binary_sensor.bathroom_night_visits_high
                 level: warning
                 title: Up more than usual overnight
-                body_entity: sensor.night_bathroom_status
+                body_entity: sensor.bathroom_night_visits_status
                 detail:
                   - label: Her usual
                     entity: input_number.bathroom_night_baseline_visits
@@ -457,10 +445,6 @@ views:
                         entity: input_text.contact_2_name
                       - label: Their number
                         entity: input_text.contact_2_phone
-                      - label: Carer
-                        entity: input_text.carer_name
-                      - label: Carer schedule
-                        entity: input_text.carer_schedule
 
               - name: Thresholds
                 cards:

@@ -44,11 +44,11 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Morning Update"
-        message: "{{ states('input_text.current_summary') }}"
+        message: "{{ ai_response.response.speech.plain.speech }}"
         level: time-sensitive
   mode: single
 
@@ -91,11 +91,11 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Afternoon Update"
-        message: "{{ states('input_text.current_summary') }}"
+        message: "{{ ai_response.response.speech.plain.speech }}"
         level: passive
   mode: single
 
@@ -142,11 +142,11 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Evening Update"
-        message: "{{ states('input_text.current_summary') }}"
+        message: "{{ ai_response.response.speech.plain.speech }}"
         level: passive
   mode: single
 
@@ -205,12 +205,16 @@
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech }}"
+        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
   mode: single
 
 - id: haiven_backup_activity_log
   alias: "Haiven: Backup Activity Log to Git"
-  description: Commits and pushes activity.log to GitHub three times daily for backup redundancy.
+  description: >-
+    Commits activity.log to the local git repository three times daily. Nothing
+    is pushed. activity.log is in .gitignore, so this commits nothing unless you
+    remove it from there; the log holds her daily routine, so never do that in a
+    clone with a public remote.
   triggers:
     - trigger: time
       at: "08:00:00"
@@ -224,7 +228,7 @@
     - action: logbook.log
       data:
         name: Haiven Log Backup
-        message: "Activity log backed up to GitHub"
+        message: "Activity log backup ran (local commit only)"
         entity_id: input_boolean.haiven_monitoring_enabled
   mode: single
 - id: haiven_morning_activity_check
@@ -251,7 +255,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_morning_activity_check', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     # Check if person is away - send different notification
     - if:
@@ -396,6 +400,18 @@
         - binary_sensor.haiven_bedroom_occupancy
         - binary_sensor.haiven_bathroom_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: state
       entity_id: input_boolean.manual_safe_status
       state: "on"
@@ -425,9 +441,15 @@
   conditions:
     - condition: template
       alias: Only if last reset was on a different day
+      # last_triggered is UTC and now() is local. "Haiven: Daily Reset" fires
+      # at local midnight, which during summer time is the PREVIOUS calendar
+      # day in UTC, so the unconverted comparison read "the last reset was
+      # yesterday" on every restart and re-ran the reset, wiping that day's
+      # wake time, bedtime and first kitchen time. as_local makes the two
+      # sides comparable.
       value_template: >-
         {% set last = state_attr('automation.haiven_daily_reset', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - delay:
         seconds: 30
@@ -443,6 +465,13 @@
         - caution
         - concern
         - critical
+      # The state has to HOLD. A template reload blanks every input for a
+      # second; the severity maths falls back to 9999 minutes when an input
+      # is missing, which scores critical, and this sent a time-sensitive
+      # "CRITICAL - unavailable at unavailable" push. Two minutes is longer
+      # than any reload artefact and the entity-restore window after a
+      # restart, and costs a real alert two minutes against a 60-minute ladder.
+      for: "00:02:00"
   conditions:
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
@@ -450,6 +479,34 @@
     - condition: state
       entity_id: input_boolean.deviation_alert_sent
       state: "off"
+
+    - condition: template
+      alias: While she is asleep, only a genuinely long silence may wake anyone
+      value_template: >-
+        {# The ladder runs identically at 04:37 and at 14:37, so a normal
+           night of sleep escalates and pushed "Needs Attention" before she
+           got up.
+
+           Asleep means the night window, or the morning before her wake time
+           has been recorded. That morning assumption expires two hours after
+           her expected wake, so a failed wake detection cannot mute the
+           system for a whole day.
+
+           The bathroom fall and long-visit alerts are separate automations
+           and are deliberately untouched: those still fire at 3am. #}
+        {% set wake = states('input_datetime.actual_wake_time_today') %}
+        {% set wake_unset = wake in ['unknown', 'unavailable', 'none', '', '00:00:00'] %}
+        {% set wake_base = states('input_datetime.expected_wake_time') %}
+        {% set wake_var = states('input_number.wake_time_variance_minutes') | float(30) %}
+        {% set grace = today_at(wake_base) + timedelta(minutes=wake_var + 120)
+                       if wake_base not in ['unknown', 'unavailable'] else now() %}
+        {% set asleep = is_state('binary_sensor.night_window_active', 'on')
+                        or (wake_unset and now() < grace) %}
+        {% set k = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
+        {% set b = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
+        {% set t = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
+        {% set limit = (states('input_number.no_activity_alert_hours') | float(4)) * 60 %}
+        {{ not asleep or ([k, b, t] | min) >= limit }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -459,9 +516,17 @@
           {% elif s == 'concern' %}🔴 Haiven - Check Required
           {% else %}⚠️ Haiven - Needs Attention{% endif %}
         message: >
-          {{ state_attr('sensor.elderly_care_status', 'status_text') }}.
-          {{ states('sensor.current_deviation_message') }}
-          Last: {{ states('sensor.last_activity_location') }} at {{ states('sensor.last_activity_time') }}
+          {# Read the attribute off the TRIGGERING state, not live. Re-reading
+             the sensor a moment later could find it a level lower, so the
+             title said "Needs Attention" while the body said "Monitoring". #}
+          {% set s = trigger.to_state %}
+          {{ s.attributes.get('status_text', 'Status: ' ~ s.state) }}.
+          {# An unknown deviation message was printed as the word "unknown"
+             in the middle of the sentence. #}
+          {% set d = states('sensor.current_deviation_message') %}
+          {% if d not in ['unknown', 'unavailable', 'none', 'None', ''] %}{{ d }}.{% endif %}
+          Last seen: {{ states('sensor.last_activity_location') }},
+          {{ states('sensor.last_activity_time') }}.
         level: >
           {% set s = trigger.to_state.state %}
           {% if s in ['critical', 'concern'] %}time-sensitive{% else %}active{% endif %}
@@ -497,6 +562,18 @@
     - trigger: state
       entity_id: event.kitchen_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: state
       entity_id: binary_sensor.morning_window_active
       state: "on"
@@ -505,7 +582,7 @@
       alias: Only log once each morning
       value_template: >-
         {% set last = this.attributes.last_triggered %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: logbook.log
       data:
@@ -520,6 +597,18 @@
     - trigger: state
       entity_id: event.kitchen_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
@@ -537,7 +626,7 @@
         {% set to_state = trigger.to_state %}
         {% set event_state = to_state.state if to_state else none %}
         {% set valid_motion = event_state not in ['idle', 'unknown', 'unavailable', 'off', none] %}
-        {{ valid_motion and (last is none or as_datetime(last).date() < now().date()) }}
+        {{ valid_motion and (last is none or (as_datetime(last) | as_local).date() < now().date()) }}
   actions:
     # Record wake time first so deviation sensors reflect actual wake time
     - action: input_datetime.set_datetime
@@ -612,8 +701,10 @@
       value_template: >-
         {% set kitchen_last = states.event.kitchen_motion.last_changed %}
         {% if kitchen_last %}
-          {% set activity_date = as_datetime(kitchen_last).date() %}
-          {% set activity_hour = as_datetime(kitchen_last).hour %}
+          {# last_changed is UTC. The 4-10 window below is written in local
+             hours, so it has to be compared against a local datetime. #}
+          {% set activity_date = (as_datetime(kitchen_last) | as_local).date() %}
+          {% set activity_hour = (as_datetime(kitchen_last) | as_local).hour %}
           {# Must be from today and in morning hours (4-10) #}
           {{ activity_date == now().date() and activity_hour >= 4 and activity_hour < 10 }}
         {% else %}
@@ -625,8 +716,10 @@
         entity_id: input_datetime.actual_wake_time_today
       data:
         time: >-
+          {# Local, or the recovered wake time is written an hour early all
+             summer. #}
           {% set kitchen_last = states.event.kitchen_motion.last_changed %}
-          {{ as_datetime(kitchen_last).strftime('%H:%M:%S') }}
+          {{ (as_datetime(kitchen_last) | as_local).strftime('%H:%M:%S') }}
     - action: input_boolean.turn_on
       target:
         entity_id: input_boolean.manual_safe_status
@@ -640,7 +733,7 @@
       data:
         name: Haiven Wake Time Catch-Up
         message: >-
-          Wake time recovered from kitchen sensor: {{ states.event.kitchen_motion.last_changed.strftime('%H:%M') }}
+          Wake time recovered from kitchen sensor: {{ (states.event.kitchen_motion.last_changed | as_local).strftime('%H:%M') }}
           (primary detection was missed)
         entity_id: input_datetime.actual_wake_time_today
     - action: script.send_haiven_notification
@@ -648,7 +741,7 @@
         title: "☀️ Haiven - Wake Time Recovered"
         message: >-
           {{ states('input_text.elderly_person_name') }}'s wake time was recovered from sensor data:
-          {{ states.event.kitchen_motion.last_changed.strftime('%I:%M %p') }}
+          {{ (states.event.kitchen_motion.last_changed | as_local).strftime('%I:%M %p') }}
           (primary detection missed - possible integration issue)
         level: passive
   mode: single
@@ -848,7 +941,7 @@
       alias: Only reset once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_bathroom_night_reset', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: counter.reset
       target:
@@ -906,7 +999,7 @@
   description: Alert when bathroom visit exceeds baseline duration
   triggers:
     - trigger: state
-      entity_id: binary_sensor.bathroom_night_visit_extended
+      entity_id: binary_sensor.extended_night_bathroom_visit
       to: "on"
   conditions:
     - condition: state
@@ -933,7 +1026,7 @@
   description: CRITICAL alert for possible fall or medical emergency in bathroom
   triggers:
     - trigger: state
-      entity_id: binary_sensor.bathroom_night_no_return
+      entity_id: binary_sensor.no_return_from_bathroom_possible_fall
       to: "on"
   conditions:
     - condition: state
@@ -943,6 +1036,7 @@
     - action: script.notify_care_circle
       data:
         title: "🚨 URGENT: No Return From Bathroom"
+        priority: critical
         message: >
           {{ states('input_text.elderly_person_name') }} entered bathroom at
           {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }}
@@ -970,7 +1064,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_evening_activity_check', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
     - condition: template
       alias: No activity in last 3 hours
       value_template: >-
@@ -1015,7 +1109,7 @@
       alias: Only fire once (not already sent)
       value_template: >-
         {% set last = state_attr('automation.haiven_bedtime_routine_check', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -1035,7 +1129,19 @@
   triggers:
     - trigger: state
       entity_id: event.kitchen_motion
-  conditions: []
+  conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
   actions:
     - action: input_boolean.turn_on
       target:
@@ -1161,7 +1267,7 @@
       data:
         title: "⚠️ URGENT: No One Nearby"
         message: >
-          Status: {{ states('sensor.haiven_status') | title }}
+          Status: {{ states('sensor.elderly_care_status') | title }}
 
           No care circle members are currently nearby or at home.
 
@@ -1214,25 +1320,6 @@
               value_template: "{{ nearest_person == 'Contact 2' }}"
           sequence:
             - action: "{{ states('input_text.contact_2_notification') }}"
-              data:
-                title: "🚨 ALERT: You're Closest"
-                message: >
-                  Status: ALERT
-
-                  You are the nearest care circle member ({{ nearest_distance }} km away).
-
-                  Last activity: {{ states('sensor.last_activity_display') }}
-
-                  Please check on {{ states('input_text.elderly_person_name') }} as soon as possible.
-                data:
-                  push:
-                    interruption-level: time-sensitive
-
-        - conditions:
-            - condition: template
-              value_template: "{{ nearest_person == 'Professional Carer' }}"
-          sequence:
-            - action: "{{ states('input_text.carer_notification') }}"
               data:
                 title: "🚨 ALERT: You're Closest"
                 message: >
@@ -1418,6 +1505,18 @@
       entity_id: event.kitchen_motion
   conditions:
     - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
+    - condition: template
       alias: Ignore unknown/unavailable states
       value_template: >-
         {{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable', 'idle'] }}
@@ -1506,7 +1605,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_no_kitchen_activity_by_noon', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -1541,7 +1640,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_low_activity_alert', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:
@@ -1666,6 +1765,12 @@
             {% set problems = problems + ['kitchen_triggers_baseline input'] %}
           {% endif %}
           {{ problems }}
+    # A passing self-test goes to the logbook, not to a phone. This runs two
+    # minutes after EVERY restart and omitted `level`, which the notification
+    # script defaults to time-sensitive, so a green tick broke through Do Not
+    # Disturb for no reason but a restart.
+    #
+    # A FAILING self-test still notifies: that one means monitoring is broken.
     - choose:
         - conditions:
             - condition: template
@@ -1675,11 +1780,18 @@
               data:
                 title: "🔧 Haiven - Sensor Issues"
                 message: "Missing: {{ issues | join(', ') }}. Check YAML and reload."
+                level: time-sensitive
       default:
-        - action: script.send_haiven_notification
+        - action: logbook.log
           data:
-            title: "✅ Haiven - Sensors OK"
-            message: "Counters: K={{ states('counter.kitchen_triggers_today') }} B={{ states('counter.bedroom_triggers_today') }} Bath={{ states('counter.bathroom_triggers_today') }} | Status: {{ states('sensor.activity_level_status') }}"
+            name: Haiven Sensor Health Check
+            message: >-
+              All tracked entities present after restart.
+              Counters: K={{ states('counter.kitchen_triggers_today') }}
+              B={{ states('counter.bedroom_triggers_today') }}
+              Bath={{ states('counter.bathroom_triggers_today') }}.
+              Status: {{ states('sensor.activity_level_status') }}
+            entity_id: sensor.sensor_health_status
   mode: single
 # ============================================================================
 # BED STATE MACHINE - EPL Zone-Based Detection
@@ -1808,7 +1920,7 @@
   mode: single
 
 # ============================================================================
-# DATA CAPTURE - Tracking automations for behavioral dataset
+# DATA CAPTURE - Tracking automations for behavioural dataset
 # ============================================================================
 
 - id: haiven_track_first_kitchen
@@ -1818,6 +1930,18 @@
     - trigger: state
       entity_id: event.kitchen_motion
   conditions:
+    - condition: template
+      alias: A real event, not a restart or template-reload artefact
+      value_template: >-
+        {# An entity goes unavailable -> value on every restart and a template
+           sensor unknown -> value on every reload. Without this, each restart
+           counted as kitchen activity: a block on the timeline, a bump to the
+           daily counter and the manual safe flag cleared, with nothing moving. #}
+        {{ trigger.from_state is not none
+           and trigger.from_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state is not none
+           and trigger.to_state.state not in ['unknown', 'unavailable']
+           and trigger.to_state.state != trigger.from_state.state }}
     - condition: template
       alias: Valid motion event
       value_template: >-
@@ -1886,7 +2010,7 @@
       alias: Only fire once per day
       value_template: >-
         {% set last = state_attr('automation.haiven_upstairs_only_alert', 'last_triggered') %}
-        {{ last is none or as_datetime(last).date() < now().date() }}
+        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
   actions:
     - action: script.send_haiven_notification
       data:

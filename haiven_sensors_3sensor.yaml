@@ -7,7 +7,7 @@
 template:
   # ============================================================================
   # FOUNDATIONAL SENSORS - Used by multiple other sensors/automations
-  # These provide centralized logic to avoid duplication
+  # These provide centralised logic to avoid duplication
   # ============================================================================
 
   # Elderly Person Home Status
@@ -30,7 +30,7 @@ template:
             mdi:home-off-outline
           {% endif %}
 
-  # Activity Data - Centralized 3-sensor activity gathering
+  # Activity Data - Centralised 3-sensor activity gathering
   # Replaces 6+ duplicated blocks that gather kitchen/bedroom/bathroom timestamps
   - sensor:
       - name: "Activity Data"
@@ -177,7 +177,7 @@ template:
             {% if bedroom_active or bathroom_active %}
               false
             {% else %}
-              {% set timeout = states('input_number.transition_timeout_mins') | int(15) %}
+              {% set timeout = states('input_number.transition_timeout_mins') | int(90) %}
               {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
               {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
               {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
@@ -207,7 +207,7 @@ template:
             {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
             {{ [kitchen_mins, bedroom_mins, bathroom_mins] | min }}
           last_active_room: "{{ states('sensor.activity_data') }}"
-          transition_timeout_mins: "{{ states('input_number.transition_timeout_mins') | int(15) }}"
+          transition_timeout_mins: "{{ states('input_number.transition_timeout_mins') | int(90) }}"
 
   # ============================================================================
   # MORNING CONTEXT - Contextual morning status for upstairs-only detection
@@ -1078,9 +1078,12 @@ template:
         state: >
           {% set in_bed_states = ['in_bed', 'sleeping'] %}
           {% set current_state = states('input_select.bed_state') %}
-          {% set entered = states('input_datetime.zone1_entered_time') %}
-          {% if current_state in in_bed_states and entered not in ['unknown', 'unavailable'] %}
-            {{ ((now() - as_datetime(entered)).total_seconds() / 60) | round(0) }}
+          {# The helper's state is a naive local string; now() is tz-aware, and
+             subtracting the two raised TypeError every minute she was in bed.
+             The timestamp attribute is already epoch seconds. #}
+          {% set entered = state_attr('input_datetime.zone1_entered_time', 'timestamp') %}
+          {% if current_state in in_bed_states and entered %}
+            {{ ((now().timestamp() - entered) / 60) | round(0) }}
           {% else %}
             0
           {% endif %}
