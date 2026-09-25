@@ -18,7 +18,7 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 ## What you need
 
 **Hardware (3 sensors):** you can add more but will need to configure for that.
-- Main room: Motion or presence sensor (MMW radar, Zigbee PIR, etc.)
+- Main room: Motion or presence sensor (MMW radar, Zigbee PIR, etc.). I use a RingCamera with motion events. So can also parse snapshots through to check if needed (works okayish)
 - Bedroom: Motion or Presence sensor with zone support if want in bed detection
 - Bathroom: Motion sensor (Shelly BLU Motion, Zigbee PIR, etc.)
 
