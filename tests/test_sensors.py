@@ -158,3 +158,200 @@ class TestOvernightActivitySummary:
 
     def test_no_data(self, tpl):
         assert render(tpl) == 'No data'
+
+
+# ---------------------------------------------------------------------------
+# Configurable detection windows
+# ---------------------------------------------------------------------------
+
+class _States:
+    """Callable like states('x.y') and browsable like states.x.y, as in HA."""
+
+    class _Obj:
+        def __init__(self, state, last_changed):
+            self.state, self.last_changed = state, last_changed
+
+    class _Domain:
+        def __init__(self, items):
+            self.__dict__.update(items)
+
+    def __init__(self, values, changed=None):
+        self._values = values
+        by_domain = {}
+        for entity_id, when in (changed or {}).items():
+            domain, name = entity_id.split('.')
+            by_domain.setdefault(domain, {})[name] = self._Obj(values.get(entity_id, 'on'), when)
+        for domain, items in by_domain.items():
+            setattr(self, domain, self._Domain(items))
+
+    def __call__(self, entity_id):
+        return self._values.get(entity_id, 'unknown')
+
+
+def render_ha(template, values=None, attrs=None, now=NOW, changed=None):
+    values, attrs = values or {}, attrs or {}
+    env = Environment(loader=BaseLoader())
+    env.filters['as_local'] = lambda d: d.astimezone(TZ)
+    env.globals.update(
+        states=_States(values, changed),
+        is_state=lambda e, v: values.get(e) == v,
+        state_attr=lambda e, a: attrs.get(e, {}).get(a),
+        now=lambda: now,
+        timedelta=dt.timedelta,
+        as_datetime=lambda s: s if isinstance(s, dt.datetime) else dt.datetime.fromisoformat(str(s)),
+        today_at=lambda t: dt.datetime.combine(now.date(), dt.time.fromisoformat(t), tzinfo=TZ),
+    )
+    return env.from_string(template).render().strip()
+
+
+def at(hour, minute=0, day=1):
+    return dt.datetime(2026, 9, day, hour, minute, tzinfo=TZ)
+
+
+class TestBedtimeWindow:
+    """The window bedtime is looked for in. It was fixed at 17:30-21:00, so a
+    household that goes to bed at 22:30 never had a bedtime recorded."""
+
+    def window(self, **helpers):
+        values = {f'input_datetime.{k}': v for k, v in helpers.items()}
+        return render_ha(template_entity('bedtime_window')['state'], values)
+
+    def test_helpers_set_the_window(self):
+        assert self.window(bedtime_window_start='20:30:00', bedtime_window_end='23:45:00') == '20:30-23:45'
+
+    def test_unset_helpers_follow_expected_bedtime(self):
+        # A fresh install has both helpers at 00:00.
+        assert self.window(bedtime_window_start='00:00:00', bedtime_window_end='00:00:00',
+                           expected_bedtime='22:00:00') == '19:00-00:00'
+
+    def test_derived_window_can_cross_midnight(self):
+        assert self.window(expected_bedtime='23:30:00') == '20:30-01:30'
+
+    def test_nothing_set_at_all_still_gives_a_window(self):
+        assert self.window() == '19:00-00:00'
+
+    @pytest.mark.parametrize("window,now,expected", [
+        ('19:00-23:00', at(18, 59), 'False'),
+        ('19:00-23:00', at(19, 0), 'True'),
+        ('19:00-23:00', at(22, 59), 'True'),
+        ('19:00-23:00', at(23, 0), 'False'),
+        ('21:00-01:30', at(23, 30), 'True'),      # crosses midnight, before it
+        ('21:00-01:30', at(0, 45, day=2), 'True'),  # and after it
+        ('21:00-01:30', at(1, 30, day=2), 'False'),
+        ('21:00-01:30', at(12, 0), 'False'),
+        ('unknown', at(20, 0), 'False'),
+    ])
+    def test_active(self, window, now, expected):
+        entity = template_entity('bedtime_window_active')
+        assert render_ha(entity['state'], {'sensor.bedtime_window': window}, now=now) == expected
+
+    def test_started_at_is_yesterday_once_past_midnight(self):
+        tpl = template_entity('bedtime_window_active')['attributes']['started_at']
+        before = render_ha(tpl, {'sensor.bedtime_window': '21:00-01:30'}, now=at(23, 30))
+        after = render_ha(tpl, {'sensor.bedtime_window': '21:00-01:30'}, now=at(0, 45, day=2))
+        assert dt.datetime.fromisoformat(before) == at(21, 0)
+        assert dt.datetime.fromisoformat(after) == at(21, 0)
+
+
+class TestBedtimePattern:
+    def pattern(self, now, active, started, kitchen, bathroom, bedroom):
+        values = {'binary_sensor.bedtime_window_active': 'on' if active else 'off'}
+        attrs = {'binary_sensor.bedtime_window_active': {'started_at': started.isoformat()}}
+        changed = {'event.kitchen_motion': kitchen,
+                   'binary_sensor.haiven_bathroom_motion': bathroom,
+                   'binary_sensor.haiven_bedroom_occupancy': bedroom}
+        return render_ha(template_entity('bedtime_pattern_detected')['state'], values, attrs,
+                         now=now, changed=changed).capitalize()
+
+    def test_late_bedtime_is_detected_inside_a_late_window(self):
+        # Kitchen quiet since 21:40, bathroom at 22:20, bedroom at 22:25, now 22:45.
+        assert self.pattern(at(22, 45), True, at(20, 30),
+                            kitchen=at(21, 40), bathroom=at(22, 20), bedroom=at(22, 25)) == 'True'
+
+    def test_nothing_is_detected_outside_the_window(self):
+        assert self.pattern(at(22, 45), False, at(17, 30),
+                            kitchen=at(21, 40), bathroom=at(22, 20), bedroom=at(22, 25)) == 'False'
+
+    def test_a_bathroom_visit_before_the_window_does_not_count(self):
+        assert self.pattern(at(22, 45), True, at(20, 30),
+                            kitchen=at(19, 0), bathroom=at(20, 10), bedroom=at(22, 25)) == 'False'
+
+    def test_bathroom_time_is_local_not_utc(self):
+        tpl = template_entity('bedtime_pattern_detected')['attributes']['bathroom_time']
+        utc = dt.datetime(2026, 9, 1, 21, 20, tzinfo=dt.timezone.utc)      # 22:20 local
+        assert render_ha(tpl, changed={'binary_sensor.haiven_bathroom_motion': utc}) == '22:20'
+
+
+class TestBedtimeMinutes:
+    def minutes(self, bedtime, window):
+        return render_ha(template_entity('today_bedtime_minutes')['state'],
+                         {'sensor.today_bedtime': bedtime, 'sensor.bedtime_window': window})
+
+    def test_inside_the_window(self):
+        assert self.minutes('22:30', '20:30-01:30') == '1350'
+
+    def test_after_midnight_counts_on_from_24_hours(self):
+        assert self.minutes('00:10', '20:30-01:30') == '1450'
+
+    def test_outside_the_window_is_rejected(self):
+        assert self.minutes('15:00', '20:30-01:30') == 'None'
+
+    def test_average_wraps_back_to_a_clock_time(self):
+        avg = render_ha(template_entity('average_bedtime_week')['state'],
+                        {'sensor.average_bedtime_minutes_week': '1450'})
+        assert avg == '00:10'
+
+    def test_average_falls_back_to_expected_bedtime(self):
+        avg = render_ha(template_entity('average_bedtime_week')['state'],
+                        {'input_datetime.expected_bedtime': '22:15:00'})
+        assert avg == '22:15'
+
+
+class TestWakeWindow:
+    """The earliest time first activity counts as getting up. It was fixed at
+    04:00."""
+
+    def start(self, **helpers):
+        values = {f'input_datetime.{k}': v for k, v in helpers.items()}
+        return render_ha(template_entity('wake_window_start')['state'], values)
+
+    def test_helper_sets_it(self):
+        assert self.start(wake_window_start='06:30:00', expected_wake_time='08:00:00') == '06:30'
+
+    def test_unset_follows_expected_wake(self):
+        assert self.start(wake_window_start='00:00:00', expected_wake_time='09:30:00') == '06:30'
+
+    def test_never_before_midnight(self):
+        assert self.start(expected_wake_time='02:00:00') == '00:00'
+
+    def test_nothing_set_keeps_the_old_default(self):
+        assert self.start(wake_window_start='00:00:00', expected_wake_time='00:00:00') == '04:00'
+
+    @pytest.mark.parametrize("now,expected", [(at(6, 29), 'False'), (at(6, 30), 'True'),
+                                              (at(11, 0), 'True'), (at(11, 1), 'False')])
+    def test_morning_window_opens_at_it(self, now, expected):
+        entity = template_entity('morning_window_active')
+        values = {'sensor.wake_window_start': '06:30', 'input_datetime.expected_wake_time': '08:00:00',
+                  'input_number.wake_time_variance_minutes': '60'}
+        assert render_ha(entity['state'], values, now=now) == expected
+
+
+def _strings(node):
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for v in node.values():
+            yield from _strings(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _strings(v)
+
+
+@pytest.mark.parametrize("path", [ROOT / "haiven_sensors_3sensor.yaml", ROOT / "configuration.yaml",
+                                  *sorted((ROOT / "packages").glob("*.yaml"))], ids=lambda p: p.name)
+def test_every_template_parses(path):
+    """A template with a syntax error makes its entity unavailable, silently."""
+    env = Environment(loader=BaseLoader())
+    for text in _strings(_load(path)):
+        if '{{' in text or '{%' in text:
+            env.parse(text)

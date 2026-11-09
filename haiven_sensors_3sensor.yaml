@@ -614,7 +614,8 @@ template:
               {% set actual_minutes = (actual_parts[0] | int * 60) + (actual_parts[1] | int) %}
               {% set expected_minutes = (expected_parts[0] | int * 60) + (expected_parts[1] | int) %}
               {% set diff = actual_minutes - expected_minutes %}
-              {{ diff }}
+              {# Either side of midnight: 00:30 against 23:00 is 90 late, not 1350 early #}
+              {{ diff + 1440 if diff < -720 else (diff - 1440 if diff > 720 else diff) }}
             {% else %}
               0
             {% endif %}
@@ -688,7 +689,8 @@ template:
               {% set actual_minutes = (actual_parts[0] | int * 60) + (actual_parts[1] | int) %}
               {% set expected_minutes = (expected_parts[0] | int * 60) + (expected_parts[1] | int) %}
               {% set diff = actual_minutes - expected_minutes %}
-              {{ diff }}
+              {# Either side of midnight: 00:30 against 23:00 is 90 late, not 1350 early #}
+              {{ diff + 1440 if diff < -720 else (diff - 1440 if diff > 720 else diff) }}
             {% else %}
               0
             {% endif %}
@@ -705,10 +707,16 @@ template:
             {% set parts = bedtime.split(':') %}
             {% set hours = parts[0] | int(0) %}
             {% set minutes = parts[1] | int(0) %}
-            {# Only accept bedtimes in valid evening range (17:00-23:59) #}
-            {# This prevents corrupted data from polluting the statistics sensor #}
-            {% if hours >= 17 and hours <= 23 %}
-              {{ (hours * 60 + minutes) | int(0) }}
+            {# Only accept bedtimes inside the bedtime window, so corrupted data #}
+            {# cannot pollute the statistics sensor. After midnight counts as #}
+            {# 24:00 onwards, so 23:50 and 00:10 average to midnight, not noon. #}
+            {% set w = states('sensor.bedtime_window') %}
+            {% set a = (w[0:2] | int(0)) * 60 + (w[3:5] | int(0)) %}
+            {% set b = (w[6:8] | int(0)) * 60 + (w[9:11] | int(0)) %}
+            {% set m = hours * 60 + minutes %}
+            {% set inside = (a <= m < b) if a < b else (m >= a or m < b) %}
+            {% if inside %}
+              {{ (m + (1440 if m < 720 else 0)) | int(0) }}
             {% else %}
               {{ none }}
             {% endif %}
@@ -717,7 +725,7 @@ template:
           {% endif %}
         attributes:
           source: sensor.today_bedtime
-          valid_range: "17:00-23:59"
+          valid_range: "{{ states('sensor.bedtime_window') }}"
         icon: mdi:bed-clock
 
   - sensor:
@@ -728,14 +736,14 @@ template:
           {% if avg not in ['unknown', 'unavailable', none] %}
             {% set total = avg | float(0) | round(0) | int %}
             {% if total > 0 %}
-              {% set hours = (total // 60) %}
+              {% set hours = (total // 60) % 24 %}
               {% set minutes = (total % 60) %}
               {{ '%02d:%02d' | format(hours, minutes) }}
             {% else %}
-              18:45
+              {{ states('input_datetime.expected_bedtime')[:5] }}
             {% endif %}
           {% else %}
-            18:45
+            {{ states('input_datetime.expected_bedtime')[:5] }}
           {% endif %}
         attributes:
           window: 7 days
@@ -913,8 +921,9 @@ template:
         state: >
           {% set expected = states('input_datetime.expected_wake_time') %}
           {% set variance = states('input_number.wake_time_variance_minutes') | float(60) %}
-          {% if expected not in ['unknown', 'unavailable'] %}
-            {% set earliest = today_at('04:00:00') %}
+          {% set start = states('sensor.wake_window_start') %}
+          {% if expected not in ['unknown', 'unavailable'] and start | length == 5 %}
+            {% set earliest = today_at(start) %}
             {% set latest = today_at(expected) + timedelta(minutes=variance + 120) %}
             {{ now() >= earliest and now() <= latest }}
           {% else %}
@@ -927,7 +936,7 @@ template:
             mdi:weather-sunny
           {% endif %}
         attributes:
-          window_start: "04:00"
+          window_start: "{{ states('sensor.wake_window_start') }}"
           window_end: >
             {% set expected = states('input_datetime.expected_wake_time') %}
             {% set variance = states('input_number.wake_time_variance_minutes') | float(60) %}
@@ -937,8 +946,80 @@ template:
               10:00
             {% endif %}
 
+  # Detection windows. Both come from helpers on the Settings screen and fall
+  # back to the expected times, so nothing here assumes an early or a late
+  # household.
+  - sensor:
+      # "HH:MM-HH:MM". Bedtime is only looked for inside it; it may cross
+      # midnight. Helpers left equal (00:00 and 00:00 on a fresh install)
+      # mean "not set": three hours before Expected Bedtime to two after.
+      - name: "Bedtime Window"
+        unique_id: bedtime_window
+        icon: mdi:weather-sunset-down
+        state: >
+          {% set bad = ['unknown', 'unavailable', '', none] %}
+          {% set s = states('input_datetime.bedtime_window_start') %}
+          {% set e = states('input_datetime.bedtime_window_end') %}
+          {% if s not in bad and e not in bad and s[:5] != e[:5] %}
+            {{ s[:5] }}-{{ e[:5] }}
+          {% else %}
+            {% set x = states('input_datetime.expected_bedtime') %}
+            {% set x = x if x not in bad else '22:00:00' %}
+            {% set m = (x[0:2] | int(22)) * 60 + (x[3:5] | int(0)) %}
+            {% set a = (m - 180) % 1440 %}
+            {% set b = (m + 120) % 1440 %}
+            {{ '%02d:%02d-%02d:%02d' | format(a // 60, a % 60, b // 60, b % 60) }}
+          {% endif %}
+        attributes:
+          source: >
+            {% set bad = ['unknown', 'unavailable', '', none] %}
+            {% set s = states('input_datetime.bedtime_window_start') %}
+            {% set e = states('input_datetime.bedtime_window_end') %}
+            {{ 'helpers' if s not in bad and e not in bad and s[:5] != e[:5] else 'expected bedtime' }}
+
+      # "HH:MM". First activity before this is a night-time trip, not getting
+      # up. Helper left at 00:00 means "not set": three hours before Expected
+      # Wake Time, or 04:00 if that is not set either.
+      - name: "Wake Window Start"
+        unique_id: wake_window_start
+        icon: mdi:weather-sunset-up
+        state: >
+          {% set bad = ['unknown', 'unavailable', '', none] %}
+          {% set s = states('input_datetime.wake_window_start') %}
+          {% set x = states('input_datetime.expected_wake_time') %}
+          {% if s not in bad and s[:5] != '00:00' %}
+            {{ s[:5] }}
+          {% elif x not in bad and x[:5] != '00:00' %}
+            {% set m = [(x[0:2] | int(7)) * 60 + (x[3:5] | int(0)) - 180, 0] | max %}
+            {{ '%02d:%02d' | format(m // 60, m % 60) }}
+          {% else %}
+            04:00
+          {% endif %}
+
+  - binary_sensor:
+      - name: "Bedtime Window Active"
+        unique_id: bedtime_window_active
+        device_class: running
+        icon: mdi:weather-sunset-down
+        state: >
+          {% set w = states('sensor.bedtime_window') %}
+          {% set a = (w[0:2] | int(0)) * 60 + (w[3:5] | int(0)) %}
+          {% set b = (w[6:8] | int(0)) * 60 + (w[9:11] | int(0)) %}
+          {% set n = now().hour * 60 + now().minute %}
+          {{ w | length == 11 and ((a <= n < b) if a < b else (n >= a or n < b)) }}
+        attributes:
+          # When the current window opened: today, or yesterday evening once
+          # a window that crosses midnight has passed it.
+          started_at: >
+            {% set w = states('sensor.bedtime_window') %}
+            {% set a = (w[0:2] | int(0)) * 60 + (w[3:5] | int(0)) %}
+            {% set b = (w[6:8] | int(0)) * 60 + (w[9:11] | int(0)) %}
+            {% set n = now().hour * 60 + now().minute %}
+            {% set midnight = now().replace(hour=0, minute=0, second=0, microsecond=0) %}
+            {{ (midnight + timedelta(minutes=a) - timedelta(days=(1 if n < a else 0))).isoformat() }}
+
   # Bedtime Pattern Detection - V5 Logic (Kitchen quiet + bathroom gap)
-  # Signal: kitchen goes quiet in 17:30-21:00 window, bedroom-only activity,
+  # Signal: kitchen goes quiet inside the bedtime window, bedroom-only activity,
   # bathroom had an evening visit then goes quiet — that gap is when she's asleep.
   # mmWave bedroom fires after sleep are noise; don't require bedroom to be "recent".
   - binary_sensor:
@@ -946,26 +1027,24 @@ template:
         unique_id: bedtime_pattern_detected
         device_class: occupancy
         state: >
-          {% set now_hour = now().hour %}
-          {% set now_min = now().minute %}
+          {# Time window: sensor.bedtime_window, set on the Settings screen #}
+          {% set in_window = is_state('binary_sensor.bedtime_window_active', 'on') %}
+          {% set started = state_attr('binary_sensor.bedtime_window_active', 'started_at') %}
 
-          {# Time window: 17:30 - 21:00 #}
-          {% set in_window = (now_hour == 17 and now_min >= 30) or (18 <= now_hour < 21) %}
-
-          {% if not in_window %}
+          {% if not in_window or not started %}
             false
           {% else %}
-            {% set today_1730 = now().replace(hour=17, minute=30, second=0, microsecond=0) %}
+            {% set window_start = as_datetime(started) %}
 
             {# 1. Kitchen quiet: no activity in evening window, or >30 mins since last kitchen event #}
             {% set kitchen_last = states.event.kitchen_motion.last_changed %}
             {% set kitchen_quiet = kitchen_last is none
-               or kitchen_last < today_1730
+               or kitchen_last < window_start
                or ((now() - kitchen_last).total_seconds() / 60) > 30 %}
 
             {# 2. Bathroom had an evening visit (part of bedtime routine) #}
             {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
-            {% set bathroom_in_window = bathroom_last is not none and bathroom_last >= today_1730 %}
+            {% set bathroom_in_window = bathroom_last is not none and bathroom_last >= window_start %}
 
             {# 3. Bathroom gap: inactive for >20 mins — the quiet after the visit is when she's asleep #}
             {% set bathroom_mins_ago = ((now() - bathroom_last).total_seconds() / 60) | int if bathroom_last else 9999 %}
@@ -973,7 +1052,7 @@ template:
 
             {# 4. Bedroom had activity in the evening window (confirms she's in the bedroom) #}
             {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
-            {% set bedroom_in_window = bedroom_last is not none and bedroom_last >= today_1730 %}
+            {% set bedroom_in_window = bedroom_last is not none and bedroom_last >= window_start %}
 
             {# Pattern: kitchen quiet + bathroom evening visit + bathroom now quiet + bedroom active tonight #}
             {{ kitchen_quiet and bathroom_in_window and bathroom_quiet and bedroom_in_window }}
@@ -988,20 +1067,17 @@ template:
           bathroom_time: >
             {# Bedtime timestamp = when bathroom went quiet (last bathroom activity) #}
             {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
-            {{ bathroom_last.strftime('%H:%M') if bathroom_last else 'unknown' }}
+            {{ (bathroom_last | as_local).strftime('%H:%M') if bathroom_last else 'unknown' }}
           bedroom_time: >
             {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed %}
-            {{ bedroom_last.strftime('%H:%M') if bedroom_last else 'unknown' }}
+            {{ (bedroom_last | as_local).strftime('%H:%M') if bedroom_last else 'unknown' }}
           bathroom_mins_quiet: >
             {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed %}
             {{ ((now() - bathroom_last).total_seconds() / 60) | int if bathroom_last else -1 }}
           kitchen_last_time: >
             {% set kitchen_last = states.event.kitchen_motion.last_changed %}
-            {{ kitchen_last.strftime('%H:%M') if kitchen_last else 'unknown' }}
-          detection_window_active: >
-            {% set now_hour = now().hour %}
-            {% set now_min = now().minute %}
-            {{ (now_hour == 17 and now_min >= 30) or (18 <= now_hour < 21) }}
+            {{ (kitchen_last | as_local).strftime('%H:%M') if kitchen_last else 'unknown' }}
+          detection_window_active: "{{ is_state('binary_sensor.bedtime_window_active', 'on') }}"
 
   # EPL Derived: still/moving target from LD2450 speed data
   # LD2450 doesn't have native still/moving (that's LD2410).

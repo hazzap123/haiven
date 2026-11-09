@@ -447,12 +447,23 @@ views:
                       - label: Wake variance
                         entity: input_number.wake_time_variance_minutes
                         format: mins
+                      - label: Earliest wake
+                        entity: input_datetime.wake_window_start
+                        format: time
                       - label: Expected bedtime
                         entity: input_datetime.expected_bedtime
                         format: time
                       - label: Bedtime variance
                         entity: input_number.bedtime_variance_minutes
                         format: mins
+                      - label: Bedtime window from
+                        entity: input_datetime.bedtime_window_start
+                        format: time
+                      - label: Bedtime window to
+                        entity: input_datetime.bedtime_window_end
+                        format: time
+                      - label: Window in use
+                        entity: sensor.bedtime_window
 
               - name: Contacts
                 cards:

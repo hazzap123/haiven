@@ -231,19 +231,6 @@ sensor:
     type: count
     start: "{{ now() - timedelta(hours=1) }}"
     end: "{{ now() }}"
-
-  # All other hours: counts from last night 21:00 to today 06:00 (completed window)
-  - platform: history_stats
-    name: Overnight Bathroom Count
-    entity_id: binary_sensor.haiven_bathroom_motion
-    state: "on"
-    type: count
-    start: >
-      {% if now().hour >= 21 %}
-        {{ today_at('21:00') }}
-      {% else %}
-        {{ today_at('21:00') - timedelta(days=1) }}
-      {% endif %}
     end: >
       {% if now().hour >= 21 %}
         {{ today_at('06:00') + timedelta(days=1) }}

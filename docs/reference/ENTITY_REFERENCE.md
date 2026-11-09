@@ -132,6 +132,12 @@ Describes days; it never alerts. Needs 14 days of history before it judges a sig
 |-----------|---------|---------|
 | `input_datetime.expected_wake_time` | Expected wake time | None: set it (starts 00:00) |
 | `input_datetime.expected_bedtime` | Expected bedtime | None: set it (starts 00:00) |
+| `input_datetime.bedtime_window_start` | Earliest time bedtime is looked for | 00:00 = not set: 3 hours before expected bedtime |
+| `input_datetime.bedtime_window_end` | Latest time bedtime is looked for; may be after midnight | 00:00 = not set: 2 hours after expected bedtime |
+| `input_datetime.wake_window_start` | Earliest time first activity counts as getting up | 00:00 = not set: 3 hours before expected wake |
+| `sensor.bedtime_window` | The bedtime window in use, as `HH:MM-HH:MM`; `source` says whether it came from the helpers or expected bedtime | - |
+| `sensor.wake_window_start` | The earliest wake time in use, as `HH:MM` | - |
+| `binary_sensor.bedtime_window_active` | On while the bedtime window is open | - |
 | `input_datetime.next_appointment` | Upcoming appointment | - |
 | `input_datetime.actual_bedtime_today` | Recorded bedtime | Resets noon |
 
