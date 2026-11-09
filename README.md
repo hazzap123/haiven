@@ -2,7 +2,7 @@
 
 **Elderly care monitoring for Home Assistant.** Tracks daily activity patterns using motion and presence sensors, detects routine deviations, and alerts caregivers.
 
-THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best a wellness / wellbeing support aid. No warranties and doesn't replace human care, love and decency, but can take the edge off some of the anxiety of caring for someone at a distance.
+**Read [SAFETY.md](SAFETY.md) before installing.** THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best a wellness / wellbeing support aid. No warranties and doesn't replace human care, love and decency, but can take the edge off some of the anxiety of caring for someone at a distance.
 
 ## What it does
 
@@ -24,7 +24,7 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 - Bathroom: Motion sensor (Shelly BLU Motion, Zigbee PIR, etc.)
 
 **Software:**
-- Home Assistant 2024.1+
+- Home Assistant 2024.10 or later
 - [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), installed through HACS. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`, and the dashboard uses it to hide Home Assistant's header and sidebar.
 - **Optional AI wording.** AI wording is optional and off by default. With it off, summaries and alerts are plain text built on the hub and no activity data is sent to any AI provider. To turn it on, install a conversation agent (the Anthropic Conversation integration gives `conversation.claude_conversation`, the default), then switch on `input_boolean.haiven_ai_summaries`. Expect roughly $1-5 a month on Claude Haiku 4.5.
 
@@ -61,6 +61,10 @@ See [docs/setup/QUICKSTART.md](docs/setup/QUICKSTART.md) for the full 30-minute 
 
 | Guide | Description |
 |-------|-------------|
+| [Safety and limits](SAFETY.md) | Read first: what it is not, what can fail, what leaves the house, consent |
+| [Install](docs/start.md) | Two paths: already on Home Assistant, or new to it |
+| [Scope](SCOPE.md) | What Haiven is for, and the rules every change keeps |
+| [House profile](HOUSE_PROFILE.md) | Template for adapting the rules to one home, with [the prompt](prompts/adapt-to-house.md) |
 | [Quick Start](docs/setup/QUICKSTART.md) | 30-minute fast path |
 | [Complete Setup](docs/setup/COMPLETE_SETUP.md) | Full installation guide |
 | [Care Circle](docs/setup/CARE_CIRCLE.md) | Contact and notification setup |

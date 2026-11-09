@@ -32,14 +32,14 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 ## Prerequisites
 
 ### Hardware
-- Home Assistant server (2024.1+)
+- Home Assistant server (2024.10 or later)
 - Motion or presence sensor (Kitchen or main living area)
 - A presence sensor with zone support for the bedroom, if you want in-bed detection (the reference build uses an Everything Presence Lite running a custom LD2450 ESPHome firmware — see [SENSOR_GUIDES.md](../reference/SENSOR_GUIDES.md))
 - Motion sensor for the bathroom (the reference build uses a Shelly BLU Motion)
 - Mobile devices for notifications
 
 ### Software
-- Home Assistant 2024.1+
+- Home Assistant 2024.10 or later
 - [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), installed through HACS. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`; the dashboard uses it to hide Home Assistant's header and sidebar. The dashboard's own cards are a self-contained library (`www-src/haiven-cards.js`) that `scripts/setup.sh` deploys for you
 - **Optional AI wording.** AI wording is optional and off by default. With it off, summaries and alerts are plain text built on the hub and no activity data is sent to any AI provider. To turn it on, install a conversation agent (the Anthropic Conversation integration gives `conversation.claude_conversation`, the default), then switch on `input_boolean.haiven_ai_summaries`. Expect roughly $1-5 a month on Claude Haiku 4.5.
 
@@ -51,7 +51,7 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 
 ### Pre-Installation (Verify)
 
-- [ ] Home Assistant running (2024.1+)
+- [ ] Home Assistant running (2024.10 or later)
 - [ ] Your three sensors are producing state changes in **Developer Tools > States**
 
 ### Step 1: Clone, run setup, copy into /config (10 min)

@@ -97,4 +97,4 @@ Five levels, not three — see [STATUS_SPEC](reference/STATUS_SPEC.md) for the f
 
 **Haiven** - 3-Sensor Configuration
 **Updated:** 2026-09-19
-**Home Assistant:** 2024.1+
+**Home Assistant:** 2024.10 or later
