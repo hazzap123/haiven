@@ -2094,3 +2094,110 @@
           Status today: {{ states('sensor.elderly_care_status') }}
         level: passive
   mode: single
+
+# ============================================================================
+# FAULT ALERTS - a sensor, a battery or the hub itself has stopped
+# Not gated on haiven_monitoring_enabled: pausing monitoring must not hide a
+# dead sensor. See packages/haiven_faults.yaml.
+# ============================================================================
+
+- id: haiven_fault_sensor_offline
+  alias: "Haiven: Fault - Sensor Offline"
+  description: >
+    Tell every carer when a role sensor has stopped reporting for 15 minutes,
+    and again each morning while it stays offline.
+  triggers:
+    - trigger: template
+      value_template: "{{ (state_attr('sensor.haiven_faults', 'offline') or '') | length > 0 }}"
+      for: "00:15:00"
+    - trigger: time
+      at: "09:00:00"
+  conditions:
+    - condition: template
+      value_template: "{{ (state_attr('sensor.haiven_faults', 'offline') or '') | length > 0 }}"
+  actions:
+    - action: script.haiven_notify_fault
+      data:
+        title: "Haiven fault: sensor offline"
+        priority: time-sensitive
+        message: >-
+          Not reporting: {{ state_attr('sensor.haiven_faults', 'offline') }}.
+          Alerts that depend on it are not working, and quiet in that room
+          now means nothing. Check its power, battery and connection.
+  mode: single
+
+- id: haiven_fault_sensor_back
+  alias: "Haiven: Fault - Sensors Back Online"
+  description: Say so when every role sensor is reporting again
+  triggers:
+    - trigger: template
+      value_template: "{{ (state_attr('sensor.haiven_faults', 'offline') or '') | length == 0 }}"
+      for: "00:05:00"
+  conditions:
+    - condition: template
+      alias: Only after an offline alert went out
+      value_template: >-
+        {% set sent = state_attr('automation.haiven_fault_sensor_offline', 'last_triggered') %}
+        {% set back = this.attributes.last_triggered %}
+        {{ sent is not none and (back is none or as_datetime(sent) > as_datetime(back)) }}
+  actions:
+    - action: script.haiven_notify_fault
+      data:
+        title: "Haiven: sensors back online"
+        priority: passive
+        message: All three sensors are reporting again.
+  mode: single
+
+- id: haiven_fault_low_battery
+  alias: "Haiven: Fault - Low Battery"
+  description: >
+    Tell every carer when a role sensor's battery is at 15% or below, and
+    again each morning until it is changed.
+  triggers:
+    - trigger: template
+      value_template: "{{ (state_attr('sensor.haiven_faults', 'low_batteries') or '') | length > 0 }}"
+      for: "01:00:00"
+    - trigger: time
+      at: "09:00:00"
+  conditions:
+    - condition: template
+      value_template: "{{ (state_attr('sensor.haiven_faults', 'low_batteries') or '') | length > 0 }}"
+  actions:
+    - action: script.haiven_notify_fault
+      data:
+        title: "Haiven fault: battery low"
+        priority: active
+        message: >-
+          Battery low: {{ state_attr('sensor.haiven_faults', 'low_batteries') }}.
+          Change it before the sensor stops and that room goes quiet.
+  mode: single
+
+- id: haiven_hub_heartbeat
+  alias: "Haiven: Hub Watchdog Heartbeat"
+  description: >
+    Every five minutes, request the watchdog URL. The request carries no data.
+    When the hub loses power or its connection the requests stop, and the
+    uptime service on the other end tells you.
+  triggers:
+    - trigger: time_pattern
+      minutes: /5
+    - trigger: homeassistant
+      event: start
+  conditions:
+    - condition: template
+      alias: A watchdog URL is set
+      value_template: "{{ states('input_text.haiven_heartbeat_url').startswith('http') }}"
+  actions:
+    - action: rest_command.haiven_heartbeat
+      continue_on_error: true
+      response_variable: beat
+    - if:
+        - condition: template
+          value_template: "{{ beat is defined and beat.status is defined and beat.status | int(0) < 300 }}"
+      then:
+        - action: input_datetime.set_datetime
+          target:
+            entity_id: input_datetime.haiven_heartbeat_last_ok
+          data:
+            timestamp: "{{ now().timestamp() }}"
+  mode: single

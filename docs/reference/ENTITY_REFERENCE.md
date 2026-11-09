@@ -115,6 +115,17 @@ Describes days; it never alerts. Needs 14 days of history before it judges a sig
 | `sensor.routine` | Today's verdict: "On track", "A little off", "Off track", "Away" or "Can't tell". The `why` attribute carries the reason |
 | `sensor.routine_stats` | Raw stats (excluded from the recorder); `today`, `days` and `counts` attributes power the Home "Routine" row and the Patterns 30-day strip |
 
+### Faults (`packages/haiven_faults.yaml`)
+
+Fault alerts are sent whether or not monitoring is switched on.
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `sensor.haiven_faults` | Number of faults. `offline` names role sensors reporting unknown or unavailable; `low_batteries` names batteries at 15% or below on those sensors' devices; `watchdog` says whether the heartbeat is set up |
+| `input_text.haiven_heartbeat_url` | The address the hub requests every five minutes. Empty means no watchdog. Kept out of the recorder |
+| `input_datetime.haiven_heartbeat_last_ok` | When the watchdog service last accepted a heartbeat |
+| `script.haiven_notify_fault` | Sends a fault alert to every carer without marking a routine alert as sent |
+
 ### Arrival (`haiven_sensors_3sensor.yaml`, `packages/haiven_comms_inputs.yaml`)
 
 | Entity ID | Purpose |
@@ -250,6 +261,7 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 | `packages/haiven_night_insights.yaml` | Nightly bathroom-visit and downstairs-trip stats |
 | `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
 | `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
+| `packages/haiven_faults.yaml` | Sensor offline, low battery and the hub watchdog |
 | `haiven_sensors_3sensor.yaml` | Core template sensors |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Action scripts |

@@ -10,7 +10,8 @@ Needs Home Assistant 2024.10 or later.
 2. **Assign sensors to three roles:** main room, bedroom, bathroom. `setup.sh` does this. Hardware notes: [reference/SENSOR_GUIDES.md](reference/SENSOR_GUIDES.md).
 3. **Set their usual wake and bed times** on the dashboard's Settings screen. They have no defaults, and alerts are unreliable until they are set.
 4. **Add the carers who should get alerts.** [setup/CARE_CIRCLE.md](setup/CARE_CIRCLE.md).
-5. **Fire a test alert** and confirm it reaches each carer's phone.
+5. **Set up the hub watchdog** as described in [SAFETY.md](../SAFETY.md), then unplug the hub and confirm you are told.
+6. **Fire a test alert** and confirm it reaches each carer's phone.
 
 ## Path 2: new to Home Assistant
 
@@ -27,7 +28,8 @@ Needs Home Assistant 2024.10 or later.
 1. Plug the hub into their router by ethernet, so a Wi-Fi password change cannot take it offline.
 2. Place the sensors. Walk each room and confirm it registers on the dashboard.
 3. Label the hub's plug "do not unplug".
-4. Agree the response plan with them: who is called, in what order, and who holds a key. Write it down and leave a copy in the house.
+4. **Pulled-plug test:** unplug the hub and confirm the watchdog alert arrives. Plug it back in.
+5. Agree the response plan with them: who is called, in what order, and who holds a key. Write it down and leave a copy in the house.
 
 **The first week**
 
@@ -43,7 +45,7 @@ Every house and routine is different. Fill in a copy of [HOUSE_PROFILE.md](../HO
 - Each carer has agreed to their phone's location being used.
 - A nearby key holder or key safe is named.
 - The call order is written down and in the house.
-- You have an outside check that tells you if the hub goes offline, and you have tested it by unplugging the hub. Haiven does not include one yet.
+- The hub watchdog is set up, and you were alerted when you unplugged the hub.
 - They still have a monitored pendant.
 
 ## Optional extras

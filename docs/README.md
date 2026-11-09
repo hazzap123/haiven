@@ -83,6 +83,7 @@ Five levels, not three — see [STATUS_SPEC](reference/STATUS_SPEC.md) for the f
 | `packages/haiven_night_insights.yaml` | Nightly bathroom-visit and downstairs-trip stats |
 | `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
 | `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
+| `packages/haiven_faults.yaml` | Sensor offline, low battery and the hub watchdog |
 | `haiven_sensors_3sensor.yaml` | Core template sensors (status, scoring, timing) |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Notification scripts |

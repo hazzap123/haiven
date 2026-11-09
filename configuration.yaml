@@ -19,6 +19,7 @@ homeassistant:
     haiven_night_insights: !include packages/haiven_night_insights.yaml
     haiven_movement: !include packages/haiven_movement.yaml
     haiven_routine: !include packages/haiven_routine.yaml
+    haiven_faults: !include packages/haiven_faults.yaml
  
 automation: !include automations.yaml
 script: !include scripts.yaml
@@ -195,6 +196,8 @@ recorder:
       - sensor.night_stats
       - sensor.movement_stats
       - sensor.routine_stats
+      # A private address; keep it out of the history database.
+      - input_text.haiven_heartbeat_url
 
 # Lovelace configuration
 lovelace:

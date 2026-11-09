@@ -24,7 +24,7 @@ What Haiven is for, what it is not for, and the rules any change must keep. Read
 
 These apply to contributors and to anyone adapting Haiven to a house, with or without an AI coding assistant.
 
-1. **Never remove or weaken a safety alert**: the morning activity check, the no-activity alert, the night bathroom alerts and the status-change notification. Changing a threshold needs evidence from real days.
+1. **Never remove or weaken a safety alert**: the morning activity check, the no-activity alert, the night bathroom alerts, the status-change notification and the fault alerts. Fault alerts are never gated on monitoring being switched on. Changing a threshold needs evidence from real days.
 2. **An alert must send without AI.** Every message goes through `script.haiven_compose_message`, which falls back to plain text. Do not call a conversation agent directly from an automation.
 3. **AI wording stays off by default.** No activity data leaves the hub for an AI provider unless the installer switches it on.
 4. **No clinical wording.** Describe what the sensors recorded. Do not name a cause, a condition or a diagnosis, and do not reassure.

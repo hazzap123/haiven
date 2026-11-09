@@ -816,3 +816,56 @@ class TestNoFallOrClinicalClaims:
         for phrase in ("possible fall", "possible_fall", "medical emergency", "water infection",
                        "gp call", "under the weather", "steady on her feet"):
             assert phrase not in text, phrase
+
+
+class TestFaultAlerts:
+    """A sensor, a battery or the hub stopping must reach the carers, and
+    must not depend on monitoring being switched on."""
+
+    ROOT = Path(__file__).parent.parent
+    FAULTS = ['haiven_fault_sensor_offline', 'haiven_fault_low_battery']
+
+    def _scripts(self):
+        with open(self.ROOT / "scripts.yaml") as f:
+            return yaml.safe_load(f)
+
+    @pytest.mark.parametrize("auto_id", FAULTS + ['haiven_hub_heartbeat'])
+    def test_not_gated_on_monitoring(self, automations, auto_id):
+        auto = next(a for a in automations if a['id'] == auto_id)
+        assert 'haiven_monitoring_enabled' not in str(auto)
+
+    @pytest.mark.parametrize("auto_id", FAULTS)
+    def test_repeats_each_morning_while_the_fault_lasts(self, automations, auto_id):
+        auto = next(a for a in automations if a['id'] == auto_id)
+        assert any(t.get('trigger') == 'time' for t in auto['triggers'])
+        assert auto['conditions'], "the morning repeat must re-check the fault"
+
+    @pytest.mark.parametrize("auto_id", FAULTS + ['haiven_fault_sensor_back'])
+    def test_uses_the_fault_notifier(self, automations, auto_id):
+        auto = next(a for a in automations if a['id'] == auto_id)
+        assert [a['action'] for a in auto['actions']] == ['script.haiven_notify_fault']
+
+    def test_fault_notifier_cannot_silence_a_routine_alert(self):
+        """notify_care_circle sets deviation_alert_sent and offers Mark Safe.
+        A fault alert doing either would suppress the next real alert."""
+        text = str(self._scripts()['haiven_notify_fault'])
+        assert 'deviation_alert_sent' not in text
+        assert 'MARK_SAFE' not in text
+        assert 'contact_1_notification' in text and 'contact_2_notification' in text
+
+    def test_heartbeat_needs_a_url_and_survives_a_failed_request(self, automations):
+        auto = next(a for a in automations if a['id'] == 'haiven_hub_heartbeat')
+        assert "startswith('http')" in str(auto['conditions'])
+        call = auto['actions'][0]
+        assert call['action'] == 'rest_command.haiven_heartbeat'
+        assert call.get('continue_on_error') is True
+
+    def test_heartbeat_sends_no_data(self):
+        with open(self.ROOT / "packages" / "haiven_faults.yaml") as f:
+            cmd = yaml.safe_load(f)['rest_command']['haiven_heartbeat']
+        assert cmd['method'] == 'get'
+        assert 'payload' not in cmd and 'headers' not in cmd
+
+    def test_watchdog_url_is_kept_out_of_the_recorder(self):
+        text = (self.ROOT / "configuration.yaml").read_text()
+        assert '- input_text.haiven_heartbeat_url' in text

@@ -399,3 +399,58 @@ haiven_compose_message:
   mode: parallel
   max: 10
   icon: mdi:message-text
+
+# Fault alerts go to every carer through here, not through notify_care_circle:
+# that script marks a routine alert as sent and offers "Mark Safe", and a dead
+# sensor must not silence a routine alert or be dismissed as "safe".
+haiven_notify_fault:
+  alias: "Haiven: Notify Fault"
+  description: Tell every carer that a sensor, a battery or the hub needs attention
+  fields:
+    title:
+      description: "Notification title"
+      required: true
+      selector:
+        text:
+    message:
+      description: "Notification message"
+      required: true
+      selector:
+        text:
+          multiline: true
+    priority:
+      description: "iOS interruption level: passive, active or time-sensitive"
+      required: false
+      default: "time-sensitive"
+      selector:
+        select:
+          options:
+            - passive
+            - active
+            - time-sensitive
+  sequence:
+    - repeat:
+        for_each:
+          - "{{ states('input_text.contact_1_notification') }}"
+          - "{{ states('input_text.contact_2_notification') }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ repeat.item | string | trim not in ['', 'unknown', 'unavailable'] }}"
+            then:
+              - action: "{{ repeat.item }}"
+                continue_on_error: true
+                data:
+                  title: "{{ title }}"
+                  message: "{{ message }}"
+                  data:
+                    push:
+                      interruption-level: "{{ priority | default('time-sensitive') }}"
+                    actions:
+                      - action: URI
+                        title: View Dashboard
+                        uri: /lovelace-haiven/home
+  mode: queued
+  max: 10
+  icon: mdi:alert-circle
+
