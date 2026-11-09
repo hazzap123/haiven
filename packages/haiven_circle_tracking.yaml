@@ -19,7 +19,7 @@ template:
   - sensor:
       # Monitored Person Location Display
       - name: "Elderly Person Location"
-        unique_id: mum_location_display
+        unique_id: elderly_person_location_display
         state: >
           {% set entity = states('input_text.elderly_person_entity') %}
           {% if entity and entity not in ['unknown', 'unavailable', ''] %}

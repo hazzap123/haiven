@@ -77,9 +77,9 @@ An example day (your times will differ):
 
 | Time | Example Pattern | Primary Sensor |
 |------|----------------|----------------|
-| 04:30-05:30 | Wake — first kitchen motion | Kitchen |
+| 06:30-07:30 | Wake — first kitchen motion | Kitchen |
 | Daytime | Kitchen/living room activity | Kitchen |
-| 17:30-19:30 | Bedtime routine | Bathroom then Bedroom |
+| 21:00-22:30 | Bedtime routine | Bathroom then Bedroom |
 | Night | Occasional bathroom visits | Bathroom |
 
 Deviations from this pattern trigger escalating alerts — from a gentle "check in" to urgent notifications to the nearest carer.

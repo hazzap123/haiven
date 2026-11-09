@@ -11,7 +11,7 @@ from typing import Any
 
 from .policy import PolicyError
 
-# Same reading as scripts/night_stats.py: lines before Nov 2025 carry no state
+# Same reading as scripts/night_stats.py: early log lines carry no state
 # and each one was an "on".
 LINE = re.compile(
     r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \w+ "

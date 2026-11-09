@@ -51,7 +51,7 @@ def mock_states():
         'input_boolean.haiven_monitoring_enabled': 'on',
         'input_boolean.manual_safe_status': 'off',
         'input_boolean.bathroom_occupied_night': 'off',
-        'input_text.elderly_person_name': 'Mum',
+        'input_text.elderly_person_name': 'Mary',
         'sensor.deviation_count': '0',
         'sensor.last_activity_display': 'Kitchen 10 mins ago',
     }
@@ -690,7 +690,7 @@ class TestArrivalCountsAsActivity:
         """A GPS flap while the person is indoors must not reset the silence clock."""
         auto = next(a for a in automations if a['id'] == 'haiven_log_person_location')
         tpl = next(a for a in auto['actions'] if 'if' in a)['if'][0]['value_template']
-        t0 = datetime(2026, 10, 3, 12, 48)
+        t0 = datetime(2026, 1, 1, 10, 0)
         def render(away_mins, frm='not_home'):
             trig = {'from_state': MagicMock(state=frm, last_changed=t0),
                     'to_state': MagicMock(state='home', last_changed=t0 + timedelta(minutes=away_mins))}

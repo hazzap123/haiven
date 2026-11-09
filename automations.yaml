@@ -753,7 +753,7 @@
   alias: "Haiven: Bedtime Confirmation V4 (Bathroom→Bedroom)"
   description: >
     Detect bedtime using bathroom → bedroom sequence within 17:30-21:30 window.
-    Based on 2 weeks data analysis. Ignores kitchen (dog contamination).
+    Based on 2 weeks data analysis. Ignores kitchen (pets set it off).
   triggers:
     - trigger: state
       entity_id: binary_sensor.bedtime_pattern_detected

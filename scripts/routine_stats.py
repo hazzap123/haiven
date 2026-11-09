@@ -21,7 +21,7 @@ Signals, each judged against her own trailing BASE_N days
             More only. Poisson spread, floored at 1 visit.
 
 Bedtime is left out: night_stats' bedtime reads 3-5 h late on about one
-evening in eight (replay, Oct 2025 - Sep 2026), which would call a normal
+evening in eight on replayed real data, which would call a normal
 day off track. Drift Watch leaves it out for the same reason.
 
 Grades: z under SLIGHT is as usual, SLIGHT to WELL is "somewhat off",

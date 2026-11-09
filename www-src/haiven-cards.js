@@ -2,7 +2,7 @@
  * Haiven Native — hand-written Lovelace card library
  * =========================================================================
  *
- * Same architecture as Willow Bank's wb2-cards.js: one file, plain custom
+ * One file, plain custom
  * elements with shadow DOM, no framework, no build step, no card-mod.
  *
  * SOURCE lives at www-src/haiven-cards.js in this repo.
@@ -169,7 +169,7 @@ function coverageLine(c) {
  * Whether she is in the house at all. This has to be read BEFORE anything is
  * inferred from the sensors, because every rule in the system is a rule about
  * a house she is inside: "no kitchen activity for three hours" is an alarm if
- * she is home and meaningless if she is at her sister's. Away is not a good
+ * she is home and meaningless if she is out for the day. Away is not a good
  * state or a bad one, so it gets the accent, never a status colour.
  * --------------------------------------------------------------------- */
 
@@ -804,8 +804,8 @@ class HaivenRibbon extends HTMLElement {
     }));
 
     // Out of the house. Whatever the sensors saw while she was out was not
-    // her (dogs, a visitor), and a quiet stretch is not a quiet stretch of
-    // HERS, so away owns any bucket she was mostly out for (3 Oct 2026).
+    // her (pets, a visitor), and a quiet stretch is not a quiet stretch of
+    // HERS, so away owns any bucket she was mostly out for.
     const out = this._segments(this._hist[HOME_ENTITY], start, end, step, "off");
 
     const cells = [];
@@ -1703,7 +1703,7 @@ class HaivenWhere extends HaivenCard {
     }
 
     // She is not in the house, so which room the sensors last saw is a fact
-    // about the dogs. Say where she is and stop guessing.
+    // about pets or visitors. Say where she is and stop guessing.
     if (p.known && !p.home) {
       const evOut = rooms.map((r) => `<div class="e">
         <div class="dot" style="background:${COVER_COLOUR[r.state]}"></div>
@@ -2467,7 +2467,7 @@ class HaivenAsk extends HaivenCard {
 }
 
 /* ------------------------------- haiven-nav -----------------------------
- * The bottom bar, same idea as Willow Bank's wb2-nav. Home Assistant puts its
+ * The bottom bar. Home Assistant puts its
  * navigation in a top tab strip that is fine on a desktop and wrong on a
  * phone held one-handed: the tabs are at the far end of the screen from the
  * thumb, and there are only six of them.
