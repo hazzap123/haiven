@@ -869,3 +869,60 @@ class TestFaultAlerts:
     def test_watchdog_url_is_kept_out_of_the_recorder(self):
         text = (self.ROOT / "configuration.yaml").read_text()
         assert '- input_text.haiven_heartbeat_url' in text
+
+
+class TestHoldingAlertsBack:
+    """Visitor present and calibration quieten alerts; they never drop one,
+    never touch fault alerts, and cannot be left on."""
+
+    ROOT = Path(__file__).parent.parent
+
+    def _pkg(self):
+        with open(self.ROOT / "packages" / "haiven_pause.yaml") as f:
+            return yaml.safe_load(f)
+
+    def _scripts(self):
+        with open(self.ROOT / "scripts.yaml") as f:
+            return yaml.safe_load(f)
+
+    def test_held_alerts_are_still_sent(self):
+        for name in ('send_haiven_notification', 'notify_care_circle'):
+            text = str(self._scripts()[name])
+            assert 'haiven_alerts_held' in text
+            assert "'passive' if held" in text, f"{name} must downgrade, not skip"
+        # the first contact is always notified: no `held` in its condition
+        seq = self._scripts()['send_haiven_notification']['sequence']
+        assert seq[-1]['action'] == "{{ states('input_text.contact_1_notification') }}"
+
+    def test_a_held_alert_is_not_marked_as_sent(self):
+        seq = self._scripts()['notify_care_circle']['sequence']
+        flag = next(s for s in seq if 'if' in s and 'deviation_alert_sent' in str(s))
+        assert 'not held' in str(flag['if'])
+
+    def test_critical_alerts_are_only_held_while_calibrating(self):
+        held = self._scripts()['notify_care_circle']['sequence'][0]['variables']['held']
+        assert "'calibrating') == true" in held and "!= 'critical'" in held
+
+    def test_fault_alerts_are_never_held(self):
+        assert 'haiven_alerts_held' not in str(self._scripts()['haiven_notify_fault'])
+
+    def test_the_pause_ends_on_the_clock(self):
+        sensor = self._pkg()['template'][0]['binary_sensor'][0]
+        assert sensor['unique_id'] == 'haiven_alerts_held'
+        assert 'haiven_visitor_until' in sensor['state'] and 'haiven_calibration_until' in sensor['state']
+        assert 'as_timestamp(now())' in sensor['state']
+
+    def test_visitor_time_is_bounded(self):
+        hours = self._pkg()['input_number']['haiven_visitor_hours']
+        assert hours['min'] >= 1 and hours['max'] <= 12
+        assert '7 * 86400' in str(self._pkg()['script']['haiven_start_calibration'])
+
+    def test_helpers_have_no_initial_so_nothing_is_held_on_a_fresh_install(self):
+        pkg = self._pkg()
+        for group in ('input_boolean', 'input_datetime'):
+            for name, helper in pkg[group].items():
+                assert 'initial' not in helper, name
+
+    def test_visits_are_logged(self, automations):
+        auto = next(a for a in automations if a['id'] == 'haiven_visitor_log')
+        assert any(a.get('action') == 'shell_command.log_haiven_event' for a in auto['actions'])

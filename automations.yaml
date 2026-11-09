@@ -1328,6 +1328,10 @@
     - trigger: state
       entity_id: sensor.elderly_care_status
       to: "critical"
+  conditions:
+    - condition: template
+      alias: Not while calibrating (the held alert still reaches the first contact)
+      value_template: "{{ state_attr('binary_sensor.haiven_alerts_held', 'calibrating') != true }}"
   actions:
     # Determine who is nearest
     - variables:
@@ -2201,3 +2205,96 @@
           data:
             timestamp: "{{ now().timestamp() }}"
   mode: single
+
+# ============================================================================
+# HOLDING ALERTS BACK - visitor present, and the first week's calibration
+# See packages/haiven_pause.yaml. Fault alerts are never held.
+# ============================================================================
+
+- id: haiven_visitor_expire
+  alias: "Haiven: Visitor Ends"
+  description: >
+    Switch "visitor present" off when its time is up, so it cannot be left on.
+    The pause itself ends on the clock whether or not this runs.
+  triggers:
+    - trigger: time
+      at: input_datetime.haiven_visitor_until
+    - trigger: homeassistant
+      event: start
+    - trigger: time_pattern
+      minutes: /15
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_visitor_present
+      state: "on"
+    - condition: template
+      value_template: >-
+        {{ as_timestamp(states('input_datetime.haiven_visitor_until'), 0) <= as_timestamp(now()) }}
+  actions:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.haiven_visitor_present
+  mode: single
+
+- id: haiven_visitor_log
+  alias: "Haiven: Log Visitor"
+  description: Write visits to activity.log, so a day's movement can be read with them in mind
+  triggers:
+    - trigger: state
+      entity_id: input_boolean.haiven_visitor_present
+      from: "off"
+      to: "on"
+    - trigger: state
+      entity_id: input_boolean.haiven_visitor_present
+      from: "on"
+      to: "off"
+  actions:
+    # Switched on by hand rather than through the dashboard button: give it
+    # an end time, or the pause would never start.
+    - if:
+        - condition: template
+          value_template: >-
+            {{ trigger.to_state.state == 'on'
+               and as_timestamp(states('input_datetime.haiven_visitor_until'), 0) <= as_timestamp(now()) }}
+      then:
+        - action: script.haiven_visitor_here
+    - action: shell_command.log_haiven_event
+      data:
+        event_type: "{{ 'Visitor (arrived)' if trigger.to_state.state == 'on' else 'Visitor (left)' }}"
+        detail: "{{ now().strftime('%H:%M:%S') }}"
+  mode: queued
+
+- id: haiven_calibration_changed
+  alias: "Haiven: Calibration Started or Ended"
+  description: Tell the first contact when calibration starts and when alerts go live
+  triggers:
+    - trigger: state
+      entity_id: binary_sensor.haiven_alerts_held
+      attribute: calibrating
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ trigger.from_state is not none and trigger.to_state is not none
+           and trigger.from_state.attributes.calibrating in [true, false]
+           and trigger.to_state.attributes.calibrating in [true, false] }}
+  actions:
+    - action: script.haiven_notify_fault
+      data:
+        priority: passive
+        title: >-
+          {{ 'Haiven: calibrating for seven nights' if trigger.to_state.attributes.calibrating
+             else 'Haiven: calibration over, alerts are live' }}
+        message: >-
+          {% if trigger.to_state.attributes.calibrating %}
+          Until {{ states('input_datetime.haiven_calibration_until')[:16] }} alerts arrive quietly, marked
+          "Calibrating", to the first contact only. Compare them with what happened
+          and adjust the wake time, bedtime and thresholds. Fault alerts are unaffected.
+          {% else %}
+          Alerts now go out in full. If the times and thresholds still do not match
+          the house, start calibration again from the Settings screen.
+          {% endif %}
+    - action: shell_command.log_haiven_event
+      data:
+        event_type: "{{ 'Calibration (started)' if trigger.to_state.attributes.calibrating else 'Calibration (ended)' }}"
+        detail: "{{ now().strftime('%H:%M:%S') }}"
+  mode: queued

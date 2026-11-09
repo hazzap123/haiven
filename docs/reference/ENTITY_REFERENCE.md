@@ -126,6 +126,19 @@ Fault alerts are sent whether or not monitoring is switched on.
 | `input_datetime.haiven_heartbeat_last_ok` | When the watchdog service last accepted a heartbeat |
 | `script.haiven_notify_fault` | Sends a fault alert to every carer without marking a routine alert as sent |
 
+### Holding alerts back (`packages/haiven_pause.yaml`)
+
+While held, alerts still arrive: passive, to the first contact only, with the reason in the title. Fault alerts are never held; critical alerts are held only while calibrating.
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `binary_sensor.haiven_alerts_held` | On while a visitor is present or calibration is running. `label` gives the reason |
+| `input_boolean.haiven_visitor_present` | Visitor present. Switches itself off when `input_datetime.haiven_visitor_until` passes |
+| `input_number.haiven_visitor_hours` | How long a visit lasts, 1 to 12 hours |
+| `input_datetime.haiven_calibration_until` | Calibration ends at this time; seven days after it is started |
+| `script.haiven_visitor_here` / `script.haiven_visitor_left` | The dashboard's visitor buttons |
+| `script.haiven_start_calibration` / `script.haiven_end_calibration` | The dashboard's calibration buttons |
+
 ### Arrival (`haiven_sensors_3sensor.yaml`, `packages/haiven_comms_inputs.yaml`)
 
 | Entity ID | Purpose |
@@ -262,6 +275,7 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 | `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
 | `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
 | `packages/haiven_faults.yaml` | Sensor offline, low battery and the hub watchdog |
+| `packages/haiven_pause.yaml` | Visitor present and calibration: alerts quietened, never dropped |
 | `haiven_sensors_3sensor.yaml` | Core template sensors |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Action scripts |

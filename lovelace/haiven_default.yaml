@@ -442,6 +442,38 @@ views:
                       - label: Hub watchdog, last signal
                         entity: input_datetime.haiven_heartbeat_last_ok
 
+                  # Alerts still arrive while held, quietly and labelled.
+                  # Fault alerts are never held. packages/haiven_pause.yaml.
+                  - type: custom:haiven-section
+                    title: Holding alerts back
+
+                  - type: custom:haiven-rows
+                    rows:
+                      - label: Alerts held
+                        entity: binary_sensor.haiven_alerts_held
+                      - label: Visitor until
+                        entity: input_datetime.haiven_visitor_until
+                      - label: Visitor lasts
+                        entity: input_number.haiven_visitor_hours
+                        format: hours
+                      - label: Calibrating until
+                        entity: input_datetime.haiven_calibration_until
+
+                  - type: custom:haiven-actions
+                    buttons:
+                      - label: Visitor here
+                        action: script.haiven_visitor_here
+                        done: Held
+                      - label: Visitor left
+                        action: script.haiven_visitor_left
+                        done: Live
+                      - label: Start calibration
+                        action: script.haiven_start_calibration
+                        done: Started
+                      - label: End calibration
+                        action: script.haiven_end_calibration
+                        done: Ended
+
                   - type: custom:haiven-section
                     title: Her routine
 
