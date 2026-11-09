@@ -124,6 +124,10 @@ These helpers have **no defaults**: without `initial:` Home Assistant keeps the 
 - `input_datetime.expected_wake_time` - starts at 00:00; set to her usual wake time
 - `input_datetime.expected_bedtime` - starts at 00:00; set to her usual bedtime
 
+**Detection windows (optional):**
+- `input_datetime.bedtime_window_start` and `bedtime_window_end` - bedtime is only looked for between these. Left at 00:00, the window runs from 3 hours before expected bedtime to 2 hours after, and may cross midnight. `sensor.bedtime_window` shows the window in use.
+- `input_datetime.wake_window_start` - first activity before this is treated as a night-time trip, not getting up. Left at 00:00, it is 3 hours before expected wake time.
+
 **Alert Thresholds:**
 - `input_number.wake_time_variance_minutes` - starts at 15; 120 (the maximum) is a sensible start
 - `input_number.bedtime_variance_minutes` - starts at 15; 60 is a sensible start

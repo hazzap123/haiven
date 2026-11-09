@@ -188,8 +188,8 @@ sensor.deviation_count: 0 = normal
    - Should show "on" after bathroom > bedroom sequence
 
 2. **Check window timing**
-   - Detection window: 17:30 - 21:30
-   - Bedtime must fall within this range
+   - Developer Tools > States > `sensor.bedtime_window` shows the window in use
+   - Bedtime must fall within it. It follows expected bedtime (3 hours before to 2 after) unless you set `input_datetime.bedtime_window_start` and `bedtime_window_end` on the Settings screen
 
 3. **Verify bathroom > bedroom sequence**
    - Bathroom motion triggers first

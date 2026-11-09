@@ -15,6 +15,30 @@ input_datetime:
     has_time: true
     icon: mdi:bed
 
+  # Bedtime is only looked for between these two times. Leave both at 00:00
+  # and the window is taken from Expected Bedtime: three hours before it to
+  # two hours after. The window may cross midnight.
+  bedtime_window_start:
+    name: Bedtime Window Start
+    has_date: false
+    has_time: true
+    icon: mdi:weather-sunset-down
+
+  bedtime_window_end:
+    name: Bedtime Window End
+    has_date: false
+    has_time: true
+    icon: mdi:weather-night
+
+  # The earliest time first activity counts as getting up; anything before it
+  # is a night-time trip. Leave at 00:00 and it is three hours before
+  # Expected Wake Time.
+  wake_window_start:
+    name: Earliest Wake Time
+    has_date: false
+    has_time: true
+    icon: mdi:weather-sunset-up
+
   next_appointment:
     name: Next Appointment
     has_date: true

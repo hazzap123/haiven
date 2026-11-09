@@ -687,10 +687,15 @@
   alias: "Haiven: Wake Time Catch-Up"
   description: >
     Recover wake time if the primary detection missed it (e.g., integration was down).
-    Runs at 10:00 and checks if there's kitchen activity from this morning that wasn't recorded.
+    Runs at 10:00 and when the morning window closes, and checks if there's
+    kitchen activity from this morning that wasn't recorded.
   triggers:
     - trigger: time
       at: "10:00:00"
+    - trigger: state
+      entity_id: binary_sensor.morning_window_active
+      from: "on"
+      to: "off"
   conditions:
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
@@ -705,12 +710,13 @@
       value_template: >-
         {% set kitchen_last = states.event.kitchen_motion.last_changed %}
         {% if kitchen_last %}
-          {# last_changed is UTC. The 4-10 window below is written in local
-             hours, so it has to be compared against a local datetime. #}
-          {% set activity_date = (as_datetime(kitchen_last) | as_local).date() %}
-          {% set activity_hour = (as_datetime(kitchen_last) | as_local).hour %}
-          {# Must be from today and in morning hours (4-10) #}
-          {{ activity_date == now().date() and activity_hour >= 4 and activity_hour < 10 }}
+          {# last_changed is UTC. The earliest wake time is local, so it has
+             to be compared against a local datetime. #}
+          {% set local = as_datetime(kitchen_last) | as_local %}
+          {% set start = states('sensor.wake_window_start') %}
+          {% set start_mins = (start[0:2] | int(4)) * 60 + (start[3:5] | int(0)) %}
+          {# Must be from today, at or after the earliest wake time #}
+          {{ local.date() == now().date() and local.hour * 60 + local.minute >= start_mins }}
         {% else %}
           false
         {% endif %}
@@ -752,8 +758,8 @@
 - id: haiven_bedtime_confirmation_v2
   alias: "Haiven: Bedtime Confirmation V4 (Bathroom→Bedroom)"
   description: >
-    Detect bedtime using bathroom → bedroom sequence within 17:30-21:30 window.
-    Based on 2 weeks data analysis. Ignores kitchen (pets set it off).
+    Detect bedtime using the bathroom → bedroom sequence inside the bedtime
+    window (sensor.bedtime_window, set on the Settings screen).
   triggers:
     - trigger: state
       entity_id: binary_sensor.bedtime_pattern_detected
@@ -770,17 +776,19 @@
         {% set actual_bedtime = states('input_datetime.actual_bedtime_today') %}
         {{ actual_bedtime in ['unknown', 'unavailable', none, '', '00:00:00'] }}
     - condition: template
-      alias: Bathroom time is in valid evening range (17:00-23:59)
+      alias: Bathroom time is inside the bedtime window
       value_template: >-
+        {% set w = states('sensor.bedtime_window') %}
+        {% set a = (w[0:2] | int(0)) * 60 + (w[3:5] | int(0)) %}
+        {% set b = (w[6:8] | int(0)) * 60 + (w[9:11] | int(0)) %}
         {% set bath_time = state_attr('binary_sensor.bedtime_pattern_detected', 'bathroom_time') %}
         {% if bath_time and bath_time != 'unknown' and ':' in bath_time %}
-          {% set hour = bath_time.split(':')[0] | int(0) %}
-          {{ hour >= 17 and hour <= 23 }}
+          {% set m = (bath_time[0:2] | int(0)) * 60 + (bath_time[3:5] | int(0)) %}
         {% else %}
-          {# If no valid bathroom_time, use current time which should be in window #}
-          {% set hour = now().hour %}
-          {{ hour >= 17 and hour <= 23 }}
+          {# No valid bathroom_time: fall back to the current time #}
+          {% set m = now().hour * 60 + now().minute %}
         {% endif %}
+        {{ (a <= m < b) if a < b else (m >= a or m < b) }}
   actions:
     - action: input_datetime.set_datetime
       target:

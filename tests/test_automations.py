@@ -698,3 +698,32 @@ class TestArrivalCountsAsActivity:
         assert render(120) == 'True'
         assert render(3) == 'False'
         assert render(120, frm='unavailable') == 'False'
+
+
+class TestConfigurableWindows:
+    """Bedtime and wake detection read their windows from helpers."""
+
+    def test_no_hard_coded_evening_hours_remain(self, automations):
+        auto = next(a for a in automations if a['id'] == 'haiven_bedtime_confirmation_v2')
+        text = str(auto)
+        assert 'hour >= 17' not in text
+        assert 'sensor.bedtime_window' in text
+
+    def test_bedtime_condition_follows_the_window(self, automations, jinja_env):
+        auto = next(a for a in automations if a['id'] == 'haiven_bedtime_confirmation_v2')
+        tpl = next(c['value_template'] for c in auto['conditions']
+                   if c.get('alias') == 'Bathroom time is inside the bedtime window')
+        def render(bath_time, window):
+            return jinja_env.from_string(tpl).render(
+                states=lambda e: window,
+                state_attr=lambda e, a: bath_time).strip()
+        assert render('22:20', '20:30-01:30') == 'True'
+        assert render('00:40', '20:30-01:30') == 'True'
+        assert render('18:00', '20:30-01:30') == 'False'
+        assert render('18:00', '17:30-21:00') == 'True'
+
+    def test_catchup_also_runs_when_the_morning_window_closes(self, automations):
+        auto = next(a for a in automations if a['id'] == 'haiven_wake_time_catchup')
+        assert any(t.get('entity_id') == 'binary_sensor.morning_window_active' and t.get('to') == 'off'
+                   for t in auto['triggers'])
+        assert 'sensor.wake_window_start' in str(auto['conditions'])

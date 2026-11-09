@@ -113,6 +113,8 @@ In **Settings** on the dashboard. The four status gaps have defaults. The routin
 | `status_gap_critical_mins` | 240 | |
 | `expected_wake_time` | none (00:00) | her usual wake time |
 | `expected_bedtime` | none (00:00) | her usual bedtime |
+| `bedtime_window_start`, `bedtime_window_end` | none (00:00): follows expected bedtime, 3 hours before to 2 after | leave unless bedtime is missed or recorded too early |
+| `wake_window_start` | none (00:00): 3 hours before expected wake | leave unless night-time trips are recorded as getting up |
 | `wake_time_variance_minutes` | none (15, the minimum) | 120 |
 | `bedtime_variance_minutes` | none (15, the minimum) | 60 |
 | `no_activity_alert_hours` | none (2, the minimum) | 4 |
