@@ -13,7 +13,7 @@ It is read-only. The integration contains no service calls, so it cannot change 
 
 ## Install
 
-Ask reuses the API key of the Anthropic integration Haiven already requires. The key is read from that integration and never copied.
+Ask needs the Anthropic Conversation integration installed and reuses its API key. It works whether or not AI wording of summaries is switched on. The key is read from that integration and never copied.
 
 ```bash
 # From your clone, after scripts/setup.sh

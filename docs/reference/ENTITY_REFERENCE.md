@@ -139,6 +139,9 @@ Describes days; it never alerts. Needs 14 days of history before it judges a sig
 | `sensor.wake_window_start` | The earliest wake time in use, as `HH:MM` | - |
 | `binary_sensor.bedtime_window_active` | On while the bedtime window is open | - |
 | `input_datetime.next_appointment` | Upcoming appointment | - |
+| `input_boolean.haiven_ai_summaries` | AI wording of summaries and alerts. While off, nothing is sent to an AI provider | Off |
+| `input_text.haiven_ai_agent` | Conversation agent used when AI wording is on | Empty: `conversation.claude_conversation` |
+| `script.haiven_compose_message` | Returns the plain text, or the agent's wording of it when AI wording is on and the call succeeds | - |
 | `input_datetime.actual_bedtime_today` | Recorded bedtime | Resets noon |
 
 ### Alert Thresholds

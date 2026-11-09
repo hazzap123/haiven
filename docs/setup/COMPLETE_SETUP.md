@@ -25,7 +25,7 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 - **Care Circle Notifications**
   - Mobile alerts to multiple contacts
   - Actionable notifications (Mark Safe, Check In)
-  - AI-generated morning, afternoon and evening summaries
+  - Morning, afternoon and evening summaries, plain text or AI-worded
 
 ---
 
@@ -41,9 +41,9 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 ### Software
 - Home Assistant 2024.1+
 - [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), installed through HACS. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`; the dashboard uses it to hide Home Assistant's header and sidebar. The dashboard's own cards are a self-contained library (`www-src/haiven-cards.js`) that `scripts/setup.sh` deploys for you
-- The Anthropic Conversation integration, with its agent at `conversation.claude_conversation`. **Required:** the morning, afternoon and evening summaries, the summary refresh, and the deviation and no-activity alerts all call it, and fail without it. About ten calls a day, roughly $1-5 a month on Claude Haiku 4.5 ($1/$5 per million input/output tokens); most of each call is the entity list Assist sends, so expose only what Haiven needs
+- **Optional AI wording.** AI wording is optional and off by default. With it off, summaries and alerts are plain text built on the hub and no activity data is sent to any AI provider. To turn it on, install a conversation agent (the Anthropic Conversation integration gives `conversation.claude_conversation`, the default), then switch on `input_boolean.haiven_ai_summaries`. Expect roughly $1-5 a month on Claude Haiku 4.5.
 
-**Privacy:** each of those calls sends the monitored person's recent activity (rooms, times, bathroom visits, wake and bedtime) to Anthropic's API.
+**Privacy:** with AI wording off, activity data stays on the hub and only the alert text leaves, through the notification channel. With it on, each summary and alert also sends the person's recent activity (rooms, times, bathroom visits, wake and bedtime) to your AI provider. An alert still sends as plain text if the AI call fails.
 
 ---
 

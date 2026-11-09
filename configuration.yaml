@@ -72,7 +72,7 @@ template:
           {{ states('sensor.night_bathroom_visits') | int(0) >
              states('input_number.bathroom_night_baseline_visits') | float(3) + 2 }}
 
-      - name: "No Return From Bathroom (Possible Fall)"
+      - name: "No Return From Bathroom"
         unique_id: bathroom_night_no_return
         device_class: problem
         state: >

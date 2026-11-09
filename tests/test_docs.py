@@ -27,15 +27,19 @@ def test_never_clone_into_config(doc):
 
 
 @pytest.mark.parametrize("doc", INSTALL_DOCS)
-def test_ai_agent_and_kiosk_mode_are_requirements(doc):
+def test_kiosk_mode_is_a_requirement_and_ai_is_described_as_optional(doc):
     text = (ROOT / doc).read_text()
-    assert "conversation.claude_conversation" in text
     assert "kiosk-mode" in text
-    assert "Anthropic" in text and "Privacy" in text
+    assert "Privacy" in text
+    # AI wording is off by default; the docs must say so and name the switch.
+    assert "off by default" in text
+    assert "input_boolean.haiven_ai_summaries" in text
+    assert "conversation.claude_conversation" in text
+    assert "Required, not optional" not in text and "This is required: the daily summaries" not in text
 
 
 def test_no_claims_the_repo_contradicts():
-    stale = ["No HACS", "Optional: Anthropic", "to GitHub", "All Sensors Online", "haiven_inputs.yaml"]
+    stale = ["No HACS", "to GitHub", "All Sensors Online", "haiven_inputs.yaml"]
     for path in tracked("*.md", "*.yaml"):
         text = path.read_text()
         for phrase in stale:

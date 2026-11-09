@@ -8,7 +8,7 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 
 - Tracks wake time, bedtime, and room-to-room movement using 3 sensors
 - Gives a daily routine verdict (On track, A little off, Off track) against the person's own last 28 days, with the reason, alongside a 5-level safety status (normal to critical)
-- Sends AI-generated morning, afternoon, and evening summaries to carers
+- Sends morning, afternoon, and evening summaries to carers, in plain text or (optionally) worded by an AI agent
 - Alerts on missed wake times, prolonged inactivity, unusual bathroom visits, and more
 - Care circle tracking — knows which carer is nearest during an alert
 - Dashboard with live status, activity timeline, and weekly trends
@@ -26,9 +26,9 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 **Software:**
 - Home Assistant 2024.1+
 - [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), installed through HACS. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`, and the dashboard uses it to hide Home Assistant's header and sidebar.
-- The Anthropic Conversation integration, with its conversation agent at `conversation.claude_conversation`. **Required, not optional:** the morning, afternoon and evening summaries and the deviation and no-activity alerts are all written by it, and without it those automations fail. Expect roughly $1-5 a month on Claude Haiku 4.5 ($1 per million input tokens, $5 per million output) for about ten calls a day; most of the cost is the entity list Assist sends with each call, so expose only what Haiven needs.
+- **Optional AI wording.** AI wording is optional and off by default. With it off, summaries and alerts are plain text built on the hub and no activity data is sent to any AI provider. To turn it on, install a conversation agent (the Anthropic Conversation integration gives `conversation.claude_conversation`, the default), then switch on `input_boolean.haiven_ai_summaries`. Expect roughly $1-5 a month on Claude Haiku 4.5.
 
-**Privacy:** every AI summary and AI alert sends the monitored person's recent activity (room, time, bathroom visits, wake and bedtime) to Anthropic's API. If that is not acceptable for the person you care for, do not install Haiven as it stands.
+**Privacy:** with AI wording off, activity data stays on the hub and only the alert text leaves, through the notification channel. With it on, each summary and alert also sends the person's recent activity (rooms, times, bathroom visits, wake and bedtime) to your AI provider. An alert still sends as plain text if the AI call fails.
 
 ## Quick start
 

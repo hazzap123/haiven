@@ -1892,7 +1892,7 @@ class HaivenPeople extends HaivenCard {
 /* ------------------------------ haiven-alerts ---------------------------
  * Everything currently wrong, worst first, in one card. This replaces five
  * separate conditional cards whose visual order was their order in the YAML,
- * so a fall alert could render below a bathroom-frequency note.
+ * so a no-return alert could render below a bathroom-frequency note.
  *
  * When nothing is live it names what IS being watched. "All clear" with
  * nothing behind it is indistinguishable from a monitoring system that has

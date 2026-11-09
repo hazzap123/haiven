@@ -336,3 +336,66 @@ send_haiven_notification:
   mode: queued
   max: 10
   icon: mdi:bell-ring
+
+# Every summary and AI-worded alert goes through here. It returns the plain
+# text it was given unless AI summaries are switched on AND the agent answers.
+# Nothing leaves the house for an AI provider while the switch is off, and an
+# alert is never lost because the AI call failed.
+haiven_compose_message:
+  alias: "Haiven: Compose Message"
+  description: Return plain text, or the AI agent's wording of it when AI summaries are on
+  fields:
+    plain:
+      description: "The message as plain facts. Always a complete message on its own."
+      required: true
+      selector:
+        text:
+          multiline: true
+    prompt:
+      description: "What to ask the AI agent when AI summaries are on"
+      required: false
+      selector:
+        text:
+          multiline: true
+  sequence:
+    - variables:
+        result:
+          text: "{{ plain | trim }}"
+          source: plain
+    - if:
+        - condition: state
+          entity_id: input_boolean.haiven_ai_summaries
+          state: "on"
+        - condition: template
+          value_template: "{{ prompt is defined and prompt | trim | length > 0 }}"
+      then:
+        - action: conversation.process
+          continue_on_error: true
+          data:
+            agent_id: >-
+              {% set agent = states('input_text.haiven_ai_agent') %}
+              {{ agent if agent not in ['unknown', 'unavailable', ''] else 'conversation.claude_conversation' }}
+            text: "{{ prompt }}"
+          response_variable: ai
+        - variables:
+            ai_text: >-
+              {% if ai is defined and ai.response is defined
+                    and ai.response.response_type | default('') != 'error'
+                    and ai.response.speech is defined and ai.response.speech.plain is defined %}
+                {{ ai.response.speech.plain.speech | default('', true) | trim }}
+              {% endif %}
+        - if:
+            - condition: template
+              value_template: "{{ ai_text | trim | length > 0 }}"
+          then:
+            - variables:
+                result:
+                  text: "{{ ai_text | trim }}"
+                  source: ai
+            - stop: "AI wording"
+              response_variable: result
+    - stop: "Plain wording"
+      response_variable: result
+  mode: parallel
+  max: 10
+  icon: mdi:message-text
