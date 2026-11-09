@@ -4,6 +4,8 @@ Haiven is built by people caring for someone at a distance. Contributions from o
 
 ## Ground rules
 
+The full list every change must keep is in [SCOPE.md](SCOPE.md). In short:
+
 1. **This watches a real person.** A change that makes an alert fire less often needs evidence that it still fires when it should. Say what you tested and on how many days of data.
 2. **No personal data.** No real names, addresses, phone numbers, device IDs, hostnames, photos or activity logs, in code, tests, docs or commit messages. Use `person.elderly_person`, "Mary Smith" and the placeholder sensor IDs.
 3. **Not a medical device.** Do not add wording that diagnoses, reassures or implies clinical accuracy.

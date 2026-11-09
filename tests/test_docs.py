@@ -51,3 +51,13 @@ def test_british_spelling_in_docs():
     for path in tracked("*.md"):
         found = american.findall(path.read_text())
         assert not found, f"{path.relative_to(ROOT)}: {found}"
+
+
+def test_relative_links_resolve():
+    """A link to a file that is not in the repo sends a first-time installer nowhere."""
+    link = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")
+    for path in tracked("*.md"):
+        for target in link.findall(path.read_text()):
+            if re.match(r"[a-z]+:", target):
+                continue
+            assert (path.parent / target).exists(), f"{path.relative_to(ROOT)}: {target}"

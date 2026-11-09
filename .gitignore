@@ -90,3 +90,6 @@ everything-presence-zone-configurator/
 www/community/
 custom_components/
 .worktrees/
+
+# Your filled-in house profile stays on your machine
+HOUSE_PROFILE.local.md
