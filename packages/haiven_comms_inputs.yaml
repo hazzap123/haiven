@@ -6,7 +6,21 @@ input_button:
     name: Refresh Summary
     icon: mdi:refresh
 
+# Off by default. While it is off, no activity data is sent to any AI
+# provider: summaries and alerts are plain text built on the hub.
+input_boolean:
+  haiven_ai_summaries:
+    name: AI Summaries
+    icon: mdi:creation
+
 input_text:
+  # The conversation agent that words the summaries when AI Summaries is on.
+  # Empty means conversation.claude_conversation.
+  haiven_ai_agent:
+    name: AI Agent
+    max: 100
+    icon: mdi:robot-outline
+
   # AI-generated dashboard summary (updated by daily summary automations)
   current_summary:
     name: Current Summary

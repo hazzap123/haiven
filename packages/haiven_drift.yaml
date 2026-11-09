@@ -11,8 +11,8 @@
 # docs/planning/DRIFT_WATCH.md.
 #
 # Alerts go out once per trip, in the morning, passive priority, with two
-# buttons: "Noted, keep watching" (accumulate again from tonight) and "Seen
-# GP, reset usual" (refreeze the baseline on the next 28 nights). Both write
+# buttons: "Noted, keep watching" (accumulate again from tonight) and "Checked,
+# reset usual" (refreeze the baseline on the next 28 nights). Both write
 # /config/haiven_drift_state.json through the script; nothing else does.
 #
 # sensor.drift_stats is excluded from the recorder in configuration.yaml.
@@ -245,7 +245,7 @@ automation:
               message: >
                 About {{ v.recent | round(1) }} bathroom visits a night for the last
                 {{ v.run }} nights, against her usual {{ v.usual | round(1) }}.
-                This pattern often comes before a water infection. Worth a GP call this week.
+                A sustained change, not one bad night. Worth asking how she is.
               data:
                 push:
                   interruption-level: passive
@@ -254,7 +254,7 @@ automation:
                   - action: "DRIFT_VISITS_NOTED"
                     title: "Noted, keep watching"
                   - action: "DRIFT_VISITS_RESET"
-                    title: "Seen GP, reset usual"
+                    title: "Checked, reset usual"
           - action: shell_command.drift_notified
             data:
               chart: visits
@@ -272,8 +272,8 @@ automation:
               title: "{{ name }} has been getting up later"
               message: >
                 Up around {{ w.recent_text }} for the last {{ w.run }} mornings, against
-                her usual {{ w.usual_text }}. Later starts over a week can mean she is
-                under the weather or sleeping badly. Worth asking how she is.
+                her usual {{ w.usual_text }}. A sustained change, not one late
+                morning. Worth asking how she is.
               data:
                 push:
                   interruption-level: passive
@@ -300,9 +300,8 @@ automation:
               title: "{{ name }} has been quieter around the house"
               message: >
                 About {{ a.recent | round(0) | int }} kitchen movements a day for the last
-                {{ a.run }} days, against her usual {{ a.usual | round(0) | int }}. A quieter
-                week can mean she is under the weather or less steady on her feet.
-                Worth asking how she is.
+                {{ a.run }} days, against her usual {{ a.usual | round(0) | int }}. A sustained
+                change, not one quiet day. Worth asking how she is.
               data:
                 push:
                   interruption-level: passive

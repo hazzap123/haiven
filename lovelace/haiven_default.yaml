@@ -303,7 +303,7 @@ views:
                 kind: PIR motion, Shelly BLU, battery
                 battery: sensor.haiven_bathroom_battery
                 battery_low: 20
-                covers: overnight bathroom count, extended-visit and fall alerts
+                covers: overnight bathroom count, extended-visit and no-return alerts
 
   - title: Circles
     path: circles
@@ -356,10 +356,10 @@ views:
           - type: custom:haiven-alerts
             enabled_entity: input_boolean.haiven_monitoring_enabled
             alerts:
-              - entity: binary_sensor.no_return_from_bathroom_possible_fall
+              - entity: binary_sensor.no_return_from_bathroom
                 level: critical
                 title: No return from the bathroom
-                note: Possible fall. Check now, or call for help.
+                note: Far longer than usual. Check now, or call for help.
                 detail:
                   - label: Went in
                     entity: input_datetime.bathroom_night_last_entry
@@ -435,6 +435,8 @@ views:
                         entity: sensor.sensor_health_status
                       - label: Tracking
                         entity: sensor.activity_tracking_status
+                      - label: AI wording
+                        entity: input_boolean.haiven_ai_summaries
 
                   - type: custom:haiven-section
                     title: Her routine

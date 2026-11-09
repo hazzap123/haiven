@@ -477,7 +477,7 @@ SCRIPTS_PATH = Path(__file__).parent.parent / "scripts.yaml"
 class TestBathroomAlertTriggers:
     """HA names a template entity from its `name`, not its unique_id. Both
     alerts triggered on the unique_id form, which never exists, so neither
-    the extended-visit alert nor the possible-fall alert could ever fire."""
+    the extended-visit alert nor the no-return alert could ever fire."""
 
     def _trigger_entities(self, automations, auto_id):
         a = next(a for a in automations if a['id'] == auto_id)
@@ -487,11 +487,11 @@ class TestBathroomAlertTriggers:
         assert self._trigger_entities(automations, 'haiven_bathroom_night_extended_alert') == \
             ['binary_sensor.extended_night_bathroom_visit']
 
-    def test_possible_fall_alert_watches_the_real_entity(self, automations):
+    def test_no_return_alert_watches_the_real_entity(self, automations):
         assert self._trigger_entities(automations, 'haiven_bathroom_night_no_return_alert') == \
-            ['binary_sensor.no_return_from_bathroom_possible_fall']
+            ['binary_sensor.no_return_from_bathroom']
 
-    def test_possible_fall_alert_is_critical(self, automations):
+    def test_no_return_alert_is_critical(self, automations):
         a = next(a for a in automations if a['id'] == 'haiven_bathroom_night_no_return_alert')
         notify = next(s for s in a['actions'] if s.get('action') == 'script.notify_care_circle')
         assert notify['data'].get('priority') == 'critical'
@@ -537,7 +537,7 @@ class TestSummaryLength:
         speech = ("word " * 80).strip()  # 399 characters
         for tpl in writes:
             out = jinja_env.from_string(tpl).render(
-                ai_response={'response': {'speech': {'plain': {'speech': speech}}}})
+                composed={'text': speech})
             assert len(out) <= 255
 
 
@@ -727,3 +727,92 @@ class TestConfigurableWindows:
         assert any(t.get('entity_id') == 'binary_sensor.morning_window_active' and t.get('to') == 'off'
                    for t in auto['triggers'])
         assert 'sensor.wake_window_start' in str(auto['conditions'])
+
+
+class TestAiIsOptional:
+    """AI wording is off by default. Every summary and alert must be a
+    complete message without it, and must still send if the AI call fails:
+    before this, a failed call meant the no-activity alert never went out."""
+
+    SCRIPTS_PATH = Path(__file__).parent.parent / "scripts.yaml"
+    AI_AUTOMATIONS = ['haiven_morning_summary', 'haiven_afternoon_summary', 'haiven_evening_summary',
+                      'haiven_refresh_summary', 'haiven_morning_activity_check', 'haiven_no_activity_alert']
+
+    def _walk(self, node):
+        if isinstance(node, dict):
+            yield node
+            for v in node.values():
+                yield from self._walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                yield from self._walk(v)
+
+    def _script(self):
+        with open(self.SCRIPTS_PATH) as f:
+            return yaml.safe_load(f)['haiven_compose_message']
+
+    def test_no_automation_calls_the_ai_agent_directly(self, automations):
+        for a in automations:
+            for step in self._walk(a.get('actions', [])):
+                assert step.get('action') != 'conversation.process', a['id']
+
+    @pytest.mark.parametrize("auto_id", AI_AUTOMATIONS)
+    def test_each_message_has_a_plain_version(self, automations, jinja_env, auto_id):
+        auto = next(a for a in automations if a['id'] == auto_id)
+        calls = [s for s in self._walk(auto['actions']) if s.get('action') == 'script.haiven_compose_message']
+        assert len(calls) == 1
+        assert calls[0]['response_variable'] == 'composed'
+        plain = jinja_env.from_string(calls[0]['data']['plain']).render(
+            states=lambda e: {'sensor.today_wake_time': '07:10', 'sensor.last_activity_time': '09:40',
+                              'sensor.activity_data': 'Kitchen', 'sensor.sensor_health_status': 'All online',
+                              'input_text.elderly_person_name': 'Mary',
+                              'input_datetime.expected_wake_time': '07:00:00'}.get(e, '2'),
+            state_attr=lambda e, a: 4.2,
+            is_state=lambda e, v: False).strip()
+        assert len(plain) > 20 and '{' not in plain
+        assert 'unknown' not in plain
+
+    def test_away_is_said_plainly(self, automations, jinja_env):
+        auto = next(a for a in automations if a['id'] == 'haiven_morning_summary')
+        call = next(s for s in self._walk(auto['actions']) if s.get('action') == 'script.haiven_compose_message')
+        plain = jinja_env.from_string(call['data']['plain']).render(
+            states=lambda e: 'Mary', state_attr=lambda e, a: None,
+            is_state=lambda e, v: e == 'binary_sensor.elderly_person_home' and v == 'off').strip()
+        assert plain == 'Mary is away from home.'
+
+    def test_ai_is_only_called_behind_the_switch(self):
+        seq = self._script()['sequence']
+        gate = next(s for s in seq if 'if' in s)
+        assert {'condition': 'state', 'entity_id': 'input_boolean.haiven_ai_summaries', 'state': 'on'} in gate['if']
+        ai_calls = [s for s in self._walk(seq) if s.get('action') == 'conversation.process']
+        assert len(ai_calls) == 1
+        assert ai_calls[0] in gate['then'], "the AI call must sit inside the switch"
+
+    def test_a_failed_ai_call_cannot_stop_the_message(self):
+        seq = self._script()['sequence']
+        call = next(s for s in self._walk(seq) if s.get('action') == 'conversation.process')
+        assert call.get('continue_on_error') is True
+        assert seq[-1].get('response_variable') == 'result', "falls through to the plain text"
+        assert seq[0]['variables']['result']['text'] == "{{ plain | trim }}"
+
+    def test_the_switch_has_no_initial_so_it_starts_off(self):
+        path = Path(__file__).parent.parent / "packages" / "haiven_comms_inputs.yaml"
+        with open(path) as f:
+            helper = yaml.safe_load(f)['input_boolean']['haiven_ai_summaries']
+        assert 'initial' not in helper
+
+
+class TestNoFallOrClinicalClaims:
+    """Haiven measures time and movement. It does not detect falls and does
+    not suggest causes."""
+
+    FILES = ["automations.yaml", "configuration.yaml", "scripts.yaml", "lovelace/haiven_default.yaml",
+             "packages/haiven_drift.yaml", "packages/haiven_bathroom_night.yaml",
+             "packages/haiven_night_insights.yaml"]
+
+    @pytest.mark.parametrize("name", FILES)
+    def test_wording(self, name):
+        text = (Path(__file__).parent.parent / name).read_text().lower()
+        for phrase in ("possible fall", "possible_fall", "medical emergency", "water infection",
+                       "gp call", "under the weather", "steady on her feet"):
+            assert phrase not in text, phrase

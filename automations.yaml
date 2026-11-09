@@ -6,8 +6,8 @@
 - id: haiven_morning_summary
   alias: "Haiven: Morning Summary"
   description: >
-    06:00 AI-generated summary of overnight activity.
-    Uses conversation.process to generate natural language from sensor data.
+    06:00 summary of overnight activity. Plain text by default; written by
+    the AI agent when input_boolean.haiven_ai_summaries is on.
   triggers:
     - trigger: time
       at: "06:00:00"
@@ -16,10 +16,12 @@
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
   actions:
-    - action: conversation.process
+    - action: script.haiven_compose_message
       data:
-        agent_id: conversation.claude_conversation
-        text: >
+        # Sent as it stands when AI summaries are off, or the AI call fails.
+        plain: >-
+          {% if is_state('binary_sensor.elderly_person_home', 'off') %}{{ states('input_text.elderly_person_name') }} is away from home.{% else %}Up at: {{ states('sensor.today_wake_time') }}. Bathroom visits overnight: {{ states('sensor.night_bathroom_visits') }}. Sensors: {{ states('sensor.sensor_health_status') }}.{% endif %}
+        prompt: >
           Generate a morning summary notification for {{ states('input_text.elderly_person_name') }}'s carers (2-3 sentences, warm tone).
 
           Current data:
@@ -39,23 +41,23 @@
           - 2-3 bathroom visits overnight is normal, 6+ is elevated, 9+ is concerning
           - Do NOT start with "Morning" or a greeting - just the summary content
           - Do NOT use markdown formatting
-      response_variable: ai_response
+      response_variable: composed
     - action: input_text.set_value
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
+        value: "{{ composed.text | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Morning Update"
-        message: "{{ ai_response.response.speech.plain.speech }}"
+        message: "{{ composed.text }}"
         level: time-sensitive
   mode: single
 
 - id: haiven_afternoon_summary
   alias: "Haiven: Afternoon Summary"
   description: >
-    14:00 AI-generated summary of the day so far.
+    14:00 summary of the day so far.
   triggers:
     - trigger: time
       at: "14:00:00"
@@ -64,10 +66,12 @@
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
   actions:
-    - action: conversation.process
+    - action: script.haiven_compose_message
       data:
-        agent_id: conversation.claude_conversation
-        text: >
+        # Sent as it stands when AI summaries are off, or the AI call fails.
+        plain: >-
+          {% if is_state('binary_sensor.elderly_person_home', 'off') %}{{ states('input_text.elderly_person_name') }} is away from home.{% else %}Last activity: {{ states('sensor.last_activity_time') }} in {{ states('sensor.activity_data') }}. Safety checks tripped today: {{ states('sensor.deviation_count') }}. Sensors: {{ states('sensor.sensor_health_status') }}.{% endif %}
+        prompt: >
           Generate a brief afternoon check-in notification for {{ states('input_text.elderly_person_name') }}'s carers (1-2 sentences).
 
           Current data:
@@ -86,16 +90,16 @@
           - If normal, keep it light and reassuring
           - Do NOT start with "Afternoon" or a greeting - just the summary content
           - Do NOT use markdown formatting
-      response_variable: ai_response
+      response_variable: composed
     - action: input_text.set_value
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
+        value: "{{ composed.text | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Afternoon Update"
-        message: "{{ ai_response.response.speech.plain.speech }}"
+        message: "{{ composed.text }}"
         level: passive
   mode: single
 
@@ -111,10 +115,12 @@
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
   actions:
-    - action: conversation.process
+    - action: script.haiven_compose_message
       data:
-        agent_id: conversation.claude_conversation
-        text: >
+        # Sent as it stands when AI summaries are off, or the AI call fails.
+        plain: >-
+          {% if is_state('binary_sensor.elderly_person_home', 'off') %}{{ states('input_text.elderly_person_name') }} is away from home.{% else %}Up at: {{ states('sensor.today_wake_time') }}. Bedtime: {{ states('sensor.today_bedtime') }}. Routine: {{ states('sensor.routine') }}. Safety checks tripped today: {{ states('sensor.deviation_count') }}. Sensors: {{ states('sensor.sensor_health_status') }}.{% endif %}
+        prompt: >
           Generate an evening summary notification for {{ states('input_text.elderly_person_name') }}'s carers (2-3 sentences, day recap).
 
           Current data:
@@ -139,16 +145,16 @@
           - 2-3 sentences
           - Do NOT start with "Evening" or a greeting - just the summary content
           - Do NOT use markdown formatting
-      response_variable: ai_response
+      response_variable: composed
     - action: input_text.set_value
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
+        value: "{{ composed.text | truncate(250, False, '…') }}"
     - action: script.send_haiven_notification
       data:
         title: "Evening Update"
-        message: "{{ ai_response.response.speech.plain.speech }}"
+        message: "{{ composed.text }}"
         level: passive
   mode: single
 
@@ -177,10 +183,12 @@
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
   actions:
-    - action: conversation.process
+    - action: script.haiven_compose_message
       data:
-        agent_id: conversation.claude_conversation
-        text: >
+        # Sent as it stands when AI summaries are off, or the AI call fails.
+        plain: >-
+          {% if is_state('binary_sensor.elderly_person_home', 'off') %}{{ states('input_text.elderly_person_name') }} is away from home.{% else %}Last activity: {{ states('sensor.last_activity_time') }} in {{ states('sensor.activity_data') }}. Up at: {{ states('sensor.today_wake_time') }}. Sensors: {{ states('sensor.sensor_health_status') }}.{% endif %}
+        prompt: >
           Generate a brief status summary for the dashboard (1-2 sentences, warm tone).
 
           Current data:
@@ -202,12 +210,12 @@
           - Flag any concerns but keep it reassuring if normal
           - Do NOT start with a greeting or time reference
           - Do NOT use markdown formatting
-      response_variable: ai_response
+      response_variable: composed
     - action: input_text.set_value
       target:
         entity_id: input_text.current_summary
       data:
-        value: "{{ ai_response.response.speech.plain.speech | truncate(250, False, '…') }}"
+        value: "{{ composed.text | truncate(250, False, '…') }}"
   mode: single
 
 - id: haiven_backup_activity_log
@@ -287,10 +295,12 @@
         - condition: numeric_state
           entity_id: sensor.deviation_count
           above: 0
-        - action: conversation.process
+        - action: script.haiven_compose_message
           data:
-            agent_id: conversation.claude_conversation
-            text: >
+            # Sent as it stands when AI summaries are off, or the AI call fails.
+            plain: >-
+              {{ states('sensor.current_deviation_message') }} Expected up by {{ states('input_datetime.expected_wake_time')[:5] }}; up at: {{ states('sensor.today_wake_time') }}. Last activity: {{ states('sensor.last_activity_time') }} in {{ states('sensor.activity_data') }}. Sensors: {{ states('sensor.sensor_health_status') }}.
+            prompt: >
               Generate a morning deviation alert for {{ states('input_text.elderly_person_name') }}'s carers (1-2 sentences, clear but not alarmist).
 
               Current data:
@@ -308,11 +318,11 @@
               - Be clear but not panicked
               - 1-2 sentences only
               - Do NOT use markdown formatting
-          response_variable: ai_response
+          response_variable: composed
         - action: script.send_haiven_notification
           data:
             title: "Haiven Alert - Morning Activity"
-            message: "{{ ai_response.response.speech.plain.speech }}"
+            message: "{{ composed.text }}"
             level: time-sensitive
         - action: input_text.set_value
           target:
@@ -358,10 +368,12 @@
         {% set arrived = states('sensor.minutes_since_arrived_home') | float(99999) / 60 %}
         {{ [hours, arrived] | min > threshold }}
   actions:
-    - action: conversation.process
+    - action: script.haiven_compose_message
       data:
-        agent_id: conversation.claude_conversation
-        text: >
+        # Sent as it stands when AI summaries are off, or the AI call fails.
+        plain: >-
+          No activity for {{ state_attr('sensor.activity_data', 'hours_since_latest') | float(0) | round(1) }} hours. Last activity: {{ states('sensor.last_activity_time') }} in {{ states('sensor.activity_data') }}. Bedroom presence: {{ states('binary_sensor.haiven_bedroom_occupancy') }}. Sensors: {{ states('sensor.sensor_health_status') }}. Worth a check-in call.
+        prompt: >
           Generate a no-activity alert for {{ states('input_text.elderly_person_name') }}'s carers (2-3 sentences, suggest checking in).
 
           Current data:
@@ -380,11 +392,11 @@
           - Clear but not panicked
           - 2-3 sentences
           - Do NOT use markdown formatting
-      response_variable: ai_response
+      response_variable: composed
     - action: script.send_haiven_notification
       data:
         title: "Haiven Alert - No Activity"
-        message: "{{ ai_response.response.speech.plain.speech }}"
+        message: "{{ composed.text }}"
         level: time-sensitive
     - action: input_text.set_value
       target:
@@ -496,7 +508,7 @@
            her expected wake, so a failed wake detection cannot mute the
            system for a whole day.
 
-           The bathroom fall and long-visit alerts are separate automations
+           The bathroom no-return and long-visit alerts are separate automations
            and are deliberately untouched: those still fire at 3am. #}
         {% set wake = states('input_datetime.actual_wake_time_today') %}
         {% set wake_unset = wake in ['unknown', 'unavailable', 'none', '', '00:00:00'] %}
@@ -1048,11 +1060,13 @@
           {{ (current ~ ',bathroom_night_extended') if current else 'bathroom_night_extended' }}
   mode: single
 - id: haiven_bathroom_night_no_return_alert
-  alias: "Haiven: Alert No Return From Bathroom (Possible Fall)"
-  description: CRITICAL alert for possible fall or medical emergency in bathroom
+  alias: "Haiven: Alert No Return From Bathroom"
+  description: >
+    CRITICAL alert for a night bathroom visit that has gone on far longer than
+    usual with no return to the bedroom. It measures time, not what happened.
   triggers:
     - trigger: state
-      entity_id: binary_sensor.no_return_from_bathroom_possible_fall
+      entity_id: binary_sensor.no_return_from_bathroom
       to: "on"
   conditions:
     - condition: state
@@ -1067,7 +1081,7 @@
           {{ states('input_text.elderly_person_name') }} entered bathroom at
           {{ as_timestamp(states('input_datetime.bathroom_night_last_entry')) | timestamp_custom('%H:%M') }}
           ({{ states('sensor.bathroom_night_current_duration') }} mins ago) and has NOT returned to bedroom.
-          Possible fall or medical emergency - CHECK IMMEDIATELY!
+          Check on them now. In an emergency call 999.
     - action: input_text.set_value
       target:
         entity_id: input_text.alerts_fired_today

@@ -89,3 +89,29 @@ def test_references_resolve(path):
     refs = set(REF.findall(text))
     unknown = sorted(r for r in refs if r not in DEFINED and not SUPPLIED.match(r))
     assert not unknown, f"{path} references entities nothing creates: {unknown}"
+
+
+class _NoDuplicates(yaml.SafeLoader):
+    """PyYAML keeps the last of two identical keys without a word. Home
+    Assistant only warns, then uses a value nobody meant: a leftover `end:`
+    once gave the last-hour kitchen count the wrong window."""
+
+
+def _mapping(loader, node, deep=False):
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        assert key not in seen, f"duplicate key {key!r} at line {key_node.start_mark.line + 1}"
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+_NoDuplicates.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _mapping)
+_NoDuplicates.add_multi_constructor("!", lambda loader, suffix, node: None)
+
+
+@pytest.mark.parametrize("path", sorted(
+    p for p in ROOT.rglob("*.yaml") if ".git" not in p.parts and "themes" not in p.parts),
+    ids=lambda p: str(p.relative_to(ROOT)))
+def test_no_duplicate_keys(path):
+    yaml.load(path.read_text(), Loader=_NoDuplicates)

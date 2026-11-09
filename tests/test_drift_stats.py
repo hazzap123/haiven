@@ -107,7 +107,7 @@ def test_noted_ack_resumes_accumulation_after_ack_date():
 
 def test_reset_refreezes_baseline_and_goes_learning():
     vals = [2] * 28 + [4] * 10
-    st = {"frozen_from": "2026-02-05"}         # "Seen GP, reset usual" on 5 Feb
+    st = {"frozen_from": "2026-02-05"}         # "Checked, reset usual" on 5 Feb
     r = ds.compute_chart("visits", nights(vals), st, TODAY)
     assert r["state"] == "learning"
     assert r["days_learned"] == 3              # nights of 5, 6, 7 Feb

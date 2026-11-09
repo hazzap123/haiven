@@ -59,7 +59,7 @@ input_number:
 # See template: section for:
 # - binary_sensor.extended_night_bathroom_visit
 # - binary_sensor.bathroom_night_visits_high
-# - binary_sensor.no_return_from_bathroom_possible_fall
+# - binary_sensor.no_return_from_bathroom
 
 # SQL sensor for 14-day baseline
 # Note: SQL queries use 22:00-06:00 fixed window for historical data analysis
