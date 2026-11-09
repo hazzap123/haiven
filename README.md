@@ -120,7 +120,7 @@ configuration.yaml               # Main config — includes all packages
 
 ## Contributing
 
-Bug reports, sensor guides and fixes are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). The tests run without Home Assistant: `pip install pytest pyyaml && pytest`.
+Bug reports, sensor guides and fixes are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). The tests run without Home Assistant: `pip install pytest pyyaml jinja2 && pytest`.
 
 ## Licence
 

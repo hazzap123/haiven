@@ -14,7 +14,7 @@ Haiven is built by people caring for someone at a distance. Contributions from o
 No Home Assistant needed.
 
 ```bash
-pip install pytest pyyaml
+pip install pytest pyyaml jinja2
 pytest
 node --check www-src/haiven-cards.js
 ```
