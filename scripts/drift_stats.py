@@ -12,31 +12,30 @@ One odd night barely moves it; a run of slightly-off nights climbs.
 
 Charts
   visits  bathroom visits a night (night_stats "visits"). Poisson CUSUM,
-          designed to notice a rise to 1.5x usual, h = 5. Across real
-          nights (Nov 2025 - Sep 2026) this never tripped; the current
-          "5+ in one night" flag fired on two single nights.
+          designed to notice a rise to 1.5x usual, h = 5. Replayed over most of a year
+          of real nights it stayed quiet where the "5+ in one night" flag
+          fired on isolated single nights.
   wake    first stirring: the first kitchen motion after 04:00 with a
           second within 10 min, minutes after midnight. Not night_stats'
-          "wake" (three events in 30 min), which reads 07:15 on a third of
-          mornings because an early kitchen visit is often two events and
-          then quiet until she comes down properly; that flips modes for a
-          week at a time and looks like a change when nothing changed. On
-          the same log first-stirring is 05:01 with a 9-minute spread.
+          "wake" (three events in 30 min), which can read hours late when
+          an early kitchen visit is only two events followed by a quiet
+          spell; that flips modes for a week at a time and looks like a
+          change when nothing changed. First stirring is far steadier.
           One-sided Gaussian CUSUM for LATER stirring, k = 0.5, h = 5,
           sigma floored at 15 min. Each morning's z is capped at 3, so one
           06:30 cannot trip it on its own; the acute morning check already
           covers a single very late start.
   activity
           kitchen motion events between 05:00 and 20:00, the count the
-          "Kitchen activity" row is built on. Ring motion re-arms every few
+          "Kitchen activity" row is built on. A motion sensor re-arms every few
           minutes while someone is in the room, so the count is closer to
-          "minutes on her feet downstairs" than to trips. One-sided Gaussian
+          "minutes on their feet in the kitchen" than to trips. One-sided Gaussian
           CUSUM for LESS activity, k = 0.5, h = 5, sigma floored at 20% of
           usual, per-day z capped at 3. A day counts only if she was away
           under 4 h inside the window (the person's "Location" log lines) and
-          the Ring logged at least one event. On the log (Nov 2025 - Sep 2026,
-          234 complete days, usual 138, sd 26) this trips three times, each
-          a week at 20-33% below usual. The Home card also carries today's
+          the kitchen sensor logged at least one event. Replayed over most of a
+          year of real days it trips a handful of times, each a week well
+          below usual. The Home card also carries today's
           count so far against the baseline days' count by the same clock
           time.
 
@@ -112,7 +111,7 @@ def value_of(chart, n):
 def stir(K, day, confirm_min=10):
     """First kitchen motion after 04:00 on the morning after `day` that has a
     second event within confirm_min, as minutes after midnight. The second
-    event keeps a lone dog trigger from counting."""
+    event keeps a lone pet trigger from counting."""
     w0 = dt.datetime.combine(day + dt.timedelta(1), dt.time(4))
     w1 = dt.datetime.combine(day + dt.timedelta(1), dt.time(12))
     ks = night_stats.between(K, w0, w1)

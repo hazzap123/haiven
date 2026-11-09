@@ -1,0 +1,15 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Haiven Chat",
+        "description": "Reuses the API key of an existing Anthropic integration. The key is read from that entry and never copied.",
+        "data": { "anthropic_entry_id": "Anthropic integration" }
+      }
+    },
+    "abort": {
+      "no_anthropic": "Set up the Anthropic integration first.",
+      "single_instance_allowed": "Haiven Chat is already set up."
+    }
+  }
+}

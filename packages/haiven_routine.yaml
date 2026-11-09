@@ -1,0 +1,39 @@
+# Haiven Routine
+#
+# The Home "Routine" row and the Patterns 30-day strip: was today like her
+# usual days? On track / A little off / Off track, with the reason.
+# scripts/routine_stats.py rebuilds every day from activity.log, so the
+# strip needs no stored history and a reboot loses nothing.
+#
+# Describes days only. It never alerts: slow change is Drift Watch's job
+# (packages/haiven_drift.yaml). It replaces sensor.daily_activity_score on
+# screen and in the summaries; that sensor stays for now, unused.
+#
+# sensor.routine_stats is excluded from the recorder in configuration.yaml.
+# sensor.routine is small and recorded, so the verdict has history in HA.
+
+command_line:
+  - sensor:
+      name: "Routine Stats"
+      unique_id: routine_stats
+      command: "python3 /config/scripts/routine_stats.py"
+      scan_interval: 1800
+      command_timeout: 120
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - today
+        - days
+        - counts
+        - generated
+
+template:
+  - sensor:
+      - name: "Routine"
+        unique_id: routine
+        icon: mdi:calendar-check
+        availability: "{{ state_attr('sensor.routine_stats', 'today') is not none }}"
+        state: "{{ state_attr('sensor.routine_stats', 'today').word }}"
+        attributes:
+          verdict: "{{ state_attr('sensor.routine_stats', 'today').verdict }}"
+          why: "{{ state_attr('sensor.routine_stats', 'today').why }}"
+          so_far: "{{ not state_attr('sensor.routine_stats', 'today').complete }}"

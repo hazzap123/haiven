@@ -181,7 +181,8 @@ template:
               {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
               {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
               {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
-              {% set latest_mins = [kitchen_mins, bedroom_mins, bathroom_mins] | min %}
+              {% set arrived_mins = states('sensor.minutes_since_arrived_home') | int(9999) %}
+              {% set latest_mins = [kitchen_mins, bedroom_mins, bathroom_mins, arrived_mins] | min %}
 
               {# All rooms quiet for longer than transition timeout #}
               {{ latest_mins > timeout }}
@@ -205,7 +206,8 @@ template:
             {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
             {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
             {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
-            {{ [kitchen_mins, bedroom_mins, bathroom_mins] | min }}
+            {% set arrived_mins = states('sensor.minutes_since_arrived_home') | int(9999) %}
+            {{ [kitchen_mins, bedroom_mins, bathroom_mins, arrived_mins] | min }}
           last_active_room: "{{ states('sensor.activity_data') }}"
           transition_timeout_mins: "{{ states('input_number.transition_timeout_mins') | int(90) }}"
 
@@ -329,7 +331,8 @@ template:
             {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
             {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
             {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
-            {% set latest_mins = [kitchen_mins, bedroom_mins, bathroom_mins] | min %}
+            {% set arrived_mins = states('sensor.minutes_since_arrived_home') | int(9999) %}
+            {% set latest_mins = [kitchen_mins, bedroom_mins, bathroom_mins, arrived_mins] | min %}
 
             {% if latest_mins >= thresh_critical %}
               {% set score = score + 75 %}
@@ -380,7 +383,8 @@ template:
             {% set kitchen_mins = states('sensor.minutes_since_kitchen_activity') | int(9999) %}
             {% set bedroom_mins = states('sensor.minutes_since_bedroom_activity') | int(9999) %}
             {% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}
-            {{ [kitchen_mins, bedroom_mins, bathroom_mins] | min }}
+            {% set arrived_mins = states('sensor.minutes_since_arrived_home') | int(9999) %}
+            {{ [kitchen_mins, bedroom_mins, bathroom_mins, arrived_mins] | min }}
 
   # Main Status Sensor - 5-Level Hierarchy
   - sensor:
@@ -1399,6 +1403,20 @@ template:
             {% endif %}
           {% endif %}
         icon: mdi:shower
+
+      # Fourth source. Stamped when her phone arrives home, so a trip out does
+      # not read as silence the moment she walks back in.
+      - name: "Minutes Since Arrived Home"
+        unique_id: minutes_since_arrived_home
+        unit_of_measurement: "min"
+        state: >
+          {% set ts = state_attr('input_datetime.arrived_home', 'timestamp') %}
+          {% if ts and ts > 0 %}
+            {{ ((now().timestamp() - ts) / 60) | int }}
+          {% else %}
+            unknown
+          {% endif %}
+        icon: mdi:home-import-outline
 
   # ============================================================================
   # ACTIVITY PATTERN SENSORS

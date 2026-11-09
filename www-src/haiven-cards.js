@@ -2,7 +2,7 @@
  * Haiven Native — hand-written Lovelace card library
  * =========================================================================
  *
- * Same architecture as Willow Bank's wb2-cards.js: one file, plain custom
+ * One file, plain custom
  * elements with shadow DOM, no framework, no build step, no card-mod.
  *
  * SOURCE lives at www-src/haiven-cards.js in this repo.
@@ -169,7 +169,7 @@ function coverageLine(c) {
  * Whether she is in the house at all. This has to be read BEFORE anything is
  * inferred from the sensors, because every rule in the system is a rule about
  * a house she is inside: "no kitchen activity for three hours" is an alarm if
- * she is home and meaningless if she is at her sister's. Away is not a good
+ * she is home and meaningless if she is out for the day. Away is not a good
  * state or a bad one, so it gets the accent, never a status colour.
  * --------------------------------------------------------------------- */
 
@@ -447,7 +447,8 @@ class HaivenFacts extends HaivenCard {
         <div class="sub">${esc(missing ? "not reporting" : (c.sub || ""))}</div>
       </div>`;
     }).join("");
-    this.paint(`<div class="grid">${cells}</div>`);
+    const n = Math.min((this._config.cells || []).length, 3) || 3;
+    this.paint(`<div class="grid" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${cells}</div>`);
   }
 }
 
@@ -596,6 +597,15 @@ class HaivenTabs extends HTMLElement {
     this.shadowRoot.replaceChildren(style, bar, panes);
     this._bar = bar;
     this._paint();
+
+    // Another card can open a tab by name (the Home Routine row opens
+    // Patterns). Stored first too, for when this view is built after.
+    window.addEventListener("haiven-select-tab", (e) => {
+      const d = e.detail || {};
+      if (d.id !== this._config.id) return;
+      const i = this._tabs.findIndex((t) => t.name === d.name);
+      if (i >= 0) this._select(i);
+    });
   }
 
   _select(idx) {
@@ -640,7 +650,13 @@ class HaivenRibbon extends HTMLElement {
     this._config = config || {};
     this._hours = Number(this._config.hours) || 24;
     this._mode = this._config.mode || "band";      // "band" | "lanes"
-    this._buckets = Number(this._config.buckets || 200);
+    // Buckets are a fixed length of TIME, not a fixed count. At a fixed 200 a
+    // week-long window made each bucket 50 minutes, and a two-minute bathroom
+    // visit can never own a 50-minute bucket against a kitchen or a latched
+    // bedroom radar, so the 7-day ribbon drew no bathroom at all. 2.4 minutes
+    // is what 200 buckets over 8 hours always was.
+    this._buckets = Number(this._config.buckets) ||
+      Math.round(this._hours * 60 / Number(this._config.bucket_mins || 2.4));
     this._lanes = this._config.lanes ||
       ROOMS.map((r) => ({ name: r.name, entity: r.motion, health: r.entity, key: r.key }));
     this._hist = null;
@@ -665,7 +681,7 @@ class HaivenRibbon extends HTMLElement {
     const sig = this._lanes.map((l) => {
       const e = hass.states[l.entity];
       return e ? e.state : "?";
-    }).join("|");
+    }).concat([hass.states[HOME_ENTITY] ? hass.states[HOME_ENTITY].state : "?"]).join("|");
     if (sig !== this._sig) { this._sig = sig; this._load(); }
   }
 
@@ -682,7 +698,7 @@ class HaivenRibbon extends HTMLElement {
         type: "history/history_during_period",
         start_time: start.toISOString(),
         end_time: end.toISOString(),
-        entity_ids: this._lanes.map((l) => l.entity),
+        entity_ids: this._lanes.map((l) => l.entity).concat([HOME_ENTITY]),
         minimal_response: true,
         no_attributes: true,
         significant_changes_only: false,
@@ -709,12 +725,16 @@ class HaivenRibbon extends HTMLElement {
   // drawing each as its own element is thousands of sub-pixel divs that
   // render as one solid bar anyway. Merging keeps the DOM bounded and changes
   // nothing that was visible.
-  _segments(rows, start, end) {
+  //
+  // The band passes its bucket length as the grain instead: it draws runs,
+  // not segments, and merging at a sixth of an hour over a week would smear
+  // separate bathroom visits into one.
+  _segments(rows, start, end, grain = (end - start) / 600, want = "on") {
     const segs = [];
     let open = null;
     for (const r of (rows || [])) {
       const t = (r.lu || r.last_updated || 0) * 1000;
-      const on = String(r.s !== undefined ? r.s : r.state) === "on";
+      const on = String(r.s !== undefined ? r.s : r.state) === want;
       if (on) { if (open === null) open = t; }
       else if (open !== null) { segs.push([open, t]); open = null; }
     }
@@ -725,7 +745,6 @@ class HaivenRibbon extends HTMLElement {
       .filter(([a, b]) => b > a)
       .sort((x, y) => x[0] - y[0]);
 
-    const grain = (end - start) / 600;
     const out = [];
     for (const seg of clipped) {
       const last = out[out.length - 1];
@@ -780,13 +799,25 @@ class HaivenRibbon extends HTMLElement {
     const step = (end - start) / n;
     const lanes = this._lanes.map((l) => ({
       key: l.key,
-      segs: this._segments(this._hist[l.entity], start, end),
+      segs: this._segments(this._hist[l.entity], start, end, step),
       dark: this._blind(this._hist[l.entity], start, end),
     }));
+
+    // Out of the house. Whatever the sensors saw while she was out was not
+    // her (pets, a visitor), and a quiet stretch is not a quiet stretch of
+    // HERS, so away owns any bucket she was mostly out for.
+    const out = this._segments(this._hist[HOME_ENTITY], start, end, step, "off");
 
     const cells = [];
     for (let i = 0; i < n; i++) {
       const a = start + i * step, b = a + step;
+      if (this._cover(out, a, b) > step * 0.5) { cells.push("away"); continue; }
+      // The bathroom PIR only fires when she is in there, while the bedroom
+      // radar next door stays latched through the visit (half of all bathroom
+      // time overlaps it). Most-coverage would hand every visit to the
+      // bedroom, so a bathroom pulse in the bucket wins outright.
+      const bath = lanes.find((l) => l.key === "bathroom");
+      if (bath && this._cover(bath.segs, a, b) > 0) { cells.push("bathroom"); continue; }
       let win = null, best = 0;
       for (const l of lanes) {
         const c = this._cover(l.segs, a, b);
@@ -818,7 +849,7 @@ class HaivenRibbon extends HTMLElement {
     for (let i = 1; i < runs.length - 1; i++) {
       const a = runs[i - 1], q = runs[i], b = runs[i + 1];
       if (q.key !== "quiet" || q.b - q.a > bridge) continue;
-      if (a.key !== b.key || a.key === "quiet" || a.key === "blind") continue;
+      if (a.key !== b.key || a.key === "quiet" || a.key === "blind" || a.key === "away") continue;
       q.key = a.key;
     }
 
@@ -938,6 +969,10 @@ class HaivenRibbon extends HTMLElement {
       bedroom: "var(--room-bedroom)",
       bathroom: "var(--room-bathroom)",
     };
+    // Away is neither good nor bad, so no status colour. The accent is the
+    // kitchen's teal here, so it takes the warm grey instead, in stripes so it
+    // never reads as a fourth room or as the paler "not recorded" hatch.
+    const AWAY_FILL = "repeating-linear-gradient(135deg,var(--faint),var(--faint) 3px,var(--surface-2) 3px,var(--surface-2) 6px)";
 
     let body, legend = "";
     if (this._err) {
@@ -955,11 +990,13 @@ class HaivenRibbon extends HTMLElement {
       body = runs.map((r) => {
         if (r.key === "quiet") return "";
         const w = pc(r.b) - pc(r.a);
-        const tiny = r.key !== "blind" && w < TINY;
+        const away = r.key === "away";
+        const tiny = r.key !== "blind" && !away && w < TINY;
         if (tiny) widened = true;
         const cls = `${r.key === "blind" ? "gap" : "run"}${tiny ? " tiny" : ""}`;
-        const fill = r.key === "blind" ? "" : `background:${ROOM_FILL[r.key]}`;
+        const fill = r.key === "blind" ? "" : `background:${away ? AWAY_FILL : ROOM_FILL[r.key]}`;
         const label = r.key === "blind" ? "not recorded"
+          : away ? `Out ${fmtClock(r.a)}-${fmtClock(r.b)}`
           : `${(ROOMS.find((x) => x.key === r.key) || {}).name} ${fmtClock(r.a)}-${fmtClock(r.b)}`;
         return `<div class="${cls}" style="left:${pc(r.a)}%;width:${w}%;${fill}"
                      title="${esc(label)}"></div>`;
@@ -970,6 +1007,7 @@ class HaivenRibbon extends HTMLElement {
       const mins = {};
       runs.forEach((r) => { if (ROOM_FILL[r.key]) mins[r.key] = (mins[r.key] || 0) + (r.b - r.a) / 60000; });
       const anyBlind = runs.some((r) => r.key === "blind");
+      const outMins = runs.filter((r) => r.key === "away").reduce((s, r) => s + (r.b - r.a) / 60000, 0);
       this._widened = widened;
       legend = `<div class="key">
         ${this._lanes.map((l) => {
@@ -978,6 +1016,9 @@ class HaivenRibbon extends HTMLElement {
             <span class="kn">${esc(l.name)}</span>
             <span class="kv mono">${m < 1 ? DASH : durStr(m)}</span></div>`;
         }).join("")}
+        ${outMins >= 1 ? `<div class="k"><span class="sw" style="background:${AWAY_FILL}"></span>
+          <span class="kn">Out</span>
+          <span class="kv mono">${durStr(outMins)}</span></div>` : ""}
         ${anyBlind ? `<div class="k"><span class="sw hatch"></span>
           <span class="kn">Not recorded</span></div>` : ""}
       </div>
@@ -1124,6 +1165,48 @@ class HaivenCompare extends HaivenCard {
   }
 }
 
+/* ------------------------------ sparkline row ---------------------------
+ * The app's one chart: label and "usually" on the left, a small sparkline,
+ * the figure on the right. Shared by haiven-drift, haiven-movement and
+ * haiven-ask so all three cannot drift apart.
+ * --------------------------------------------------------------------- */
+const ROW_CSS = `
+    .top{display:flex;align-items:center;gap:12px}
+    .l{flex:1 1 auto;min-width:0}
+    .lab{font-size:14px;color:var(--ink)}
+    .base{font-size:11.5px;color:var(--faint);margin-top:2px}
+    .spark{flex:0 0 auto;width:84px;height:28px;display:block}
+    .r{flex:0 0 auto;text-align:right;min-width:64px}
+    .v{font-size:17px;color:var(--ink)}
+    .v.none{color:var(--faint)}`;
+
+// Line, emphasised last point, and the usual band when usual and sd are given.
+// A null value breaks the line, so a missing day stays a gap.
+function sparkSvg(values, { usual = null, sd = null, colour = "var(--ink)" } = {}) {
+  const pts = values.filter((v) => v !== null);
+  if (pts.length < 2) return "";
+  const W = 84, H = 28, P = 3;
+  let lo = Math.min(...pts), hi = Math.max(...pts);
+  if (usual !== null && sd !== null) { lo = Math.min(lo, usual - sd); hi = Math.max(hi, usual + sd); }
+  if (hi === lo) hi = lo + 1;
+  const x = (i) => P + (W - 2 * P) * i / (values.length - 1);
+  const y = (v) => H - P - (H - 2 * P) * (v - lo) / (hi - lo);
+  const band = (usual !== null && sd !== null)
+    ? `<rect x="0" y="${y(usual + sd).toFixed(1)}" width="${W}" height="${(y(usual - sd) - y(usual + sd)).toFixed(1)}" fill="var(--accent)" opacity=".13"/>
+         <line x1="0" x2="${W}" y1="${y(usual).toFixed(1)}" y2="${y(usual).toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>`
+    : "";
+  let d = "", pen = false, last = 0;
+  values.forEach((v, i) => {
+    if (v === null) { pen = false; return; }
+    d += `${pen ? " L" : d ? " M" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
+    pen = true; last = i;
+  });
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">${band}
+    <path d="${d}" fill="none" stroke="${colour}" stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>
+    <circle cx="${x(last).toFixed(1)}" cy="${y(values[last]).toFixed(1)}" r="2.4" fill="${colour}"/>
+  </svg>`;
+}
+
 /* ------------------------------ haiven-drift ----------------------------
  * A month of nights against a baseline that does not move. One row per
  * chart from sensor.drift_stats (scripts/drift_stats.py): the smoothed
@@ -1153,14 +1236,7 @@ class HaivenDrift extends HaivenCard {
     .row{padding:12px 16px;border-bottom:1px solid var(--surface-2);cursor:pointer}
     .row:last-child{border-bottom:0}
     .row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-    .top{display:flex;align-items:center;gap:12px}
-    .l{flex:1 1 auto;min-width:0}
-    .lab{font-size:14px;color:var(--ink)}
-    .base{font-size:11.5px;color:var(--faint);margin-top:2px}
-    .spark{flex:0 0 auto;width:84px;height:28px;display:block}
-    .r{flex:0 0 auto;text-align:right;min-width:64px}
-    .v{font-size:17px;color:var(--ink)}
-    .v.none{color:var(--faint)}
+    ${ROW_CSS}
     .pill{display:inline-flex;align-items:center;gap:5px;margin-top:3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
     .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
     .pill.ok{color:var(--good);background:var(--good-wash)}
@@ -1178,29 +1254,6 @@ class HaivenDrift extends HaivenCard {
   signature(hass) {
     const e = hass.states[DRIFT_ENTITY];
     return e ? `${e.state}|${e.attributes.generated || ""}` : "?";
-  }
-
-  // Sparkline: last 28 nights, usual band, line, emphasised last point.
-  _spark(c, kind) {
-    const pts = (c.series || []).map((p) => Number(p[1])).filter((v) => Number.isFinite(v));
-    if (pts.length < 2) return "";
-    const W = 84, H = 28, P = 3;
-    const usual = num(c.usual), sd = num(c.sd);
-    let lo = Math.min(...pts), hi = Math.max(...pts);
-    if (usual !== null && sd !== null) { lo = Math.min(lo, usual - sd); hi = Math.max(hi, usual + sd); }
-    if (hi === lo) hi = lo + 1;
-    const x = (i) => P + (W - 2 * P) * i / (pts.length - 1);
-    const y = (v) => H - P - (H - 2 * P) * (v - lo) / (hi - lo);
-    const band = (usual !== null && sd !== null)
-      ? `<rect x="0" y="${y(usual + sd).toFixed(1)}" width="${W}" height="${(y(usual - sd) - y(usual + sd)).toFixed(1)}" fill="var(--accent)" opacity=".13"/>
-         <line x1="0" x2="${W}" y1="${y(usual).toFixed(1)}" y2="${y(usual).toFixed(1)}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>`
-      : "";
-    const d = pts.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-    const colour = kind === "crit" ? "var(--crit)" : kind === "warn" ? "var(--warn)" : "var(--ink)";
-    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">${band}
-      <path d="${d}" fill="none" stroke="${colour}" stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>
-      <circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="2.4" fill="${colour}"/>
-    </svg>`;
   }
 
   // Accumulator: one bar per night since the chart last restarted, against
@@ -1271,7 +1324,10 @@ class HaivenDrift extends HaivenCard {
       return `<div class="row ${this._open === i ? "open" : ""}" data-i="${i}" tabindex="0" aria-expanded="${this._open === i}">
         <div class="top">
           <div class="l"><div class="lab">${esc(r.label || r.chart)}</div><div class="base">${base}</div></div>
-          ${this._spark(c, cls)}
+          ${sparkSvg((c.series || []).map((p) => Number(p[1])).filter((v) => Number.isFinite(v)), {
+            usual: num(c.usual), sd: num(c.sd),
+            colour: cls === "crit" ? "var(--crit)" : cls === "warn" ? "var(--warn)" : "var(--ink)",
+          })}
           <div class="r">
             <div class="v mono ${level === DASH ? "none" : ""}">${esc(level)}</div>
             <div class="pill ${cls}">${esc(DRIFT_WORD[c.state] || c.state || "?")}</div>
@@ -1326,14 +1382,7 @@ const MOVEMENT_ENTITY = "sensor.movement_stats";
 class HaivenMovement extends HaivenCard {
   get css() { return `
     .wrap{background:var(--surface);border:1px solid var(--line);padding:12px 16px}
-    .top{display:flex;align-items:center;gap:12px}
-    .l{flex:1 1 auto;min-width:0}
-    .lab{font-size:14px;color:var(--ink)}
-    .base{font-size:11.5px;color:var(--faint);margin-top:2px}
-    .spark{flex:0 0 auto;width:84px;height:28px;display:block}
-    .r{flex:0 0 auto;text-align:right;min-width:64px}
-    .v{font-size:17px;color:var(--ink)}
-    .v.none{color:var(--faint)}
+    ${ROW_CSS}
     .pill{display:inline-flex;align-items:center;gap:5px;margin-top:3px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
     .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
     .pill.ok{color:var(--good);background:var(--good-wash)}
@@ -1345,43 +1394,246 @@ class HaivenMovement extends HaivenCard {
     return e ? `${e.state}|${e.attributes.generated || ""}` : "?";
   }
 
-  _spark(series) {
-    const pts = (series || []).map((p) => Number(p[1])).filter((v) => Number.isFinite(v));
-    if (pts.length < 2) return "";
-    const W = 84, H = 28, P = 3;
-    const lo = Math.min(...pts), hi = Math.max(...pts) || 1;
-    const x = (i) => P + (W - 2 * P) * i / (pts.length - 1);
-    const y = (v) => H - P - (H - 2 * P) * (v - lo) / ((hi - lo) || 1);
-    const d = pts.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-    return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true">
-      <path d="${d}" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>
-      <circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="2.4" fill="var(--ink)"/>
-    </svg>`;
+  render(hass) {
+    this.paint(`<div class="wrap">${this._row(hass)}</div>`);
   }
 
-  render(hass) {
+  _row(hass) {
     const e = hass.states[MOVEMENT_ENTITY];
     const today = e ? num(e.attributes.today) : null;
     const usual = e ? num(e.attributes.usual_by_now) : null;
     const label = (this._config && this._config.label) || "Movement, all rooms";
     if (today === null) {
-      this.paint(`<div class="wrap"><div class="top">
+      return `<div class="top">
         <div class="l"><div class="lab">${esc(label)}</div><div class="base">not reporting</div></div>
-        <div class="r"><div class="v none">${DASH}</div></div></div></div>`);
-      return;
+        <div class="r"><div class="v none">${DASH}</div></div></div>`;
     }
     const base = usual === null ? `no baseline yet ${DASH}` : `usually ${Math.round(usual)} by now`;
     const ratio = usual ? Math.round((today / usual) * 100) : null;
     const cls = ratio !== null && ratio >= 85 && ratio <= 115 ? "ok" : "faint";
     const word = ratio === null ? null : ratio < 85 ? "Quieter" : ratio > 115 ? "Busier" : "Typical";
-    this.paint(`<div class="wrap"><div class="top">
+    return `<div class="top">
       <div class="l"><div class="lab">${esc(label)}</div><div class="base">${base}</div></div>
-      ${this._spark(e.attributes.series)}
+      ${sparkSvg((e.attributes.series || []).map((p) => Number(p[1])).filter((v) => Number.isFinite(v)))}
       <div class="r">
         <div class="v mono">${today}</div>
         ${word ? `<div class="pill ${cls}">${esc(word)}</div>` : ""}
       </div>
-    </div></div>`);
+    </div>`;
+  }
+}
+
+/* ------------------------------ haiven-today ----------------------------
+ * The Home "Today" card: Routine above Movement, one card, same row shape.
+ * Routine is the verdict (was today like her usual days?), Movement the
+ * amount, so a day can be Typical on one and A little off on the other.
+ * sensor.routine_stats, scripts/routine_stats.py.
+ *
+ * Two states come from the live house, not the script: Away when she is out
+ * (the day is not judged), and Can't tell when a room is not reporting,
+ * because missing data must never read as On track. Tapping Routine opens
+ * the Patterns strip.
+ * --------------------------------------------------------------------- */
+
+const ROUTINE_ENTITY = "sensor.routine_stats";
+const ROUTINE = {
+  on_track:     { word: "On track",     cls: "ok",   cell: "n" },
+  a_little_off: { word: "A little off", cls: "warn", cell: "s" },
+  off_track:    { word: "Off track",    cls: "crit", cell: "o" },
+  away:         { word: "Away",         cls: "away", cell: "x" },
+  no_data:      { word: "Can't tell",   cls: "faint", cell: "x" },
+};
+const ROUTINE_CSS = `
+  .pill.warn{color:var(--warn);background:var(--warn-wash)}
+  .pill.warn::before{border-radius:1px}
+  .pill.crit{color:var(--crit);background:var(--crit-wash)}
+  .pill.crit::before{border-radius:0;transform:rotate(45deg);width:5px;height:5px}
+  .pill.away{color:var(--accent);background:var(--surface-2)}
+  .pill.away::before{border-radius:1px}
+  .pill.faint::before{background:transparent;border:1px solid currentColor;width:4px;height:4px}
+  .cell.n{background:var(--good);opacity:.55}
+  .cell.s{background:var(--warn)}
+  .cell.o{background:var(--crit)}
+  .cell.x{background:var(--surface-2)}
+`;
+
+class HaivenToday extends HaivenMovement {
+  get css() { return super.css + ROUTINE_CSS + `
+    .wrap{padding:0}
+    .wrap > .top{padding:12px 16px}
+    .wrap > .top + .top{border-top:1px solid var(--surface-2)}
+    .routine{cursor:pointer}
+    .routine:hover{background:var(--surface-2)}
+    .routine:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+    .base.why{line-height:1.35}
+    .week{flex:0 0 auto;width:84px;display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+    .cell{height:14px;border-radius:2px}
+    .cell.t{outline:1px solid var(--ink);outline-offset:1px}
+    .r.rt{min-width:92px}
+  `; }
+
+  signature(hass) {
+    const r = hass.states[ROUTINE_ENTITY];
+    const c = coverage(hass);
+    return [super.signature(hass), r ? `${r.state}|${r.attributes.generated || ""}` : "?",
+            c.bad.map((x) => x.name + x.state).join(","), txt(hass, HOME_ENTITY, "")].join("|");
+  }
+
+  render(hass) {
+    this.paint(`<div class="wrap">${this._routine(hass)}${this._row(hass)}</div>`);
+    const row = this.shadowRoot.querySelector(".routine");
+    const open = () => {
+      try { localStorage.setItem("haiven-tabs:activity", "Patterns"); } catch (e) { /* no memory */ }
+      goTo(`${NAV_ROOT}/activity`);
+      window.dispatchEvent(new CustomEvent("haiven-select-tab", { detail: { id: "activity", name: "Patterns" } }));
+    };
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+    });
+  }
+
+  _routine(hass) {
+    const e = hass.states[ROUTINE_ENTITY];
+    const t = e && e.attributes.today;
+    const days = (e && Array.isArray(e.attributes.days)) ? e.attributes.days : [];
+    let verdict = t ? t.verdict : "no_data";
+    let why = t ? t.why : "Not reporting";
+
+    // The live house overrides the script: out means not judged, and a
+    // silent room means the script cannot see what it is judging.
+    const p = presence(hass);
+    const c = coverage(hass);
+    if (p.known && !p.home) { verdict = "away"; why = "Out now, routine not judged"; }
+    else if (c.bad.length) {
+      verdict = "no_data";
+      why = c.bad.map((r) => {
+        const since = r.mins !== null ? ` since ${fmtClock(Date.now() - r.mins * 60000)}` : "";
+        return `${r.name} sensor ${r.state === "stuck" ? "stuck" : "offline"}${since}`;
+      }).join(", ");
+    }
+    const v = ROUTINE[verdict] || ROUTINE.no_data;
+    const week = days.slice(-6).map((d) => (ROUTINE[d.verdict] || ROUTINE.no_data).cell)
+      .concat([v.cell])
+      .map((cls, i, a) => `<div class="cell ${cls}${i === a.length - 1 ? " t" : ""}"></div>`).join("");
+    return `<div class="top routine" role="button" tabindex="0" aria-label="Routine ${esc(v.word)}. Open patterns">
+      <div class="l"><div class="lab">Routine</div><div class="base why">${esc(why || DASH)}</div></div>
+      <div class="week" aria-hidden="true">${week}</div>
+      <div class="r rt"><div class="pill ${v.cls}">${esc(v.word)}</div></div>
+    </div>`;
+  }
+}
+
+/* --------------------------- haiven-routine-strip ------------------------
+ * Patterns: the last 30 completed days, one cell each, coloured by the
+ * routine verdict, with a count line and the day's detail on tap. Shows
+ * days, never alerts. A teal tick under a day marks a Drift Watch trip
+ * (sensor.drift_stats trip_date), so the two layers read together.
+ * --------------------------------------------------------------------- */
+
+const ROUTINE_SIG = {
+  up: "Up", movement: "Movement", bathroom: "Bathroom overnight",
+};
+
+class HaivenRoutineStrip extends HaivenCard {
+  get css() { return ROUTINE_CSS + `
+    .wrap{background:var(--surface);border:1px solid var(--line);padding:14px 16px 12px}
+    .count{font-size:13px;color:var(--muted);margin-bottom:10px}
+    .count b{color:var(--ink);font-weight:600}
+    .cells{display:grid;grid-template-columns:repeat(30,1fr);gap:2px}
+    .cell{height:30px;border-radius:2px;cursor:pointer;padding:0;border:0}
+    .cell.sel{outline:2px solid var(--ink);outline-offset:1px}
+    .cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+    .trip{display:grid;grid-template-columns:repeat(30,1fr);gap:2px;margin-top:3px;height:6px}
+    .trip i{display:block;height:3px;border-radius:1px}
+    .trip i.on{background:var(--accent)}
+    .axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint);margin-top:4px}
+    .key{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--muted);margin-top:10px}
+    .key span{display:flex;align-items:center;gap:5px}
+    .key i{width:10px;height:10px;border-radius:2px;display:inline-block}
+    .key i.tk{height:3px;background:var(--accent)}
+    .detail{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+    .hint{font-size:12px;color:var(--faint)}
+    .when{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px;color:var(--ink)}
+    .pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px}
+    .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+    .pill.ok{color:var(--good);background:var(--good-wash)}
+    .pill.faint{color:var(--faint);background:var(--surface-2)}
+    .sig{display:grid;grid-template-columns:1fr auto auto;gap:6px 12px;font-size:12.5px;align-items:center}
+    .sig .k{color:var(--muted)}
+    .sig .val{text-align:right;color:var(--ink)}
+    .sig .val.slight{color:var(--warn)}
+    .sig .val.well{color:var(--crit)}
+    .sig .u{color:var(--faint);text-align:right;font-size:11.5px}
+    .note{font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.45}
+    .none{font-size:13px;color:var(--faint)}
+  `; }
+
+  signature(hass) {
+    const e = hass.states[ROUTINE_ENTITY];
+    const d = hass.states[DRIFT_ENTITY];
+    return `${e ? e.attributes.generated : "?"}|${d ? d.attributes.generated : "?"}|${this._sel}`;
+  }
+
+  render(hass) {
+    const e = hass.states[ROUTINE_ENTITY];
+    const days = (e && Array.isArray(e.attributes.days)) ? e.attributes.days : [];
+    if (!days.length) {
+      this.paint(`<div class="wrap"><div class="none">No routine history yet ${DASH}</div></div>`);
+      return;
+    }
+    const counts = {};
+    days.forEach((d) => { counts[d.verdict] = (counts[d.verdict] || 0) + 1; });
+    const parts = [["on_track", "on track"], ["a_little_off", "a little off"], ["off_track", "off track"],
+                   ["away", "away"], ["no_data", "no data"]]
+      .filter(([k]) => counts[k]).map(([k, w]) => `<b>${counts[k]}</b> ${w}`);
+
+    const drift = hass.states[DRIFT_ENTITY];
+    const trips = new Set(["visits", "wake", "activity"]
+      .map((c) => drift && drift.attributes[c] && drift.attributes[c].trip_date).filter(Boolean));
+
+    const fmt = (iso, o) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", o);
+    const sel = Number.isInteger(this._sel) && days[this._sel] ? days[this._sel] : null;
+    const cells = days.map((d, i) => {
+      const v = ROUTINE[d.verdict] || ROUTINE.no_data;
+      return `<button class="cell ${v.cell}${sel === d ? " sel" : ""}" data-i="${i}"
+        aria-label="${esc(fmt(d.date, { weekday: "short", day: "numeric", month: "short" }))}: ${esc(v.word)}"></button>`;
+    }).join("");
+    const ticks = days.map((d) => `<i class="${trips.has(d.date) ? "on" : ""}"></i>`).join("");
+    const mid = days[Math.floor(days.length / 2)];
+
+    let detail = `<div class="hint">Tap a day to see what made it.</div>`;
+    if (sel) {
+      const v = ROUTINE[sel.verdict] || ROUTINE.no_data;
+      const rows = Object.entries(sel.signals || {}).map(([k, s]) => `
+        <div class="k">${esc(ROUTINE_SIG[k] || k)}</div>
+        <div class="val mono ${s.grade}">${esc(s.value)}</div>
+        <div class="u">usual ${esc(s.usual)}</div>`).join("");
+      detail = `<div class="when"><span>${esc(fmt(sel.date, { weekday: "short", day: "numeric", month: "short" }))}</span>
+        <span class="pill ${v.cls}">${esc(v.word)}</span></div>
+        ${rows ? `<div class="sig">${rows}</div>` : ""}
+        <p class="note">${esc(sel.why || "")}${trips.has(sel.date) ? " Drift Watch flagged a slow change on this day." : ""}</p>`;
+    }
+
+    this.paint(`<div class="wrap">
+      <div class="count">${parts.join(" &middot; ")}</div>
+      <div class="cells">${cells}</div>
+      <div class="trip" aria-hidden="true">${ticks}</div>
+      <div class="axis"><span>${esc(fmt(days[0].date, { day: "numeric", month: "short" }))}</span>
+        <span>${esc(fmt(mid.date, { day: "numeric", month: "short" }))}</span><span>Yesterday</span></div>
+      <div class="key">
+        <span><i class="cell n"></i>On track</span><span><i class="cell s"></i>A little off</span>
+        <span><i class="cell o"></i>Off track</span><span><i class="cell x"></i>Away / no data</span>
+        ${trips.size ? `<span><i class="tk"></i>Drift Watch flag</span>` : ""}
+      </div>
+      <div class="detail">${detail}</div>
+    </div>`);
+    this.shadowRoot.querySelectorAll(".cells .cell").forEach((b) => b.addEventListener("click", () => {
+      const i = Number(b.dataset.i);
+      this._sel = this._sel === i ? null : i;
+      this._sig = null;
+      this.render(this._hass);
+    }));
   }
 }
 
@@ -1451,7 +1703,7 @@ class HaivenWhere extends HaivenCard {
     }
 
     // She is not in the house, so which room the sensors last saw is a fact
-    // about the dogs. Say where she is and stop guessing.
+    // about pets or visitors. Say where she is and stop guessing.
     if (p.known && !p.home) {
       const evOut = rooms.map((r) => `<div class="e">
         <div class="dot" style="background:${COVER_COLOUR[r.state]}"></div>
@@ -1644,7 +1896,7 @@ class HaivenPeople extends HaivenCard {
  *
  * When nothing is live it names what IS being watched. "All clear" with
  * nothing behind it is indistinguishable from a monitoring system that has
- * quietly stopped running, which is exactly what happened here for 46 days.
+ * quietly stopped running.
  * --------------------------------------------------------------------- */
 
 const RANK = { critical: 0, warning: 1, info: 2 };
@@ -1917,8 +2169,305 @@ class HaivenNearest extends HaivenCard {
   }
 }
 
+/* ------------------------------- haiven-ask ----------------------------
+ * Chat over the Haiven data, from the haiven_chat integration. Read-only: the
+ * integration has no way to change anything, so there are no controls here.
+ * Admins only, because the websocket commands are; the entry in More is
+ * hidden from everyone else.
+ *
+ * Replies are plain text with **bold**, "- " lists, markdown tables, "! " data
+ * issues and [[chart:ID]] lines.
+ * Chart data comes from the server by id and never passes through the model,
+ * so a figure on a chart cannot be one the model made up.
+ *
+ * Conversation state lives on the element, so HA repainting the card on a
+ * state change must not rebuild it: signature() is constant. The box you type
+ * in lives on document.body, like the nav, because a fixed element inside a
+ * sections grid takes a grid slot.
+ * --------------------------------------------------------------------- */
+const ASK_STARTERS = [
+  "How have night bathroom visits changed over the past year?",
+  "Are they getting up at a different time to last winter?",
+  "What time of day are they most active?",
+];
+const ASK_ERRORS = {
+  rate_limited: "Too many questions in a minute. Try again shortly.",
+  busy: "Still answering. Try again when it finishes.",
+  budget_exhausted: "This month's Ask budget is used up.",
+  no_api_key: "The Anthropic key is missing.",
+  overloaded: "Claude is busy. Try again.",
+};
+
+function askInline(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"); }
+
+function askClock(m) {
+  const x = ((Math.round(m) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(x / 60)).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`;
+}
+
+const ASK_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function askLabel(key, short) {
+  let m = String(key).match(/^(\d{4})-(\d\d)-(\d\d)$/);
+  if (m) return short ? String(+m[3]) : `${+m[3]} ${ASK_MONTHS[+m[2] - 1]}`;
+  m = String(key).match(/^(\d{4})-(\d\d)$/);
+  if (m) return short ? ASK_MONTHS[+m[2] - 1] : `${ASK_MONTHS[+m[2] - 1]} ${m[1].slice(2)}`;
+  return String(key);
+}
+
+function askChart(d, marked = []) {
+  const pts = d.points || [];
+  const has = (p) => p.value !== null && p.value !== undefined;
+  const vals = pts.filter(has).map((p) => p.value);
+  const row = (base, spark, value, sub, extra = "") => `<div class="chart" role="img" aria-label="${esc(d.name)}, ${pts.length} points">
+    <div class="top"><div class="l"><div class="lab">${esc(d.name)}</div><div class="base">${esc(base)}</div></div>
+      ${spark}<div class="r"><div class="v mono ${value === DASH ? "none" : ""}">${esc(value)}</div><div class="d">${esc(sub)}</div></div></div>${extra}</div>`;
+  if (!vals.length) return row("no data for this period", "", DASH, "");
+  const time = d.unit === "time", n = pts.length;
+  const fmt = (v) => (time ? askClock(v) : Math.round(v * 10) / 10);
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const top = Math.max(...vals), low = Math.min(...vals);
+  const span = `${askLabel(pts[0].start)} to ${askLabel(pts[n - 1].start)}`;
+
+  if (!time && ["hour", "weekday"].includes(d.period)) {
+    // A pattern has no latest value, so the figure is the peak. Same bars as
+    // the drift accumulator.
+    const W = 300, H = 56, P = 4, bw = (W - 2 * P) / n;
+    const y = (v) => H - P - (H - 2 * P) * v / (top || 1);
+    const peak = pts.find((p) => p.value === top);
+    return row(`average ${fmt(mean)}`, "", fmt(top), `peak, ${d.period === "hour" ? `${peak.start}:00` : peak.start}`, `
+      <svg class="acc" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="0" x2="${W}" y1="${H - P}" y2="${H - P}" stroke="var(--line)" stroke-width="1"/>
+        ${pts.map((p, i) => (has(p) ? `<rect x="${(P + i * bw + 1).toFixed(1)}" y="${y(p.value).toFixed(1)}" width="${Math.max(bw - 2, 1).toFixed(1)}" height="${(H - P - y(p.value)).toFixed(1)}" fill="var(--accent)"/>` : "")).join("")}
+      </svg>
+      <div class="k mono"><span>${esc(pts[0].start)}</span><span>${esc(pts[n - 1].start)}</span></div>`);
+  }
+
+  const spread = Math.sqrt(vals.reduce((t, v) => t + (v - mean) ** 2, 0) / vals.length);
+  const lastPt = [...pts].reverse().find(has);
+  // Up to 14 values fit as a grid under the row, which is what makes the
+  // sparkline readable as numbers. Beyond that the row carries low and high.
+  const flagged = pts.some((p) => marked.includes(p.start));
+  const extra = n <= 14
+    ? `<div class="cells">${pts.map((p) => `<div class="c ${has(p) && p.value === top && !time ? "pk" : ""}">
+        <span class="n mono">${marked.includes(p.start) ? "○ " : ""}${has(p) ? fmt(p.value) : DASH}</span>
+        <span class="dt">${esc(askLabel(p.start))}</span></div>`).join("")}</div>
+      ${flagged ? `<div class="k"><span>○ see the note</span></div>` : ""}`
+    : `<div class="k mono"><span>low ${fmt(low)}</span><span>high ${fmt(top)}</span></div>`;
+  return row(n <= 14 ? `average ${fmt(mean)}` : `average ${fmt(mean)}, ${span}`,
+    sparkSvg(pts.map((p) => (has(p) ? p.value : null)), { usual: mean, sd: spread }),
+    fmt(lastPt.value), `latest, ${askLabel(lastPt.start)}`, extra);
+}
+
+function askTable(rows) {
+  const cells = rows.map((r) => r.replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+  const body = cells.filter((c) => !c.every((x) => /^:?-+:?$/.test(x)));
+  if (!body.length) return "";
+  const [head, ...data] = body;
+  // A column of figures reads down its right edge; words stay left.
+  const figures = head.map((_, i) => data.length > 0 && data.every((r) => /^[\d.:,%+\-–—\s]*$/.test(r[i] || "")));
+  const td = (t, i, tag) => `<${tag}${figures[i] ? ' class="n mono"' : ""}>${askInline(t || "")}</${tag}>`;
+  return `<div class="tw"><table><thead><tr>${head.map((c, i) => td(c, i, "th")).join("")}</tr></thead>
+    <tbody>${data.map((r) => `<tr>${head.map((_, i) => td(r[i], i, "td")).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+class HaivenAsk extends HaivenCard {
+  constructor() {
+    super();
+    this._msgs = [];
+    this._series = {};
+    this._busy = false;
+    this._mode = "checking";
+  }
+  signature() { return "ask"; }
+  connectedCallback() { if (this._mode === "ready") this._mountComposer(); }
+  disconnectedCallback() {
+    if (this._busy) this._stop();
+    this._composer?.remove();
+  }
+
+  get css() {
+    return `
+      .wrap{display:flex;flex-direction:column;gap:12px}
+      #log{padding-bottom:76px}
+      #log>*{scroll-margin-bottom:150px}
+      .intro{font-size:14px;line-height:1.45;color:var(--muted);margin:0}
+      .start{display:flex;flex-direction:column;gap:6px}
+      .start button{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;
+                    font-size:14px;text-align:left;padding:11px 12px;cursor:pointer;min-height:44px}
+      .u{align-self:flex-end;max-width:85%;background:var(--surface-2);color:var(--ink);
+         padding:9px 12px;font-size:15px;line-height:1.4;white-space:pre-wrap}
+      .a{font-size:15px;line-height:1.5;color:var(--ink)}
+      .a p{margin:0 0 10px}.a ul{margin:0 0 10px;padding-left:18px}
+      .state{font-size:13px;color:var(--faint)}
+      .note{font-size:13px;color:var(--crit)}
+      .cost{font-size:11px;color:var(--faint)}
+      .issue{background:var(--warn-wash);border-left:3px solid var(--warn);padding:9px 12px;
+             margin:0 0 8px;font-size:14px;line-height:1.45}
+      .issue b{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+               color:var(--warn);font-weight:600;margin-bottom:2px}
+      .tw{overflow-x:auto;margin:0 0 10px}
+      table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--line);font-size:14px}
+      th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;
+         text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+      td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+      tr:last-child td{border-bottom:0}
+      th.n,td.n{text-align:right;white-space:nowrap}
+      .chart{background:var(--surface);border:1px solid var(--line);padding:12px 16px;margin:0 0 10px}
+      ${ROW_CSS}
+      .d{font-size:11.5px;color:var(--muted);margin-top:2px}
+      .acc{width:100%;height:56px;display:block;margin-top:10px}
+      .k{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint);margin-top:4px}
+      .cells{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px 4px;margin-top:10px;
+             padding-top:10px;border-top:1px dashed var(--line)}
+      .c{display:flex;flex-direction:column;gap:1px;min-width:0}
+      .c .n{font-size:15px;color:var(--ink)}
+      .c .dt{font-size:10.5px;color:var(--faint);white-space:nowrap}
+      .c.pk .n{color:var(--accent);font-weight:700}`;
+  }
+
+  // The bar's height varies with the phone's safe area, so it is measured.
+  _mountComposer() {
+    if (!this._composer) {
+      const el = (this._composer = document.createElement("div"));
+      el.attachShadow({ mode: "open" }).innerHTML = `<style>${THEME}
+        :host{position:fixed;left:0;right:0;z-index:5;background:var(--ground);border-top:1px solid var(--line)}
+        form{display:flex;gap:8px;max-width:600px;margin:0 auto;padding:8px 16px}
+        textarea{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+                 font:inherit;font-size:16px;padding:10px;resize:none;min-height:44px}
+        button{border:0;background:var(--accent);color:var(--on-status);font:inherit;font-size:14px;
+               font-weight:600;padding:0 14px;min-height:44px;min-width:60px;cursor:pointer}
+        textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+      </style><form><textarea rows="1" aria-label="Your question" placeholder="Ask about their routine"></textarea><button type="submit">Ask</button></form>`;
+      const f = el.shadowRoot.querySelector("form"), ta = f.querySelector("textarea");
+      f.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (this._busy) this._stop();
+        else { const t = ta.value.trim(); if (t) { ta.value = ""; this._send(t); } }
+      });
+      ta.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); f.requestSubmit(); }
+      });
+    }
+    this._composer.style.bottom = `${document.querySelector("haiven-nav")?.offsetHeight ?? 64}px`;
+    if (!this._composer.isConnected) document.body.appendChild(this._composer);
+    this._composer.shadowRoot.querySelector("button").textContent = this._busy ? "Stop" : "Ask";
+  }
+
+  render(hass) {
+    if (!hass.user?.is_admin) {
+      this._mode = "denied";
+    } else {
+      hass.connection.sendMessagePromise({ type: "haiven_chat/status" }).then(
+        () => { this._mode = "ready"; this._draw(); },
+        () => { this._mode = "off"; this._draw(); });
+    }
+    this.paint(`<div id="log"></div>`);
+    this._draw();
+  }
+
+  _draw() {
+    if (!this.shadowRoot) return;
+    const log = this.shadowRoot.getElementById("log");
+    if (this._mode !== "ready") {
+      log.innerHTML = `<p class="intro">${{
+        checking: "",
+        denied: "Ask is available to Haiven's administrators.",
+        off: "Ask isn't available. The Haiven Chat integration isn't running.",
+      }[this._mode]}</p>`;
+      return;
+    }
+    if (this.isConnected) this._mountComposer();
+    log.className = "wrap";
+    log.innerHTML = this._msgs.length ? this._msgs.map((m) => this._msgHtml(m)).join("") :
+      `<p class="intro">Ask about their routine, nights and movement. This reads what three sensors recorded. It can&#39;t see how they are, and it can't change anything.</p>
+       <div class="start">${ASK_STARTERS.map((q) => `<button>${esc(q)}</button>`).join("")}</div>`;
+    log.querySelectorAll(".start button").forEach((b) =>
+      b.addEventListener("click", () => this._send(b.textContent)));
+    if (this._busy) log.lastElementChild?.scrollIntoView?.({ block: "end" });
+  }
+
+  _msgHtml(m) {
+    if (m.role === "user") return `<div class="u">${esc(m.text)}</div>`;
+    const parts = [];
+    let list = [], rows = [];
+    const flush = () => {
+      if (list.length) { parts.push(`<ul>${list.join("")}</ul>`); list = []; }
+      if (rows.length) { parts.push(askTable(rows)); rows = []; }
+    };
+    for (const raw of m.text.split("\n")) {
+      const line = raw.trim();
+      if (line.startsWith("|")) { rows.push(line); continue; }
+      if (line.startsWith("- ")) { list.push(`<li>${askInline(line.slice(2))}</li>`); continue; }
+      flush();
+      const chart = line.match(/^\[\[chart:([\w-]+)(?:\|([\d,\s-]+))?\]\]$/);
+      if (chart) {
+        const d = this._series[chart[1]];
+        if (d) parts.push(askChart(d, (chart[2] || "").split(",").map((t) => t.trim())));
+        else if (d === undefined) { this._fetchSeries(chart[1]); parts.push(`<div class="state">Drawing chart</div>`); }
+      } else if (line.startsWith("! ")) {
+        parts.push(`<div class="issue"><b>Data issue</b>${askInline(line.slice(2))}</div>`);
+      } else if (line && !line.startsWith("[[")) parts.push(`<p>${askInline(line)}</p>`);
+    }
+    flush();
+    return `<div class="a">${parts.join("")}
+      ${m.tool ? `<div class="state">Reading the data</div>` : ""}
+      ${m.streaming && !m.text && !m.tool ? `<div class="state">Thinking</div>` : ""}
+      ${m.notice ? `<div class="note">${esc(m.notice)}</div>` : ""}
+      ${m.cost != null ? `<div class="cost mono">$${m.cost.toFixed(3)}</div>` : ""}</div>`;
+  }
+
+  _fetchSeries(id) {
+    this._series[id] = null;   // null: asked for, or failed; never ask twice
+    this._hass.connection.sendMessagePromise({ type: "haiven_chat/series", series_id: id }).then(
+      (d) => { this._series[id] = d; this._draw(); },
+      () => {});
+  }
+
+  _onEvent(e, m) {
+    if (e.type === "text") { m.text += e.delta; m.tool = false; }
+    else if (e.type === "tool") m.tool = true;
+    else if (e.type === "usage") m.cost = e.cost_usd;
+    else if (e.type === "refusal") { m.text = ""; m.notice = "That request was declined."; }
+    else if (e.type === "truncated") m.notice = "The reply was cut short. Try a narrower question.";
+    else if (e.type === "error") m.notice = ASK_ERRORS[e.code] || "Something went wrong. Try again.";
+    else if (e.type === "done") { m.streaming = false; m.tool = false; this._busy = false; this._cancel = null; }
+    this._draw();
+  }
+
+  async _send(text) {
+    if (this._busy) return;
+    const history = [];
+    for (const m of this._msgs) {
+      if (m.role === "user") history.push({ role: "user", content: m.text });
+      else if (m.text && !m.notice) history.push({ role: "assistant", content: m.text });
+    }
+    history.push({ role: "user", content: text });
+    const reply = { role: "agent", text: "", streaming: true };
+    this._msgs.push({ role: "user", text }, reply);
+    this._busy = true;
+    this._draw();
+    try {
+      this._cancel = await this._hass.connection.subscribeMessage((e) => this._onEvent(e, reply),
+        { type: "haiven_chat/stream", messages: history });
+    } catch (err) {
+      reply.notice = ASK_ERRORS[err?.code] || "Couldn't start the reply.";
+      reply.streaming = false;
+      this._busy = false;
+      this._draw();
+    }
+  }
+
+  _stop() {
+    this._cancel?.();
+    this._cancel = null;
+    this._busy = false;
+    this._msgs.forEach((m) => { m.streaming = false; m.tool = false; });
+    if (this.isConnected) this._draw();
+  }
+}
+
 /* ------------------------------- haiven-nav -----------------------------
- * The bottom bar, same idea as Willow Bank's wb2-nav. Home Assistant puts its
+ * The bottom bar. Home Assistant puts its
  * navigation in a top tab strip that is fine on a desktop and wrong on a
  * phone held one-handed: the tabs are at the far end of the screen from the
  * thumb, and there are only six of them.
@@ -1944,19 +2493,24 @@ const NAV_SVG = {
   circle:   '<svg viewBox="0 0 24 24"><path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m-6 .5a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5m12 0a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5M12 13.5c-2.7 0-6 1.34-6 3.5V19h12v-2c0-2.16-3.3-3.5-6-3.5M4.5 14C2.7 14.3 0 15.5 0 17.2V19h4.5v-2c0-1.1.5-2.1 1.3-2.8-.4-.1-.9-.2-1.3-.2m15 0c-.4 0-.9.1-1.3.2.8.7 1.3 1.7 1.3 2.8v2H24v-1.8c0-1.7-2.7-2.9-4.5-3.2Z"/></svg>',
   sensors:  '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20m0 3.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>',
   settings: '<svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5m7.43-2.53q.07-.48.07-.97t-.07-1l2.11-1.63a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.37-2.65A.51.51 0 0 0 14 2h-4a.51.51 0 0 0-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L4.57 11q-.07.5-.07 1t.07.97l-2.11 1.66a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65a.51.51 0 0 0 .5.42h4a.51.51 0 0 0 .5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01a.5.5 0 0 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64Z"/></svg>',
+  ask:      '<svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2L12 2Z"/></svg>',
   ha:       '<svg viewBox="0 0 24 24"><path d="M12 2 2 12h3v8h14v-8h3L12 2m0 5.2 4 4V18h-8v-6.8l4-4Z"/></svg>',
   more:     '<svg viewBox="0 0 24 24"><path d="M16 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0m-6 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0m-6 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z"/></svg>',
 };
 
+// `who` swaps a slot by role. Ask is admin-only, so an admin gets it in the bar
+// and finds Circle under More, while every carer keeps Circle in the bar.
 // Five in the bar, the rest behind More. The split is by how often a carer
 // actually taps them, not by how much work each screen took to build.
 const NAV_MAIN = [
   { p: "home",     i: "home",     l: "Home" },
   { p: "activity", i: "activity", l: "Activity" },
   { p: "alerts",   i: "alerts",   l: "Alerts" },
-  { p: "circles",  i: "circle",   l: "Circle" },
+  { p: "ask",      i: "ask",      l: "Ask", who: "admin" },
+  { p: "circles",  i: "circle",   l: "Circle", who: "carer" },
 ];
 const NAV_MORE = [
+  { p: "circles",  i: "circle",   l: "Circle", who: "admin" },
   { p: "sensors",  i: "sensors",  l: "Sensors" },
   { p: "settings", i: "settings", l: "Settings" },
   { p: "config/dashboard", i: "ha", l: "Home Assistant", ext: true },
@@ -1975,6 +2529,12 @@ class HaivenNav extends HTMLElement {
     window.addEventListener("location-changed", this._onLoc);
     window.addEventListener("popstate", this._onLoc);
     this._sync();
+    // The bar mounts before Home Assistant has logged the user in.
+    let tries = 0;
+    const wait = setInterval(() => {
+      const known = document.querySelector("home-assistant")?.hass?.user;
+      if (known || ++tries > 60) { clearInterval(wait); this._sync(); }
+    }, 500);
   }
 
   disconnectedCallback() {
@@ -2004,7 +2564,12 @@ class HaivenNav extends HTMLElement {
     const cur = this._cur();
     this.shadowRoot.querySelectorAll("[data-p]").forEach((b) =>
       b.classList.toggle("cur", b.dataset.p === cur));
-    const inMore = NAV_MORE.some((m) => m.p === cur);
+    // Hidden, not absent: the user isn't known yet when the bar is first built.
+    const admin = document.querySelector("home-assistant")?.hass?.user?.is_admin === true;
+    const shown = (m) => !m.who || m.who === (admin ? "admin" : "carer");
+    NAV_MAIN.forEach((m) => { this.shadowRoot.querySelector(`nav [data-p="${m.p}"]`).hidden = !shown(m); });
+    NAV_MORE.forEach((m) => { this.shadowRoot.querySelector(`.sub [data-p="${m.p}"]`).hidden = !shown(m); });
+    const inMore = NAV_MORE.some((m) => m.p === cur && shown(m));
     this.shadowRoot.querySelector(".more").classList.toggle("cur", inMore || this._open);
     this.shadowRoot.querySelector(".sub").classList.toggle("open", this._open);
   }
@@ -2021,6 +2586,7 @@ class HaivenNav extends HTMLElement {
       .sub button{display:flex;align-items:center;gap:10px;text-align:left;border:0;
                   background:transparent;color:var(--ink);font:inherit;font-size:14px;
                   font-weight:600;padding:11px 12px;cursor:pointer}
+      .sub button[hidden]{display:none}
       .sub button:hover{background:var(--surface-2)}
       .sub button.cur{color:var(--accent)}
       .sub button span{width:19px;height:19px;flex:none;color:var(--muted)}
@@ -2032,6 +2598,7 @@ class HaivenNav extends HTMLElement {
                  flex-direction:column;align-items:center;gap:3px;font:inherit;font-size:10.5px;
                  font-weight:600;letter-spacing:.02em;padding:4px 6px;cursor:pointer;
                  min-width:56px;min-height:48px}
+      nav button[hidden]{display:none}
       nav button .g{width:23px;height:23px}
       nav button .g svg{width:100%;height:100%;fill:currentColor;display:block}
       nav button.cur{color:var(--accent)}
@@ -2118,6 +2685,8 @@ define("haiven-ribbon",  HaivenRibbon);
 define("haiven-compare", HaivenCompare);
 define("haiven-drift",   HaivenDrift);
 define("haiven-movement", HaivenMovement);
+define("haiven-today",   HaivenToday);
+define("haiven-routine-strip", HaivenRoutineStrip);
 define("haiven-where",   HaivenWhere);
 define("haiven-devices", HaivenDevices);
 define("haiven-people",  HaivenPeople);
@@ -2125,6 +2694,7 @@ define("haiven-alerts",  HaivenAlerts);
 define("haiven-actions", HaivenActions);
 define("haiven-rows",    HaivenRows);
 define("haiven-nearest", HaivenNearest);
+define("haiven-ask",     HaivenAsk);
 define("haiven-nav",     HaivenNav);
 
 window.customCards = window.customCards || [];
@@ -2138,6 +2708,8 @@ window.customCards.push(
   { type: "haiven-compare", name: "Haiven Compare", description: "Today against her own baseline" },
   { type: "haiven-drift",   name: "Haiven Drift",   description: "A month of nights against a frozen baseline" },
   { type: "haiven-movement", name: "Haiven Movement", description: "Today's all-room trigger count against a 7-day average by now" },
+  { type: "haiven-today",   name: "Haiven Today",   description: "Routine verdict above Movement, one card" },
+  { type: "haiven-routine-strip", name: "Haiven Routine Strip", description: "Last 30 days of routine verdicts, tap for detail" },
   { type: "haiven-where",   name: "Haiven Where",   description: "Triangulated room with confidence" },
   { type: "haiven-devices", name: "Haiven Devices", description: "Sensor health and what stops working without it" },
   { type: "haiven-people",  name: "Haiven People",  description: "Care circle with position freshness" },
@@ -2145,10 +2717,11 @@ window.customCards.push(
   { type: "haiven-actions", name: "Haiven Actions", description: "Buttons that call a service" },
   { type: "haiven-rows",    name: "Haiven Rows",    description: "Entity list, tap for more-info" },
   { type: "haiven-nearest", name: "Haiven Nearest", description: "Closest carers, freshness included" },
+  { type: "haiven-ask",     name: "Haiven Ask",     description: "Read-only chat over the Haiven data, admins only" },
 );
 
 // The bar is not a card and is never placed in a view; it mounts itself.
 if (document.body) mountNav();
 else document.addEventListener("DOMContentLoaded", mountNav);
 
-console.info("%c HAIVEN-CARDS %c v6 ", "background:#1F5459;color:#fff", "background:#EFEBE4;color:#1A1815");
+console.info("%c HAIVEN-CARDS %c v11 ", "background:#1F5459;color:#fff", "background:#EFEBE4;color:#1A1815");

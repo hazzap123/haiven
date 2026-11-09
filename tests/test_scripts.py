@@ -18,6 +18,12 @@ import drift_stats  # noqa: E402
 import movement_today  # noqa: E402
 import night_stats  # noqa: E402
 
+# Read from the source, not the module: night_stats takes its log path from
+# argv[1] at import and the other scripts' main() repoints it, so the live
+# value depends on which test file imported it first and what ran before.
+NIGHT_STATS_DEFAULT_LOG = re.search(
+    r'^LOG = .* else "([^"]+)"$', (ROOT / "scripts" / "night_stats.py").read_text(), re.M).group(1)
+
 
 def _written_log_path():
     """The file shell_command.log_activity appends to."""
@@ -33,7 +39,7 @@ class TestLogPath:
         assert _written_log_path() == "/config/activity.log"
 
     def test_night_stats_reads_it(self):
-        assert night_stats.LOG == _written_log_path()
+        assert NIGHT_STATS_DEFAULT_LOG == _written_log_path()
 
     def test_drift_stats_reads_it(self):
         assert drift_stats.LOG_FILE == _written_log_path()

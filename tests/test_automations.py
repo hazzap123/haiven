@@ -51,7 +51,7 @@ def mock_states():
         'input_boolean.haiven_monitoring_enabled': 'on',
         'input_boolean.manual_safe_status': 'off',
         'input_boolean.bathroom_occupied_night': 'off',
-        'input_text.elderly_person_name': 'Mum',
+        'input_text.elderly_person_name': 'Mary',
         'sensor.deviation_count': '0',
         'sensor.last_activity_display': 'Kitchen 10 mins ago',
     }
@@ -628,3 +628,73 @@ class TestOvernightNoise:
         choose = next(s for s in self._auto(automations, 'haiven_new_sensors_health_check')['actions']
                       if 'choose' in s)
         assert all(s.get('action') != 'script.send_haiven_notification' for s in choose['default'])
+
+
+class TestArrivalCountsAsActivity:
+    """Coming home is activity. Without it, a two-hour trip out reads as two
+    hours of silence the moment the person walks back in, scores as an
+    inactivity gap plus a room transition timeout, and pushes "Needs
+    Attention" while they are standing in the kitchen."""
+
+    SENSORS_PATH = Path(__file__).parent.parent / "haiven_sensors_3sensor.yaml"
+
+    def _sensors(self):
+        with open(self.SENSORS_PATH) as f:
+            text = f.read()
+        return text, yaml.safe_load(text)
+
+    def test_arrival_records_the_time(self, automations):
+        auto = next(a for a in automations if a['id'] == 'haiven_log_person_location')
+        steps = auto['actions'] + [s for a in auto['actions'] for s in a.get('then', [])]
+        sets = [s for s in steps
+                if s.get('action') == 'input_datetime.set_datetime'
+                and s.get('target', {}).get('entity_id') == 'input_datetime.arrived_home']
+        assert len(sets) == 1
+        assert "trigger.to_state.state == 'home'" in str(auto['actions'])
+
+    def test_every_inactivity_gap_includes_arrival(self):
+        text, _ = self._sensors()
+        gaps = text.count("{% set bathroom_mins = states('sensor.minutes_since_bathroom_activity') | int(9999) %}")
+        arrivals = text.count("{% set arrived_mins = states('sensor.minutes_since_arrived_home') | int(9999) %}")
+        assert gaps == 4
+        assert arrivals == gaps
+        assert text.count("[kitchen_mins, bedroom_mins, bathroom_mins, arrived_mins] | min") == gaps
+
+    def test_minutes_since_arrival_renders(self, jinja_env):
+        _, data = self._sensors()
+        sensor = next(s for block in data['template'] for s in block.get('sensor', [])
+                      if s.get('unique_id') == 'minutes_since_arrived_home')
+        now_ts = 1_000_000.0
+        now = MagicMock(); now.timestamp.return_value = now_ts
+        render = lambda ts: jinja_env.from_string(sensor['state']).render(
+            state_attr=lambda e, a: ts if e == 'input_datetime.arrived_home' else None,
+            now=lambda: now).strip()
+        assert render(now_ts - 120) == '2'
+        assert render(None) == 'unknown'
+
+    def test_no_activity_alert_counts_arrival(self, automations, jinja_env):
+        auto = next(a for a in automations if a['id'] == 'haiven_no_activity_alert')
+        tpl = next(c['value_template'] for c in auto['conditions']
+                   if c.get('alias') == 'No activity for threshold hours')
+        def render(hours, arrived_mins):
+            vals = {'input_number.no_activity_alert_hours': '3',
+                    'sensor.minutes_since_arrived_home': arrived_mins}
+            return jinja_env.from_string(tpl).render(
+                states=lambda e: vals.get(e, 'unknown'),
+                state_attr=lambda e, a: hours).strip()
+        assert render(4.0, '5') == 'False'
+        assert render(4.0, '300') == 'True'
+        assert render(4.0, 'unknown') == 'True'
+
+    def test_phone_flap_is_not_an_arrival(self, automations, jinja_env):
+        """A GPS flap while the person is indoors must not reset the silence clock."""
+        auto = next(a for a in automations if a['id'] == 'haiven_log_person_location')
+        tpl = next(a for a in auto['actions'] if 'if' in a)['if'][0]['value_template']
+        t0 = datetime(2026, 1, 1, 10, 0)
+        def render(away_mins, frm='not_home'):
+            trig = {'from_state': MagicMock(state=frm, last_changed=t0),
+                    'to_state': MagicMock(state='home', last_changed=t0 + timedelta(minutes=away_mins))}
+            return jinja_env.from_string(tpl).render(trigger=trig).strip()
+        assert render(120) == 'True'
+        assert render(3) == 'False'
+        assert render(120, frm='unavailable') == 'False'

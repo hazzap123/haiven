@@ -1,0 +1,12 @@
+{
+  "domain": "haiven_chat",
+  "name": "Haiven Chat",
+  "version": "0.1.0",
+  "codeowners": [],
+  "config_flow": true,
+  "single_config_entry": true,
+  "integration_type": "service",
+  "iot_class": "cloud_push",
+  "dependencies": ["http", "websocket_api"],
+  "requirements": []
+}

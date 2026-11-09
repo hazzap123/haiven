@@ -10,15 +10,15 @@ produces tonight's count.
 Rules (all from the log, all local time):
   window   16:00 -> 12:00 next day
   bedtime  first bathroom-on after 16:00 with no kitchen motion in the next
-           120 min and bedroom presence within 60 min. Coffee-and-reading
-           trips to the bedroom in the evening fail the kitchen test. When
-           no bathroom visit qualifies (dogs on the Ring all evening), the
+           120 min and bedroom presence within 60 min. Short evening trips
+           to the bedroom fail the kitchen test. When
+           no bathroom visit qualifies (pets setting off the kitchen sensor all evening), the
            kitchen motion that opens the longest kitchen silence of the
            night stands in for it, if that silence is at least 120 min.
   skipped  a night with no bathroom or no bedroom events at all is a night
            the sensor was down, not a night with nothing in it.
   wake     first kitchen motion after 03:00 that has at least three kitchen
-           events within 30 min. A lone dog trigger at 03:30 does not count.
+           events within 30 min. A lone pet trigger in the small hours does not count.
   visits   bathroom on-events between bedtime and wake, grouped with a 15 min
            gap (the PIR fires several times per visit), minus the settling
            visit (<= 30 min after bedtime) and the rising visit (<= 30 min
@@ -40,7 +40,7 @@ LOG = sys.argv[1] if len(sys.argv) > 1 else "/config/activity.log"
 LINE = re.compile(
     r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \w+ "
     r"(Kitchen Motion|Bedroom Presence|Bathroom Motion)(?: \((on|off)\))?"
-)   # lines before Nov 2025 carry no state; each one was an "on"
+)   # early log lines carry no state; each one was an "on"
 MIN = dt.timedelta(minutes=1)
 
 
@@ -175,7 +175,7 @@ def main():
     trips14 = round(statistics.mean(n["trips"] for n in last14), 1) if last14 else None
 
     # Sustained rise: the last three completed nights against the fourteen
-    # before them. Fired 4 times in 203 recorded nights (Nov 2025 - Aug 2026).
+    # before them. Rare on real data: a few times a year.
     last3 = completed[-3:]
     base = completed[-17:-3]
     rising = False

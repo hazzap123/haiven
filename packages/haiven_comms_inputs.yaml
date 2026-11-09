@@ -42,3 +42,14 @@ input_text:
     max: 255
     mode: text
     icon: mdi:note-edit
+
+input_datetime:
+  # When her phone last arrived home. Walking in the door is activity: without
+  # this, a two-hour trip out reads as two hours of silence the moment she gets
+  # back and pushes "Needs Attention". Set by the location log automation; no
+  # `initial:`, so a restart does not reset the clock.
+  arrived_home:
+    name: Arrived Home
+    has_date: true
+    has_time: true
+    icon: mdi:home-import-outline

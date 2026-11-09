@@ -53,9 +53,20 @@ template:
           {% set l = state_attr('sensor.night_stats', 'last3') %}
           {{ ((l | sum) / 3) | round(1) }}
 
+      # Bathroom visits: tonight while it is in progress, else last night.
+      # One figure for the dashboard, the AI summary, the visits-high flag and
+      # Ask, so they all match Patterns.
+      - name: "Night Bathroom Visits"
+        unique_id: night_bathroom_visits
+        icon: mdi:toilet
+        availability: "{{ (state_attr('sensor.night_stats', 'tonight') or state_attr('sensor.night_stats', 'last')) is not none }}"
+        state: >
+          {% set n = state_attr('sensor.night_stats', 'tonight') or state_attr('sensor.night_stats', 'last') %}
+          {{ n.visits }}
+
       # Downstairs trips in the night: tonight while it is in progress, else
       # last night. Kitchen motion between bedtime+30 min and wake-30 min,
-      # grouped 15 min. Dogs can register here, so this is a pattern
+      # grouped 15 min. Pets can register here, so this is a pattern
       # number, not an alarm.
       - name: "Night Downstairs Trips"
         unique_id: night_downstairs_trips
@@ -92,8 +103,8 @@ template:
           nights_counted: "{{ state_attr('sensor.night_stats', 'n14') }}"
 
       # Rising = last 3 completed nights average at least 1.5 visits above
-      # the 14 nights before them, and at least 3. Fired 4 times in 203
-      # recorded nights. A sustained rise in night bathroom visits is
+      # the 14 nights before them, and at least 3. Rare on real
+      # data. A sustained rise in night bathroom visits is
       # non-specific (drinks, sleep, infection) - it is a prompt to ask
       # how she is, not a diagnosis.
       - name: "Bathroom Night Trend"

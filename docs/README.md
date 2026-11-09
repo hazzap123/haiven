@@ -82,12 +82,14 @@ Five levels, not three — see [STATUS_SPEC](reference/STATUS_SPEC.md) for the f
 | `packages/haiven_drift.yaml` | Drift Watch: a month of nights against a frozen baseline |
 | `packages/haiven_night_insights.yaml` | Nightly bathroom-visit and downstairs-trip stats |
 | `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
+| `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
 | `haiven_sensors_3sensor.yaml` | Core template sensors (status, scoring, timing) |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Notification scripts |
 | `automations.yaml` | Monitoring automations |
 | `www-src/haiven-cards.js` | Dashboard card library — deployed to `www/` by `scripts/setup.sh` |
 | `lovelace/haiven_default.yaml` | The dashboard itself |
+| `ha_integrations/haiven_chat/` | Ask: optional read-only chat, see [setup/ASK.md](setup/ASK.md) |
 
 ---
 
