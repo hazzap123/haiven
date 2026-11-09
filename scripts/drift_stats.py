@@ -17,11 +17,10 @@ Charts
           fired on isolated single nights.
   wake    first stirring: the first kitchen motion after 04:00 with a
           second within 10 min, minutes after midnight. Not night_stats'
-          "wake" (three events in 30 min), which reads 07:15 on a third of
-          mornings because an early kitchen visit is often two events and
-          then quiet until she comes down properly; that flips modes for a
-          week at a time and looks like a change when nothing changed. On
-          the same log first-stirring is 05:01 with a 9-minute spread.
+          "wake" (three events in 30 min), which can read hours late when
+          an early kitchen visit is only two events followed by a quiet
+          spell; that flips modes for a week at a time and looks like a
+          change when nothing changed. First stirring is far steadier.
           One-sided Gaussian CUSUM for LATER stirring, k = 0.5, h = 5,
           sigma floored at 15 min. Each morning's z is capped at 3, so one
           06:30 cannot trip it on its own; the acute morning check already

@@ -1896,7 +1896,7 @@ class HaivenPeople extends HaivenCard {
  *
  * When nothing is live it names what IS being watched. "All clear" with
  * nothing behind it is indistinguishable from a monitoring system that has
- * quietly stopped running, which is exactly what happened here for 46 days.
+ * quietly stopped running.
  * --------------------------------------------------------------------- */
 
 const RANK = { critical: 0, warning: 1, info: 2 };

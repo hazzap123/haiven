@@ -695,6 +695,6 @@ class TestArrivalCountsAsActivity:
             trig = {'from_state': MagicMock(state=frm, last_changed=t0),
                     'to_state': MagicMock(state='home', last_changed=t0 + timedelta(minutes=away_mins))}
             return jinja_env.from_string(tpl).render(trigger=trig).strip()
-        assert render(116) == 'True'
+        assert render(120) == 'True'
         assert render(3) == 'False'
-        assert render(116, frm='unavailable') == 'False'
+        assert render(120, frm='unavailable') == 'False'

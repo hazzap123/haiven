@@ -29,8 +29,8 @@ activity = _load("activity")
 policy = _load("policy")
 
 LOG = """\
-2025-10-21 17:31:38 TEST - Manual test entry
-2025-10-21 19:32:15 INFO Bedroom Presence | 19:32:15 | Tuesday
+2026-01-05 12:00:00 TEST - Manual test entry
+2026-01-05 20:00:00 INFO Bedroom Presence | 20:00:00 | Monday
 2026-11-02 06:00:00 INFO Kitchen Motion (on) | 06:00:00 | Monday
 2026-11-02 06:00:30 INFO Kitchen Motion (off) | 06:00:30 | Monday
 2026-11-02 07:10:00 INFO Kitchen Motion (on) | 07:10:00 | Monday
@@ -102,7 +102,7 @@ def test_bedtime_after_midnight_shows_the_clock_time():
 
 def test_month_average_leaves_out_away_days():
     days = [day("2026-10-01", visits=1), day("2026-10-02", visits=3),
-            day("2026-10-03", verdict="away", visits=9)]
+            day("2026-10-05", verdict="away", visits=9)]
     row = activity.daily_history(days, "2026-10-01", "2026-10-31", "month")["rows"][0]
     assert row["visits"] == 2.0 and row["days"] == 3 and row["days_averaged"] == 2
 

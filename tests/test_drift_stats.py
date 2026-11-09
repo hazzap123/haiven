@@ -113,11 +113,11 @@ def test_reset_refreezes_baseline_and_goes_learning():
     assert r["days_learned"] == 3              # nights of 5, 6, 7 Feb
 
 
-def test_visits_does_not_trip_on_real_replay_shape():
-    # Realistic: mean 2.3, occasional 4s and 0s, 120 nights
+def test_visits_does_not_trip_on_a_steady_pattern():
+    # A plausible steady pattern: a couple of visits most nights, 120 nights
     import random
     random.seed(1)
-    vals = [min(6, max(0, round(random.gauss(2.3, 0.9)))) for _ in range(120)]
+    vals = [min(6, max(0, round(random.gauss(2.0, 0.9)))) for _ in range(120)]
     r = ds.compute_chart("visits", nights(vals), {"frozen_from": "2026-01-01"}, TODAY)
     assert r["state"] != "changed"
 
@@ -279,10 +279,10 @@ def test_activity_single_dead_day_only_watches():
     assert r["state"] != "changed"
 
 
-def test_activity_replay_shape_from_the_real_log_does_not_trip():
+def test_activity_does_not_trip_on_a_steady_pattern():
     import random
     random.seed(3)
-    vals = [max(0, round(random.gauss(138, 26))) for _ in range(120)]
+    vals = [max(0, round(random.gauss(150, 30))) for _ in range(120)]
     r = ds.compute_chart("activity", days(vals), {"frozen_from": "2026-01-01"}, TODAY)
     assert r["state"] != "changed"
 
@@ -290,18 +290,18 @@ def test_activity_replay_shape_from_the_real_log_does_not_trip():
 def test_load_away_pairs_left_with_the_next_arrival(tmp_path):
     log = tmp_path / "log"
     log.write_text(
-        "2026-09-16 09:37:51 INFO Mary Smith Location (arrived home) | 09:37:51 | Wednesday\n"   # no open left: ignored
-        "2026-09-16 13:29:28 INFO Mary Smith Location (left home) | 13:29:28 | Wednesday\n"
-        "2026-09-16 13:31:07 INFO Mary Smith Location (arrived home) | 13:31:07 | Wednesday\n"
-        "2026-09-16 13:31:47 INFO Mary Smith Location (left home) | 13:31:47 | Wednesday\n"
-        "2026-09-16 13:40:00 INFO Mary Smith Location (left home) | 13:40:00 | Wednesday\n"      # repeat left: first stands
-        "2026-09-16 15:23:49 INFO Mary Smith Location (arrived home) | 15:23:49 | Wednesday\n"
+        "2026-09-16 09:00:00 INFO Mary Smith Location (arrived home) | 09:00:00 | Wednesday\n"   # no open left: ignored
+        "2026-09-16 11:00:00 INFO Mary Smith Location (left home) | 11:00:00 | Wednesday\n"
+        "2026-09-16 11:05:00 INFO Mary Smith Location (arrived home) | 11:05:00 | Wednesday\n"
+        "2026-09-16 11:10:00 INFO Mary Smith Location (left home) | 11:10:00 | Wednesday\n"
+        "2026-09-16 11:20:00 INFO Mary Smith Location (left home) | 11:20:00 | Wednesday\n"      # repeat left: first stands
+        "2026-09-16 14:00:00 INFO Mary Smith Location (arrived home) | 14:00:00 | Wednesday\n"
         "2026-09-16 18:00:00 INFO Mary Smith Location (left home) | 18:00:00 | Wednesday\n"      # still out
         "2026-09-16 18:05:00 INFO Kitchen Motion (on) | 18:05:00 | Wednesday\n"
     )
     away = ds.load_away(str(log))
     t = lambda h, m, s=0: dt.datetime(2026, 9, 16, h, m, s)
-    assert away == [(t(13, 29, 28), t(13, 31, 7)), (t(13, 31, 47), t(15, 23, 49)), (t(18, 0), None)]
+    assert away == [(t(11, 0), t(11, 5)), (t(11, 10), t(14, 0)), (t(18, 0), None)]
 
 
 def test_day_activity_counts_the_window_and_marks_away_days_incomplete():

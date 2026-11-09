@@ -103,8 +103,8 @@ template:
           nights_counted: "{{ state_attr('sensor.night_stats', 'n14') }}"
 
       # Rising = last 3 completed nights average at least 1.5 visits above
-      # the 14 nights before them, and at least 3. Fired 4 times in 203
-      # recorded nights. A sustained rise in night bathroom visits is
+      # the 14 nights before them, and at least 3. Rare on real
+      # data. A sustained rise in night bathroom visits is
       # non-specific (drinks, sleep, infection) - it is a prompt to ask
       # how she is, not a diagnosis.
       - name: "Bathroom Night Trend"

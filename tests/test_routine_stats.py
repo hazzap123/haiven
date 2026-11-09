@@ -127,7 +127,7 @@ def test_about_wording():
 def test_before_she_stirs_says_so_not_short_of_history():
     """From 00:01 until she stirs there is nothing to judge yet. With 28 days
     of history behind it the card said "Not enough history yet to judge"
-    every night (checkpoint 3 Oct 2026)."""
+    every night."""
     now = dt.datetime.combine(DAY, dt.time(2, 30))
     j = rs.judge(raw(DAY, complete=False, up=None, movement=0, bathroom=None), base(), [], now)
     assert j["verdict"] == "no_data"
