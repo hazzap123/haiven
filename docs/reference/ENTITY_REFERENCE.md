@@ -98,12 +98,29 @@ Raw stats come from `sensor.night_stats` (also excluded from the recorder):
 | `sensor.bathroom_night_visits_3n` | Average of the last 3 completed nights |
 | `sensor.night_downstairs_trips` / `_avg` | Tonight's (or last night's) downstairs trips, and the 14-night average |
 | `sensor.bathroom_night_trend` | "Rising" or "Steady" |
+| `sensor.night_bathroom_visits` | Tonight's (or last night's) bathroom visits. The one count the dashboard, the AI summary, the visits-high flag and Ask all read |
 
 ### Movement (`packages/haiven_movement.yaml`)
 
 | Entity ID | Purpose |
 |-----------|---------|
 | `sensor.movement_stats` | Raw stats (excluded from the recorder); `today` and `usual_by_now` attributes power the Home card's "Movement, all rooms" row |
+
+### Routine (`packages/haiven_routine.yaml`)
+
+Describes days; it never alerts. Needs 14 days of history before it judges a signal.
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `sensor.routine` | Today's verdict: "On track", "A little off", "Off track", "Away" or "Can't tell". The `why` attribute carries the reason |
+| `sensor.routine_stats` | Raw stats (excluded from the recorder); `today`, `days` and `counts` attributes power the Home "Routine" row and the Patterns 30-day strip |
+
+### Arrival (`haiven_sensors_3sensor.yaml`, `packages/haiven_comms_inputs.yaml`)
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `input_datetime.arrived_home` | When the person's phone last arrived home after 15 minutes or more away |
+| `sensor.minutes_since_arrived_home` | Minutes since then. Counts as activity in every inactivity gap, so a trip out does not read as silence on return |
 
 ---
 
@@ -223,6 +240,7 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 | `packages/haiven_drift.yaml` | Drift Watch sensors and alert |
 | `packages/haiven_night_insights.yaml` | Nightly bathroom-visit and downstairs-trip stats |
 | `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
+| `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
 | `haiven_sensors_3sensor.yaml` | Core template sensors |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Action scripts |

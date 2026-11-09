@@ -18,6 +18,7 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
   - Real-time tracking across rooms
   - Wake-up and bedtime detection
   - Extended inactivity alerts
+  - Routine: a daily verdict (On track, A little off, Off track) against her own last 28 days
   - Drift Watch: a month of nights against a baseline that doesn't move
   - Sensor coverage screen: what stops working when a sensor goes offline
 
@@ -84,6 +85,7 @@ packages/haiven_comms_inputs.yaml         <- Summary and alert text
 packages/haiven_drift.yaml                <- Drift Watch
 packages/haiven_night_insights.yaml       <- Nightly bathroom-visit stats
 packages/haiven_movement.yaml             <- Today's movement vs 7-day average
+packages/haiven_routine.yaml              <- Daily routine verdict
 haiven_sensors_3sensor.yaml               <- Core template sensors
 scripts.yaml                              <- Notification scripts
 automations.yaml                          <- Monitoring automations

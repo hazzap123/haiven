@@ -82,6 +82,7 @@ If the dashboard sidebar item is missing or opens with no cards, see [TROUBLESHO
 Most of what Haiven does is comparative — today against a rolling average, this month against a frozen baseline. Those numbers need real history before they mean anything:
 
 - **Daily comparisons** (wake time, kitchen activity) — usable within a day or two
+- **Routine** (the daily verdict) — needs 14 days before it judges; until then it shows "Can't tell"
 - **Drift Watch** (the slow-change layer) — needs 28 nights before it has a baseline to compare against; until then it shows "Learning"
 
 ---
@@ -91,7 +92,10 @@ Most of what Haiven does is comparative — today against a rolling average, thi
 - **Morning routine** — alert if no activity by expected wake time + variance
 - **All-day activity** — alert if nothing's moved for longer than your threshold
 - **Overnight bathroom visits** — count, trend, and how it compares to her usual
+- **Routine** — was today like her usual days? First stirring, movement and overnight bathroom visits against her own last 28 days. It describes; it never alerts
 - **Drift Watch** — a month of nights against a baseline that doesn't move, catching a change too gradual for any single day to flag
+
+Optional: [Ask](ASK.md), a read-only chat over the recorded data for admins.
 
 Full severity scoring: [STATUS_SPEC.md](../reference/STATUS_SPEC.md)
 

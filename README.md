@@ -7,13 +7,14 @@ THIS IS NOT A MEDICAL SYSTEM - it was built as a personal project, it's at best 
 ## What it does
 
 - Tracks wake time, bedtime, and room-to-room movement using 3 sensors
-- Calculates a daily activity score and 5-level status (normal to critical)
+- Gives a daily routine verdict (On track, A little off, Off track) against the person's own last 28 days, with the reason, alongside a 5-level safety status (normal to critical)
 - Sends AI-generated morning, afternoon, and evening summaries to carers
 - Alerts on missed wake times, prolonged inactivity, unusual bathroom visits, and more
 - Care circle tracking — knows which carer is nearest during an alert
 - Dashboard with live status, activity timeline, and weekly trends
 - Drift Watch: catches a routine sliding slowly over a month, the kind of change a day-to-day average can't see
 - Sensor coverage screen: shows exactly what stops working when a sensor goes offline, not just that it did
+- Ask (optional, admins only): a read-only chat over the recorded data, for questions such as "have night bathroom visits changed since the summer?"
 
 ## What you need
 
@@ -54,7 +55,7 @@ Then, in `/config`:
 3. Restart Home Assistant.
 4. Set the expected wake time, bedtime and thresholds on the dashboard's Settings screen (see the Quick Start). They have no defaults.
 
-See [docs/setup/QUICKSTART.md](docs/setup/QUICKSTART.md) for the full 30-minute setup guide.
+See [docs/setup/QUICKSTART.md](docs/setup/QUICKSTART.md) for the full 30-minute setup guide. Ask is a separate, optional install: see [docs/setup/ASK.md](docs/setup/ASK.md).
 
 ## Documentation
 
@@ -63,6 +64,7 @@ See [docs/setup/QUICKSTART.md](docs/setup/QUICKSTART.md) for the full 30-minute 
 | [Quick Start](docs/setup/QUICKSTART.md) | 30-minute fast path |
 | [Complete Setup](docs/setup/COMPLETE_SETUP.md) | Full installation guide |
 | [Care Circle](docs/setup/CARE_CIRCLE.md) | Contact and notification setup |
+| [Ask](docs/setup/ASK.md) | Optional read-only chat over the data: install, cost, privacy |
 | [Entity Reference](docs/reference/ENTITY_REFERENCE.md) | All entity IDs |
 | [Sensor Guides](docs/reference/SENSOR_GUIDES.md) | Hardware configuration |
 | [Troubleshooting](docs/reference/TROUBLESHOOTING.md) | Problem solving |
@@ -92,7 +94,9 @@ configuration.yaml               # Main config — includes all packages
 ├── scripts/                      # Python helpers the packages below shell out to
 │   ├── night_stats.py            # Rebuilds each night from the activity log
 │   ├── drift_stats.py            # Slow-drift detection over a month of nights
-│   └── movement_today.py         # Today's movement vs a 7-day average
+│   ├── movement_today.py         # Today's movement vs a 7-day average
+│   ├── routine_stats.py          # Daily routine verdict vs the last 28 days
+│   └── ask_days.py               # One row per day, for Ask
 ├── packages/
 │   ├── haiven_care_circle_inputs.yaml   # Contact configuration
 │   ├── haiven_monitoring_inputs.yaml    # Thresholds and state machines
@@ -101,15 +105,22 @@ configuration.yaml               # Main config — includes all packages
 │   ├── haiven_circle_tracking.yaml      # Care circle location sensors
 │   ├── haiven_drift.yaml                # Drift Watch: a month of nights vs a frozen baseline
 │   ├── haiven_night_insights.yaml       # Nightly bathroom-visit and downstairs-trip stats
-│   └── haiven_movement.yaml             # Today's all-room movement vs a 7-day average
+│   ├── haiven_movement.yaml             # Today's all-room movement vs a 7-day average
+│   └── haiven_routine.yaml              # Daily routine verdict and the 30-day strip
 ├── haiven_persons.yaml           # Person entities
 ├── haiven_zones.yaml             # Geographic zones
 ├── www-src/                      # Dashboard card source (deployed to www/ by setup.sh)
 │   ├── haiven-cards.js
 │   └── haiven-loader.js
-└── lovelace/
-    └── haiven_default.yaml       # Dashboard
+├── lovelace/
+│   └── haiven_default.yaml       # Dashboard
+└── ha_integrations/
+    └── haiven_chat/              # Ask: optional custom integration (copy to custom_components/)
 ```
+
+## Contributing
+
+Bug reports, sensor guides and fixes are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). The tests run without Home Assistant: `pip install pytest pyyaml && pytest`.
 
 ## Licence
 

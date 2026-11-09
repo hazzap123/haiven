@@ -18,6 +18,7 @@ homeassistant:
     haiven_drift: !include packages/haiven_drift.yaml
     haiven_night_insights: !include packages/haiven_night_insights.yaml
     haiven_movement: !include packages/haiven_movement.yaml
+    haiven_routine: !include packages/haiven_routine.yaml
  
 automation: !include automations.yaml
 script: !include scripts.yaml
@@ -68,7 +69,7 @@ template:
         unique_id: bathroom_night_visits_high
         device_class: problem
         state: >
-          {{ states('sensor.overnight_bathroom_count') | int(0) >
+          {{ states('sensor.night_bathroom_visits') | int(0) >
              states('input_number.bathroom_night_baseline_visits') | float(3) + 2 }}
 
       - name: "No Return From Bathroom (Possible Fall)"
@@ -152,7 +153,7 @@ template:
       - name: "Bathroom Night Visits Status"
         unique_id: bathroom_night_visits_status
         state: >
-          {% set count = states('sensor.overnight_bathroom_count')|int(0) %}
+          {% set count = states('sensor.night_bathroom_visits')|int(0) %}
           {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
           {% if count == 0 %}
             No visits tonight
@@ -164,7 +165,7 @@ template:
             {{ count }} visits (high - monitor)
           {% endif %}
         icon: >
-          {% set count = states('sensor.overnight_bathroom_count')|int %}
+          {% set count = states('sensor.night_bathroom_visits')|int %}
           {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
           {% if count > baseline + 1 %}
             mdi:alert-circle
@@ -193,6 +194,7 @@ recorder:
       - sensor.drift_stats
       - sensor.night_stats
       - sensor.movement_stats
+      - sensor.routine_stats
 
 # Lovelace configuration
 lovelace:
@@ -230,8 +232,6 @@ sensor:
     start: "{{ now() - timedelta(hours=1) }}"
     end: "{{ now() }}"
 
-  # Overnight bathroom visit count (21:00–06:00)
-  # During the night (21:00–23:59): counts from tonight 21:00 to tomorrow 06:00
   # All other hours: counts from last night 21:00 to today 06:00 (completed window)
   - platform: history_stats
     name: Overnight Bathroom Count

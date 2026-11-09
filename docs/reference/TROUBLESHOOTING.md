@@ -81,6 +81,7 @@ sensor.deviation_count: 0 = normal
        haiven_drift: !include packages/haiven_drift.yaml
        haiven_night_insights: !include packages/haiven_night_insights.yaml
        haiven_movement: !include packages/haiven_movement.yaml
+       haiven_routine: !include packages/haiven_routine.yaml
    ```
    If yours is shorter than this, `git pull` — a package is missing.
 

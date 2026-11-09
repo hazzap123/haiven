@@ -25,7 +25,7 @@
           Current data:
           - Wake time today: {{ states('sensor.today_wake_time') }}
           - Expected wake: {{ states('input_datetime.expected_wake_time') }}
-          - Overnight bathroom visits: {{ states('sensor.overnight_bathroom_count') }}
+          - Overnight bathroom visits: {{ states('sensor.night_bathroom_visits') }}
           - Overnight activity: {{ states('sensor.overnight_activity_summary') }}
           - Bedroom occupancy: {{ states('binary_sensor.haiven_bedroom_occupancy') }}
           - Sensor health: {{ states('sensor.sensor_health_status') }}
@@ -120,8 +120,9 @@
           Current data:
           - Wake time today: {{ states('sensor.today_wake_time') }}
           - Bedtime today: {{ states('sensor.today_bedtime') }}
-          - Activity score: {{ states('sensor.daily_activity_score') }}
-          - Deviations today: {{ states('sensor.deviation_count') }}
+          - Routine today: {{ states('sensor.routine') }} ({{ state_attr('sensor.routine', 'why') }})
+          - Movement, all rooms: {{ state_attr('sensor.movement_stats', 'today') }} (usually {{ state_attr('sensor.movement_stats', 'usual_by_now') }} by now)
+          - Safety checks tripped today: {{ states('sensor.deviation_count') }}
           - Last activity location: {{ states('sensor.activity_data') }}
           - Last activity time: {{ states('sensor.last_activity_time') }}
           - Home status: {{ states('binary_sensor.elderly_person_home') }}
@@ -131,7 +132,8 @@
           Rules:
           - Recap the day: wake time, activity level, bedtime if set
           - If she's away from home, just say that
-          - Activity score: 70+ active, 40-70 quieter, <40 very quiet
+          - Routine is On track, A little off or Off track against her usual days; if it is off, say why in plain words
+          - Describe movement against her usual (about the same, quieter, busier), never as a number or score
           - If bedtime not set yet, mention she's still up
           - Flag any concerns but end on a positive note if possible
           - 2-3 sentences
@@ -187,7 +189,7 @@
           - Bed state: {{ states('input_select.bed_state') }}
           - Last activity location: {{ states('sensor.activity_data') }}
           - Last activity time: {{ states('sensor.last_activity_time') }}
-          - Overnight bathroom visits: {{ states('sensor.overnight_bathroom_count') }}
+          - Overnight bathroom visits: {{ states('sensor.night_bathroom_visits') }}
           - Deviations today: {{ states('sensor.deviation_count') }}
           - Home status: {{ states('binary_sensor.elderly_person_home') }}
           - Recent activity: {{ states('sensor.recent_activity_summary') }}
@@ -352,7 +354,9 @@
       value_template: >-
         {% set threshold = states('input_number.no_activity_alert_hours') | float %}
         {% set hours = state_attr('sensor.activity_data', 'hours_since_latest') | float(0) %}
-        {{ hours > threshold }}
+        {# Arriving home is activity: a trip out is not silence #}
+        {% set arrived = states('sensor.minutes_since_arrived_home') | float(99999) / 60 %}
+        {{ [hours, arrived] | min > threshold }}
   actions:
     - action: conversation.process
       data:
@@ -861,6 +865,20 @@
           {% else %}
             Location (left home)
           {% endif %}
+    - if:
+        - condition: template
+          alias: A real trip out, not the phone flapping while she is indoors
+          value_template: >-
+            {{ trigger.to_state.state == 'home'
+               and trigger.from_state is not none
+               and trigger.from_state.state == 'not_home'
+               and (trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() >= 900 }}
+      then:
+        - action: input_datetime.set_datetime
+          target:
+            entity_id: input_datetime.arrived_home
+          data:
+            timestamp: "{{ now().timestamp() }}"
   mode: queued
 - id: haiven_handle_mark_safe_action
   alias: "Haiven: Handle Mark Safe Action"
@@ -2050,7 +2068,7 @@
           Avg wake: {{ states('sensor.average_wake_time_week') }}
           Avg bedtime: {{ states('sensor.average_bedtime_week') }}
           Kitchen avg: {{ states('sensor.kitchen_triggers_daily_average') }}/day
-          Today's score: {{ states('sensor.daily_activity_score') }}%
+          {% set c = state_attr('sensor.routine_stats', 'counts') or {} %}Routine, last 30 days: {{ c.get('on_track', 0) }} on track, {{ c.get('a_little_off', 0) }} a little off, {{ c.get('off_track', 0) }} off track
           Status today: {{ states('sensor.elderly_care_status') }}
         level: passive
   mode: single
