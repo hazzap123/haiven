@@ -1,0 +1,94 @@
+# Haiven Faults
+#
+# A monitoring system that has quietly stopped is worse than none: silence
+# then reads as "all is well". This package watches the watchers.
+#
+#   sensor offline   a role sensor reporting unknown or unavailable
+#   low battery      any battery on a role sensor's device at 15% or below
+#   hub offline      Home Assistant cannot report its own death, so the hub
+#                    sends a heartbeat OUT every five minutes to a service
+#                    that alerts you when the heartbeats stop
+#
+# The fault alerts in automations.yaml are deliberately not gated on
+# input_boolean.haiven_monitoring_enabled. Switching monitoring off must not
+# also hide a dead sensor.
+
+input_text:
+  # The address your uptime service gives you to call, for example a check
+  # URL from Healthchecks.io (open source, can be self-hosted). The hub
+  # requests it with no data attached. Empty means no watchdog.
+  haiven_heartbeat_url:
+    name: Hub Watchdog URL
+    max: 255
+    mode: password
+    icon: mdi:heart-pulse
+
+input_datetime:
+  haiven_heartbeat_last_ok:
+    name: Hub Watchdog Last Signal
+    has_date: true
+    has_time: true
+    icon: mdi:heart-pulse
+
+rest_command:
+  haiven_heartbeat:
+    url: "{{ states('input_text.haiven_heartbeat_url') }}"
+    method: get
+    timeout: 10
+
+template:
+  - sensor:
+      # State is the number of faults. `offline` and `low_batteries` name them.
+      - name: "Haiven Faults"
+        unique_id: haiven_faults
+        icon: >
+          {{ 'mdi:alert-circle' if (this.state | int(0)) > 0 else 'mdi:check-circle' }}
+        state: >
+          {% set roles = [('Kitchen', 'event.kitchen_motion'),
+                          ('Bedroom', 'binary_sensor.haiven_bedroom_occupancy'),
+                          ('Bathroom', 'binary_sensor.haiven_bathroom_motion')] %}
+          {% set ns = namespace(n=0) %}
+          {% for role, ent in roles %}
+            {% if states(ent) in ['unknown', 'unavailable'] %}{% set ns.n = ns.n + 1 %}{% endif %}
+            {% set dev = device_id(ent) %}
+            {% if dev %}
+              {% for e in device_entities(dev) if is_state_attr(e, 'device_class', 'battery') %}
+                {% if (e.startswith('binary_sensor.') and is_state(e, 'on'))
+                      or (e.startswith('sensor.') and states(e) | float(100) <= 15) %}
+                  {% set ns.n = ns.n + 1 %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.n }}
+        attributes:
+          offline: >
+            {% set roles = [('Kitchen', 'event.kitchen_motion'),
+                            ('Bedroom', 'binary_sensor.haiven_bedroom_occupancy'),
+                            ('Bathroom', 'binary_sensor.haiven_bathroom_motion')] %}
+            {% set ns = namespace(out=[]) %}
+            {% for role, ent in roles %}
+              {% if states(ent) in ['unknown', 'unavailable'] %}{% set ns.out = ns.out + [role] %}{% endif %}
+            {% endfor %}
+            {{ ns.out | join(', ') }}
+          low_batteries: >
+            {% set roles = [('Kitchen', 'event.kitchen_motion'),
+                            ('Bedroom', 'binary_sensor.haiven_bedroom_occupancy'),
+                            ('Bathroom', 'binary_sensor.haiven_bathroom_motion')] %}
+            {% set ns = namespace(out=[]) %}
+            {% for role, ent in roles %}
+              {% set dev = device_id(ent) %}
+              {% if dev %}
+                {% for e in device_entities(dev) if is_state_attr(e, 'device_class', 'battery') %}
+                  {% if e.startswith('binary_sensor.') and is_state(e, 'on') %}
+                    {% set ns.out = ns.out + [role ~ ' (low)'] %}
+                  {% elif e.startswith('sensor.') and states(e) | float(100) <= 15 %}
+                    {% set ns.out = ns.out + [role ~ ' (' ~ (states(e) | float(0) | round(0) | int) ~ '%)'] %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.out | join(', ') }}
+          watchdog: >
+            {% set url = states('input_text.haiven_heartbeat_url') %}
+            {{ 'on' if url.startswith('http') else 'not set up' }}

@@ -437,6 +437,10 @@ views:
                         entity: sensor.activity_tracking_status
                       - label: AI wording
                         entity: input_boolean.haiven_ai_summaries
+                      - label: Faults
+                        entity: sensor.haiven_faults
+                      - label: Hub watchdog, last signal
+                        entity: input_datetime.haiven_heartbeat_last_ok
 
                   - type: custom:haiven-section
                     title: Her routine

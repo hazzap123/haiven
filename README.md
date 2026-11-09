@@ -14,6 +14,7 @@
 - Dashboard with live status, activity timeline, and weekly trends
 - Drift Watch: catches a routine sliding slowly over a month, the kind of change a day-to-day average can't see
 - Sensor coverage screen: shows exactly what stops working when a sensor goes offline, not just that it did
+- Fault alerts: tells every carer when a sensor stops reporting or its battery runs low, and a hub watchdog for when the hub itself goes offline
 - Ask (optional, admins only): a read-only chat over the recorded data, for questions such as "have night bathroom visits changed since the summer?"
 
 ## What you need
@@ -110,7 +111,8 @@ configuration.yaml               # Main config — includes all packages
 │   ├── haiven_drift.yaml                # Drift Watch: a month of nights vs a frozen baseline
 │   ├── haiven_night_insights.yaml       # Nightly bathroom-visit and downstairs-trip stats
 │   ├── haiven_movement.yaml             # Today's all-room movement vs a 7-day average
-│   └── haiven_routine.yaml              # Daily routine verdict and the 30-day strip
+│   ├── haiven_routine.yaml              # Daily routine verdict and the 30-day strip
+│   └── haiven_faults.yaml               # Sensor offline, low battery, hub watchdog
 ├── haiven_persons.yaml           # Person entities
 ├── haiven_zones.yaml             # Geographic zones
 ├── www-src/                      # Dashboard card source (deployed to www/ by setup.sh)

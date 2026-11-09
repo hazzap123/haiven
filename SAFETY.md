@@ -17,12 +17,20 @@ Keep a monitored pendant or telecare service. Haiven is an addition to it, never
 
 | Failure | What happens | What tells you |
 |---|---|---|
-| A sensor goes offline or its battery dies | That room goes quiet, which can look like inactivity or hide it | The dashboard's Sensors screen and the sensor line in each summary. There is no push alert for this yet |
-| The hub loses power or crashes | All monitoring and all alerts stop | Nothing. Home Assistant cannot report that it is itself offline. See "Hub watchdog" below |
+| A sensor stops reporting | That room goes quiet, which can look like inactivity or hide it | A fault alert to every carer after 15 minutes, repeated each morning until it is back |
+| A sensor's battery runs low | The sensor will stop soon | A fault alert at 15% or below, repeated each morning. Only for sensors that report a battery level to Home Assistant |
+| A sensor keeps reporting "no motion" when it is in fact dead | The same as going offline, but Home Assistant cannot tell | Nothing automatic. The dashboard's Sensors screen shows how long each has been quiet |
+| The hub loses power or crashes | All monitoring and all alerts stop | The hub watchdog, if you set it up. See below |
 | Broadband or Wi-Fi goes down | Alerts cannot leave the house | Nothing from Haiven |
 | The carer's phone is off, silenced or out of signal | The alert arrives late or is missed | Nothing |
 
-**Hub watchdog.** Haiven does not include one yet. Until it does, use an outside uptime-monitoring service that expects a regular signal from the hub and warns you when it stops. Test it by unplugging the hub before you rely on it.
+**Hub watchdog.** Home Assistant cannot report that it is itself offline, so the alert has to come from outside the house. Haiven sends a heartbeat every five minutes to an address you give it; an uptime service on the other end warns you when the heartbeats stop. It is off until you set it up:
+
+1. Create a check with an uptime service that expects a regular signal, for example Healthchecks.io, which is open source and can be self-hosted. Set it to expect a signal every 5 minutes and to alert after 15.
+2. Paste the check's address into "Hub Watchdog URL" (`input_text.haiven_heartbeat_url`, under Settings > Helpers).
+3. Unplug the hub and confirm the service alerts you. Do not rely on it until you have seen this work.
+
+Fault alerts are sent whether or not monitoring is switched on.
 
 ## A response plan
 
@@ -48,6 +56,7 @@ Activity data is stored and processed on the hub. These are the only things that
 | Path | What is sent | Default |
 |---|---|---|
 | Phone notifications | Alert and summary text, through Apple or Google push | On, to the carers you configure |
+| Hub watchdog | A request to the address you set, with no data in it | Off until you set it up |
 | Remote access | Your connection to the dashboard, through whichever method you set up | Off until you set it up |
 | AI wording of summaries | The person's name and recent activity (rooms, times, bathroom visits, wake and bedtime) to the AI provider you choose | **Off.** Switch: `input_boolean.haiven_ai_summaries` |
 | Ask | The person's name and the activity figures needed to answer each question, to Anthropic | **Not installed** unless you add it. See [docs/setup/ASK.md](docs/setup/ASK.md) |
