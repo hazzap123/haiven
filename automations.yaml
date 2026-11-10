@@ -924,6 +924,56 @@
           data:
             timestamp: "{{ now().timestamp() }}"
   mode: queued
+- id: haiven_home_away_notify
+  alias: "Haiven: Home and Away Notifications"
+  description: >
+    Tell the carers when the person goes out and when they are back. Only a
+    real trip counts: out for 15 minutes or more, so a phone briefly losing
+    its location while they are indoors sends nothing. Informational, so it
+    goes out quietly (passive).
+  triggers:
+    - trigger: state
+      entity_id: person.elderly_person
+      from: "home"
+      for: "00:15:00"
+      id: left
+    - trigger: state
+      entity_id: person.elderly_person
+      to: "home"
+      id: back
+  conditions:
+    - condition: state
+      entity_id: input_boolean.haiven_monitoring_enabled
+      state: "on"
+    - condition: template
+      alias: A real trip out, not the phone flapping while they are indoors
+      value_template: >-
+        {% set bad = ['unknown', 'unavailable'] %}
+        {% if trigger.id == 'left' %}
+          {{ trigger.to_state is not none and trigger.to_state.state not in bad + ['home'] }}
+        {% else %}
+          {{ trigger.from_state is not none
+             and trigger.from_state.state not in bad + ['home']
+             and (trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() >= 900 }}
+        {% endif %}
+  actions:
+    - action: script.haiven_notify_carers
+      data:
+        priority: passive
+        title: >-
+          {{ states('input_text.elderly_person_name') }}
+          {{ 'has gone out' if trigger.id == 'left' else 'is home' }}
+        message: >-
+          {% set name = states('input_text.elderly_person_name') %}
+          {% if trigger.id == 'left' %}
+            {{ name }} went out at {{ (trigger.to_state.last_changed | as_local).strftime('%H:%M') }}.
+            Routine alerts are held until they are back.
+          {% else %}
+            {% set mins = ((trigger.to_state.last_changed - trigger.from_state.last_changed).total_seconds() // 60) | int %}
+            {{ name }} came home at {{ (trigger.to_state.last_changed | as_local).strftime('%H:%M') }},
+            after {% if mins >= 60 %}{{ mins // 60 }} h {{ mins % 60 }} min{% else %}{{ mins }} min{% endif %} out.
+          {% endif %}
+  mode: queued
 - id: haiven_handle_mark_safe_action
   alias: "Haiven: Handle Mark Safe Action"
   description: Handle mark safe button from notification

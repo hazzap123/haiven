@@ -11,6 +11,7 @@
 - Sends morning, afternoon, and evening summaries to carers, in plain text or (optionally) worded by an AI agent
 - Alerts on missed wake times, prolonged inactivity, unusual bathroom visits, and more
 - Care circle tracking — knows which carer is nearest during an alert
+- Home and away: tells the carers when the person goes out and when they are back, for trips of 15 minutes or more
 - Dashboard with live status, activity timeline, and weekly trends
 - Drift Watch: catches a routine sliding slowly over a month, the kind of change a day-to-day average can't see
 - Sensor coverage screen: shows exactly what stops working when a sensor goes offline, not just that it did
