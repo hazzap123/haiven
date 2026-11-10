@@ -117,3 +117,12 @@ _NoDuplicates.add_multi_constructor("!", lambda loader, suffix, node: None)
     ids=lambda p: str(p.relative_to(ROOT)))
 def test_no_duplicate_keys(path):
     yaml.load(path.read_text(), Loader=_NoDuplicates)
+
+
+def test_ribbon_kitchen_lane_reads_the_on_off_helper():
+    """An event entity's state is a timestamp, never "on", so a ribbon lane on
+    event.kitchen_motion is always empty. The lane must read the helper."""
+    js = (ROOT / "www-src" / "haiven-cards.js").read_text()
+    row = next(l for l in js.splitlines() if 'key: "kitchen"' in l)
+    assert 'motion: "binary_sensor.kitchen_motion"' in row
+    assert 'name: "Kitchen Motion"' in (ROOT / "configuration.yaml").read_text()

@@ -126,11 +126,13 @@ const clockOf = (hass, id) => {
  * ---------------------------------------------------------------------- */
 
 // `entity` is the health signal (what proves the sensor is alive). `motion` is
-// the on/off signal used for ribbons and triangulation. They are the same
-// entity for every room by default; set them separately in ROOMS if your
-// kitchen sensor reports health and motion through different entities.
+// the on/off signal used for ribbons and triangulation. For the kitchen they
+// differ: the sensor may be an event entity, whose state is a timestamp and is
+// never "on", so the ribbon reads binary_sensor.kitchen_motion, which the
+// Kitchen Motion Helper automation holds on for a minute after each event.
+// Pointing `motion` at the event entity drew no kitchen on any ribbon.
 const ROOMS = [
-  { key: "kitchen",  name: "Kitchen",  entity: "event.kitchen_motion",                    motion: "event.kitchen_motion",                    staleH: 12 },
+  { key: "kitchen",  name: "Kitchen",  entity: "event.kitchen_motion",                    motion: "binary_sensor.kitchen_motion",            staleH: 12 },
   { key: "bedroom",  name: "Bedroom",  entity: "binary_sensor.haiven_bedroom_occupancy",  motion: "binary_sensor.haiven_bedroom_occupancy",  staleH: 18 },
   { key: "bathroom", name: "Bathroom", entity: "binary_sensor.haiven_bathroom_motion",    motion: "binary_sensor.haiven_bathroom_motion",    staleH: 12 },
 ];
