@@ -139,6 +139,18 @@ While held, alerts still arrive: passive, to the first contact only, with the re
 | `script.haiven_visitor_here` / `script.haiven_visitor_left` | The dashboard's visitor buttons |
 | `script.haiven_start_calibration` / `script.haiven_end_calibration` | The dashboard's calibration buttons |
 
+### Camera (`packages/haiven_camera.yaml`)
+
+Off by default. See the Camera section of [SAFETY.md](../../SAFETY.md).
+
+| Entity ID | Purpose |
+|-----------|---------|
+| `input_boolean.haiven_camera_snapshots` | Take one still when the morning, no-activity or status alert fires |
+| `input_boolean.haiven_camera_ai` | Send that still to the AI task entity for a one-sentence description |
+| `input_text.haiven_camera_entity` | The camera, for example `camera.your_camera` |
+| `input_text.haiven_ai_task_entity` | The AI task entity that describes the still. Empty means no description |
+| `script.haiven_camera_look` | Takes the still and sends the follow-up. Started by the alerts, never waited for |
+
 ### Arrival (`haiven_sensors_3sensor.yaml`, `packages/haiven_comms_inputs.yaml`)
 
 | Entity ID | Purpose |
@@ -276,6 +288,7 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 | `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
 | `packages/haiven_faults.yaml` | Sensor offline, low battery and the hub watchdog |
 | `packages/haiven_pause.yaml` | Visitor present and calibration: alerts quietened, never dropped |
+| `packages/haiven_camera.yaml` | Optional: one camera still after an alert, with an optional AI description |
 | `haiven_sensors_3sensor.yaml` | Core template sensors |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Action scripts |

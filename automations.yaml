@@ -331,6 +331,14 @@
             value: >-
               {% set current = states('input_text.alerts_fired_today') %}
               {{ (current ~ ',morning_activity') if current else 'morning_activity' }}
+        # Optional: a still from the camera follows as a second message. Started,
+        # not waited for, so the alert above never depends on the camera.
+        - action: script.turn_on
+          target:
+            entity_id: script.haiven_camera_look
+          data:
+            variables:
+              reason: morning activity
   mode: single
 - id: haiven_no_activity_alert
   alias: "Haiven: No Activity Alert"
@@ -405,6 +413,14 @@
         value: >-
           {% set current = states('input_text.alerts_fired_today') %}
           {{ (current ~ ',no_activity') if current else 'no_activity' }}
+    # Optional: a still from the camera follows as a second message. Started,
+    # not waited for, so the alert above never depends on the camera.
+    - action: script.turn_on
+      target:
+        entity_id: script.haiven_camera_look
+      data:
+        variables:
+          reason: no activity
   mode: single
 - id: haiven_activity_clears_safe
   alias: "Haiven: Activity Clears Manual Safe Flag"
@@ -549,6 +565,14 @@
     - action: input_boolean.turn_on
       target:
         entity_id: input_boolean.deviation_alert_sent
+    # Optional: a still from the camera follows as a second message. Started,
+    # not waited for, so the alert above never depends on the camera.
+    - action: script.turn_on
+      target:
+        entity_id: script.haiven_camera_look
+      data:
+        variables:
+          reason: "{{ trigger.to_state.state }} status"
   mode: single
 
 - id: haiven_safe_status_expire

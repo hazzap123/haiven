@@ -52,6 +52,7 @@ Every house and routine is different. Fill in a copy of [HOUSE_PROFILE.md](../HO
 ## Optional extras
 
 - **AI wording of summaries.** Off by default. See the privacy note in the [README](../README.md).
+- **Camera snapshot after an alert.** Off by default. Set the camera in "Camera Entity" and switch on "Camera Snapshot On Alert" under Settings, Helpers. Read the Camera section of [SAFETY.md](../SAFETY.md) first, and get the person's agreement.
 - **Ask**, a read-only chat over the recorded data. [setup/ASK.md](setup/ASK.md).
 
 ## Help

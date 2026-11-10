@@ -16,7 +16,7 @@ What Haiven is for, what it is not for, and the rules any change must keep. Read
 - Fall detection, vital signs, medication, or any clinical judgement.
 - More than one person living in the home. The sensors cannot tell people apart.
 - Emergency response. Haiven tells a carer; the carer decides what to do.
-- Cameras. Not supported in this repository.
+- Cameras that look on a schedule or on demand. The optional camera takes one still only when an alert fires.
 - Tracking the person outside the home beyond "home" or "away".
 - Any cloud service that holds the activity data.
 
@@ -30,4 +30,5 @@ These apply to contributors and to anyone adapting Haiven to a house, with or wi
 4. **No clinical wording.** Describe what the sensors recorded. Do not name a cause, a condition or a diagnosis, and do not reassure.
 5. **No names or addresses in any file.** Use roles ("main room", "carer 1") and times.
 6. **No hard-coded hours for a household's routine.** Windows come from the helpers on the Settings screen.
-7. **Run the tests and read the diff** before anything goes live. Keep a backup of the working config.
+7. **The camera never acts on its own.** It takes a picture only after an alert has been sent, never resets a clock, never marks anyone safe, and never writes to a folder Home Assistant serves without a login.
+8. **Run the tests and read the diff** before anything goes live. Keep a backup of the working config.

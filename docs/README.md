@@ -85,6 +85,7 @@ Five levels, not three — see [STATUS_SPEC](reference/STATUS_SPEC.md) for the f
 | `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
 | `packages/haiven_faults.yaml` | Sensor offline, low battery and the hub watchdog |
 | `packages/haiven_pause.yaml` | Visitor present and calibration: alerts quietened, never dropped |
+| `packages/haiven_camera.yaml` | Optional: one camera still after an alert, with an optional AI description |
 | `haiven_sensors_3sensor.yaml` | Core template sensors (status, scoring, timing) |
 | `haiven_persons.yaml` | Person entity definitions |
 | `scripts.yaml` | Notification scripts |
