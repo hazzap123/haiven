@@ -475,3 +475,53 @@ haiven_notify_fault:
   max: 10
   icon: mdi:alert-circle
 
+# A message for every carer, with no other effect: unlike notify_care_circle
+# it does not mark a routine alert as sent or offer "Mark Safe". Used for
+# home and away notifications.
+haiven_notify_carers:
+  alias: "Haiven: Notify Carers"
+  description: Send a message to every carer, with no side effects
+  fields:
+    title:
+      description: "Notification title"
+      required: true
+      selector:
+        text:
+    message:
+      description: "Notification message"
+      required: true
+      selector:
+        text:
+          multiline: true
+    priority:
+      description: "iOS interruption level: passive, active or time-sensitive"
+      required: false
+      default: "passive"
+      selector:
+        select:
+          options:
+            - passive
+            - active
+            - time-sensitive
+  sequence:
+    - repeat:
+        for_each:
+          - "{{ states('input_text.contact_1_notification') }}"
+          - "{{ states('input_text.contact_2_notification') }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ repeat.item | string | trim not in ['', 'unknown', 'unavailable'] }}"
+            then:
+              - action: "{{ repeat.item }}"
+                continue_on_error: true
+                data:
+                  title: "{{ title | trim }}"
+                  message: "{{ message | trim }}"
+                  data:
+                    push:
+                      interruption-level: "{{ priority | default('passive') }}"
+  mode: queued
+  max: 10
+  icon: mdi:account-multiple
+

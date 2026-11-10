@@ -1000,3 +1000,33 @@ class TestCameraLook:
         seq = self._pkg()['script']['haiven_camera_look']['sequence']
         gate = next(s for s in seq if 'if' in s and 'ai_task.generate_data' in str(s.get('then')))
         assert {'condition': 'state', 'entity_id': 'input_boolean.haiven_camera_ai', 'state': 'on'} in gate['if']
+
+
+class TestHomeAwayNotifications:
+    """Carers are told when the person goes out and comes back, but only for
+    a real trip, and without touching any routine alert."""
+
+    def _auto(self, automations):
+        return next(a for a in automations if a['id'] == 'haiven_home_away_notify')
+
+    def test_leaving_waits_fifteen_minutes(self, automations):
+        left = next(t for t in self._auto(automations)['triggers'] if t.get('id') == 'left')
+        assert left['from'] == 'home' and left['for'] == '00:15:00'
+
+    def test_arrival_needs_a_fifteen_minute_trip(self, automations, jinja_env):
+        tpl = next(c['value_template'] for c in self._auto(automations)['conditions']
+                   if c.get('alias', '').startswith('A real trip out'))
+        t0 = datetime(2026, 1, 1, 10, 0)
+        def back(mins, frm='not_home'):
+            trig = {'id': 'back', 'from_state': MagicMock(state=frm, last_changed=t0),
+                    'to_state': MagicMock(state='home', last_changed=t0 + timedelta(minutes=mins))}
+            return jinja_env.from_string(tpl).render(trigger=trig).strip()
+        assert back(20) == 'True'
+        assert back(5) == 'False'
+        assert back(60, frm='unavailable') == 'False'
+
+    def test_uses_the_side_effect_free_notifier(self, automations):
+        assert [a['action'] for a in self._auto(automations)['actions']] == ['script.haiven_notify_carers']
+        with open(Path(__file__).parent.parent / "scripts.yaml") as f:
+            text = str(yaml.safe_load(f)['haiven_notify_carers'])
+        assert 'deviation_alert_sent' not in text and 'MARK_SAFE' not in text

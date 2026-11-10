@@ -156,6 +156,7 @@ Off by default. See the Camera section of [SAFETY.md](../../SAFETY.md).
 | Entity ID | Purpose |
 |-----------|---------|
 | `input_datetime.arrived_home` | When the person's phone last arrived home after 15 minutes or more away |
+| `script.haiven_notify_carers` | Sends a message to every carer with no other effect. Used by the home and away notifications (`automation.haiven_home_away_notify`), which fire after 15 minutes out and on return |
 | `sensor.minutes_since_arrived_home` | Minutes since then. Counts as activity in every inactivity gap, so a trip out does not read as silence on return |
 
 ---
