@@ -28,6 +28,8 @@ REF = re.compile(r"(?<![\w.])((?:%s)\.[a-z0-9_]+)\b" % "|".join(DOMAINS))
 SUPPLIED = re.compile(
     r"^(binary_sensor|sensor)\.haiven_(bedroom|bathroom)_[a-z0-9_]+$"
     r"|^event\.kitchen_motion$|^zone\.home$"
+    # The optional camera is the installer's; the docs name it this way.
+    r"|^camera\.(your_camera|snapshot)$"
     r"|^(input_\w+|counter|script|automation)\.(turn_on|turn_off|toggle|set_value|set_datetime"
     r"|select_option|increment|decrement|reset|reload|trigger|press)$"
 )

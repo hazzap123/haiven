@@ -1,0 +1,182 @@
+# Haiven Camera (optional, off by default)
+#
+# When an alert fires, take one still from a camera in the main room and send
+# it to the first contact as a follow-up, so they can see whether the quiet
+# is someone sitting still or something wrong. With the second switch on, an
+# AI model describes what is in the frame.
+#
+# The rules, all deliberate:
+#   - Both switches are off by default and have no `initial:`.
+#   - A picture is taken ONLY when an alert fires. Never on a schedule, never
+#     on demand. That is the consent the person gives.
+#   - The alert never waits for the camera. It has already been sent when this
+#     runs; the picture follows as a second message, and if the camera or the
+#     model fails, nothing is lost.
+#   - The camera never changes an alert, never resets a clock and never marks
+#     anyone safe. An empty room proves nothing: they may be upstairs.
+#   - Frames are written to /config/haiven_snapshots, which Home Assistant
+#     does not serve at /local (that directory has NO authentication). They
+#     are reachable only through the Media browser, which needs a login, and
+#     are deleted after 14 days. The directory is gitignored.
+#
+# Works with any camera entity that supports camera.snapshot. Some cameras,
+# including Ring cameras that offer live view only, return an empty picture;
+# that is detected and reported, never judged.
+
+input_boolean:
+  haiven_camera_snapshots:
+    name: Camera Snapshot On Alert
+    icon: mdi:camera
+  # Sends the frame to the AI task entity below. Separate from AI wording of
+  # summaries: an image is more sensitive than a line of figures.
+  haiven_camera_ai:
+    name: Camera AI Description
+    icon: mdi:image-text
+
+input_text:
+  # The camera covering the main room, for example camera.your_camera.
+  haiven_camera_entity:
+    name: Camera Entity
+    max: 100
+    icon: mdi:cctv
+  # An AI task entity, for example the one the Anthropic integration creates.
+  # Empty means no description, even with the switch on.
+  haiven_ai_task_entity:
+    name: AI Task Entity
+    max: 100
+    icon: mdi:robot-outline
+
+shell_command:
+  # Remove the last frame first, so a failed snapshot can never be mistaken
+  # for a new one and described as if it were.
+  haiven_snapshot_clear: 'rm -f /config/haiven_snapshots/latest.jpg'
+  # Exit 0 only if a non-empty frame was written.
+  haiven_snapshot_check: 'test -s /config/haiven_snapshots/latest.jpg'
+  # Keep a copy named by time, so a description can be checked against the
+  # picture. Deleted after 14 days.
+  haiven_snapshot_archive: '/bin/sh -c "mkdir -p /config/haiven_snapshots/archive && cp /config/haiven_snapshots/latest.jpg /config/haiven_snapshots/archive/$(date +%Y%m%d-%H%M%S).jpg && find /config/haiven_snapshots/archive -name \"*.jpg\" -mtime +14 -delete"'
+
+script:
+  haiven_camera_look:
+    alias: "Haiven: Camera Look After Alert"
+    description: >
+      Called by an alert after it has been sent. Takes one still and sends a
+      follow-up to the first contact. Does nothing unless switched on.
+    fields:
+      reason:
+        description: "Which alert asked for the picture"
+        example: "no activity"
+        selector:
+          text:
+    mode: single
+    max_exceeded: silent
+    sequence:
+      - variables:
+          cam: "{{ states('input_text.haiven_camera_entity') | trim }}"
+          task: "{{ states('input_text.haiven_ai_task_entity') | trim }}"
+          why: "{{ reason | default('an') }}"
+      - condition: state
+        entity_id: input_boolean.haiven_camera_snapshots
+        state: "on"
+      - condition: template
+        alias: A camera is set and reporting
+        value_template: >-
+          {{ cam.startswith('camera.') and states(cam) not in ['unknown', 'unavailable'] }}
+
+      - action: shell_command.haiven_snapshot_clear
+        continue_on_error: true
+      - action: camera.snapshot
+        continue_on_error: true
+        target:
+          entity_id: "{{ cam }}"
+        data:
+          filename: /config/haiven_snapshots/latest.jpg
+      - action: shell_command.haiven_snapshot_check
+        continue_on_error: true
+        response_variable: frame
+      - if:
+          - condition: template
+            value_template: "{{ frame is not defined or frame.returncode | default(1) != 0 }}"
+        then:
+          - action: script.send_haiven_notification
+            data:
+              title: "Haiven - camera"
+              message: >-
+                The camera did not return a picture after the {{ why }} alert.
+                Nothing was looked at. Check the camera in Home Assistant.
+              level: time-sensitive
+          - stop: No picture
+
+      - action: shell_command.haiven_snapshot_archive
+        continue_on_error: true
+      - variables:
+          where: >-
+            Picture taken at {{ now().strftime('%H:%M') }} after the {{ why }} alert.
+            To see it: Home Assistant, Media, Local media, haiven.
+      - if:
+          - condition: state
+            entity_id: input_boolean.haiven_camera_ai
+            state: "on"
+          - condition: template
+            value_template: "{{ task.startswith('ai_task.') }}"
+        then:
+          - action: ai_task.generate_data
+            continue_on_error: true
+            data:
+              task_name: haiven_camera_look
+              entity_id: "{{ task }}"
+              # Nothing here about where the person usually sits: a sentence
+              # describing the expected answer gets given back as the answer.
+              instructions: >-
+                This is a still from a camera in a room of a private home.
+
+                Report only what you can actually see in this frame. "No one is
+                visible" is a correct and useful answer. Never assume a person
+                is present because one usually is. Chairs, cushions, coats,
+                lamps and shadows are not people. If you are not certain you can
+                make out a person, say that no person is visible.
+
+                Describe the situation, not the person: no name, gender, age,
+                appearance or clothing. Do not judge health or wellbeing, do not
+                guess a cause, and do not reassure.
+              # `scene` comes first so the model has to say what it sees, and
+              # where, before it answers; it makes an ungrounded yes harder.
+              structure:
+                scene:
+                  description: >-
+                    List every person you can actually see and where each is in
+                    the frame. If there are none, write: no people.
+                  selector:
+                    text:
+                person_visible:
+                  description: Is a person genuinely visible in this frame
+                  selector:
+                    boolean:
+                note:
+                  description: >-
+                    One short sentence for a carer about what is in the frame,
+                    for example: One person seated on the sofa. Or: No one is
+                    visible in the room.
+                  selector:
+                    text:
+              attachments:
+                - media_content_id: media-source://media_source/haiven/latest.jpg
+                  media_content_type: image/jpeg
+            response_variable: look
+      - variables:
+          described: >-
+            {% if look is defined and look.data is defined and look.data.note is defined
+                  and look.data.note | string | trim | length > 0 %}
+              {{ look.data.note | string | trim }}
+            {% endif %}
+          ai_failed: >-
+            {{ is_state('input_boolean.haiven_camera_ai', 'on') and task.startswith('ai_task.')
+               and described | trim | length == 0 }}
+      - action: script.send_haiven_notification
+        data:
+          title: "Haiven - camera"
+          message: >-
+            {% if described | trim %}What the camera shows (an AI description, which can be
+            wrong): {{ described | trim }} {% elif ai_failed %}The AI description failed.
+            {% endif %}{{ where }}
+          level: time-sensitive

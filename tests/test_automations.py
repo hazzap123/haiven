@@ -926,3 +926,77 @@ class TestHoldingAlertsBack:
     def test_visits_are_logged(self, automations):
         auto = next(a for a in automations if a['id'] == 'haiven_visitor_log')
         assert any(a.get('action') == 'shell_command.log_haiven_event' for a in auto['actions'])
+
+
+class TestCameraLook:
+    """The optional camera: off by default, only after an alert, never in the
+    alert's way, and never anywhere Home Assistant serves without a login."""
+
+    ROOT = Path(__file__).parent.parent
+    ALERTS = ['haiven_morning_activity_check', 'haiven_no_activity_alert', 'haiven_status_change']
+
+    def _pkg(self):
+        with open(self.ROOT / "packages" / "haiven_camera.yaml") as f:
+            return yaml.safe_load(f)
+
+    def _walk(self, node):
+        if isinstance(node, dict):
+            yield node
+            for v in node.values():
+                yield from self._walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                yield from self._walk(v)
+
+    def test_both_switches_start_off(self):
+        for name, helper in self._pkg()['input_boolean'].items():
+            assert 'initial' not in helper, name
+
+    @pytest.mark.parametrize("auto_id", ALERTS)
+    def test_started_after_the_alert_and_not_waited_for(self, automations, auto_id):
+        auto = next(a for a in automations if a['id'] == auto_id)
+        steps = list(self._walk(auto['actions']))
+        actions = [s.get('action') for s in steps if 'action' in s]
+        look = actions.index('script.turn_on')
+        sent = max(i for i, a in enumerate(actions)
+                   if a in ('script.send_haiven_notification', 'script.notify_care_circle'))
+        assert sent < look, "the alert must go out before the camera is asked"
+        call = next(s for s in steps if s.get('action') == 'script.turn_on')
+        assert call['target']['entity_id'] == 'script.haiven_camera_look'
+
+    def test_only_alerts_take_a_picture(self, automations):
+        """No schedule and no button: a picture only when an alert fires."""
+        callers = [a['id'] for a in automations if 'haiven_camera_look' in str(a)]
+        assert sorted(callers) == sorted(self.ALERTS)
+        for a in automations:
+            assert 'camera.snapshot' not in str(a)
+
+    def test_never_writes_where_home_assistant_serves_without_login(self):
+        text = (self.ROOT / "packages" / "haiven_camera.yaml").read_text()
+        assert '/config/www' not in text.replace('NOT /config/www', '').split('# Works with')[1]
+        snap = next(s for s in self._walk(self._pkg()['script']['haiven_camera_look']['sequence'])
+                    if s.get('action') == 'camera.snapshot')
+        assert snap['data']['filename'].startswith('/config/haiven_snapshots/')
+        assert 'haiven_snapshots/' in (self.ROOT / ".gitignore").read_text()
+
+    def test_a_failed_camera_or_model_cannot_stop_the_follow_up(self):
+        seq = self._pkg()['script']['haiven_camera_look']['sequence']
+        for s in self._walk(seq):
+            if s.get('action') in ('camera.snapshot', 'ai_task.generate_data', 'shell_command.haiven_snapshot_clear',
+                                   'shell_command.haiven_snapshot_check', 'shell_command.haiven_snapshot_archive'):
+                assert s.get('continue_on_error') is True, s['action']
+
+    def test_old_frame_is_cleared_before_a_new_one(self):
+        seq = self._pkg()['script']['haiven_camera_look']['sequence']
+        actions = [s.get('action') for s in self._walk(seq) if 'action' in s]
+        assert actions.index('shell_command.haiven_snapshot_clear') < actions.index('camera.snapshot')
+
+    def test_never_resets_a_clock_or_marks_safe(self):
+        text = str(self._pkg()['script']['haiven_camera_look'])
+        for forbidden in ('input_datetime', 'manual_safe_status', 'mark_safe', 'deviation_alert_sent'):
+            assert forbidden not in text, forbidden
+
+    def test_ai_only_behind_its_own_switch(self):
+        seq = self._pkg()['script']['haiven_camera_look']['sequence']
+        gate = next(s for s in seq if 'if' in s and 'ai_task.generate_data' in str(s.get('then')))
+        assert {'condition': 'state', 'entity_id': 'input_boolean.haiven_camera_ai', 'state': 'on'} in gate['if']

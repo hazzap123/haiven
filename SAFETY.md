@@ -61,14 +61,27 @@ Activity data is stored and processed on the hub. These are the only things that
 | Hub watchdog | A request to the address you set, with no data in it | Off until you set it up |
 | Remote access | Your connection to the dashboard, through whichever method you set up | Off until you set it up |
 | AI wording of summaries | The person's name and recent activity (rooms, times, bathroom visits, wake and bedtime) to the AI provider you choose | **Off.** Switch: `input_boolean.haiven_ai_summaries` |
+| Camera snapshot | One still, taken only when an alert fires, kept on the hub for 14 days. If the camera is a cloud camera such as Ring, the picture passes through its maker's servers | **Off.** Switch: `input_boolean.haiven_camera_snapshots` |
+| Camera AI description | That still, to the AI provider you choose, which returns one sentence describing it | **Off.** Separate switch: `input_boolean.haiven_camera_ai` |
 | Ask | The person's name and the activity figures needed to answer each question, to Anthropic | **Not installed** unless you add it. See [docs/setup/ASK.md](docs/setup/ASK.md) |
 | Carer locations | Each carer's phone location is read by Home Assistant to work out who is nearest. It stays on the hub, except that an alert may name the nearest carer and their distance | On for carers you add |
 
-The project collects no telemetry and has no accounts. There is no camera support in this repository. The activity log is committed to a local git repository on the hub three times a day and is never pushed.
+The project collects no telemetry and has no accounts. The activity log is committed to a local git repository on the hub three times a day and is never pushed.
+
+## Camera (optional)
+
+A camera is never required. Any motion-capable camera, including a Ring camera, can be the main-room sensor without pictures being taken. Snapshots are a separate choice:
+
+- Only with the person's explicit agreement to a camera in that room, and to pictures being taken.
+- A picture is taken only when an alert fires. Never on a schedule, and there is no button to look in.
+- The alert is sent first and never waits for the camera. The picture follows as a second message to the first contact.
+- The picture is stored on the hub, outside the folder Home Assistant serves without a login, and deleted after 14 days. View it in Home Assistant under Media, Local media, haiven.
+- The AI description says what is in the frame. It can be wrong. An empty room means only that no one is in that room.
+- Prefer a camera that works locally. Pictures from cloud cameras such as Ring pass through the maker's servers. Some cameras, including Ring cameras that offer live view only, cannot give Home Assistant a still at all; Haiven tells you when that happens.
 
 ## Consent
 
-- The person agrees before go-live, including which rooms have sensors.
+- The person agrees before go-live, including which rooms have sensors and whether a camera may take pictures.
 - Each carer agrees to their phone's location being used.
 - Review the setup with the person every six months.
 - The family owns the hub, the admin account and the backups.

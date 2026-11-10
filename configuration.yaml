@@ -8,6 +8,15 @@ http:
     - http://localhost:3000
 
 homeassistant:
+  # Where camera stills are written (packages/haiven_camera.yaml). Deliberately
+  # NOT /config/www: Home Assistant serves that at /local/ with no login.
+  allowlist_external_dirs:
+    - /config/haiven_snapshots
+  # Shows the stills in the Media browser, which needs a login, and lets an
+  # AI task attach one. If you already set media_dirs, add this line to yours.
+  media_dirs:
+    haiven: /config/haiven_snapshots
+
   packages:
     haiven_care_circle_inputs: !include packages/haiven_care_circle_inputs.yaml
     haiven_monitoring_inputs: !include packages/haiven_monitoring_inputs.yaml
@@ -21,6 +30,7 @@ homeassistant:
     haiven_routine: !include packages/haiven_routine.yaml
     haiven_faults: !include packages/haiven_faults.yaml
     haiven_pause: !include packages/haiven_pause.yaml
+    haiven_camera: !include packages/haiven_camera.yaml
  
 automation: !include automations.yaml
 script: !include scripts.yaml
