@@ -6,6 +6,8 @@ Needs Home Assistant 2024.10 or later.
 
 ## Path 1: already running Home Assistant
 
+Prefer to be walked through it? [prompts/first-install.md](../prompts/first-install.md) is a prompt for Claude Code, Codex or a similar AI coding assistant that does these steps with you, asking before each change and making a backup first.
+
 1. **Add the Haiven package to your config.** Clone the repository somewhere other than `/config`, run `scripts/setup.sh` to enter your three sensor entity IDs, and copy the files across. Step by step: [setup/QUICKSTART.md](setup/QUICKSTART.md).
 2. **Assign sensors to three roles:** main room, bedroom, bathroom. `setup.sh` does this. Hardware notes: [reference/SENSOR_GUIDES.md](reference/SENSOR_GUIDES.md).
 3. **Set their usual wake and bed times** on the dashboard's Settings screen. They have no defaults, and alerts are unreliable until they are set.
