@@ -20,6 +20,7 @@ homeassistant:
     haiven_movement: !include packages/haiven_movement.yaml
     haiven_routine: !include packages/haiven_routine.yaml
     haiven_faults: !include packages/haiven_faults.yaml
+    haiven_pause: !include packages/haiven_pause.yaml
  
 automation: !include automations.yaml
 script: !include scripts.yaml

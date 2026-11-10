@@ -33,7 +33,7 @@ Needs Home Assistant 2024.10 or later.
 
 **The first week**
 
-Compare what Haiven records each day with what happened. Adjust the wake time, bedtime and thresholds until they match, then start relying on the alerts. Haiven has no built-in calibration mode: to hold alerts back during this week, switch monitoring off on the Settings screen (`input_boolean.haiven_monitoring_enabled`) and read the dashboard only.
+Press "Start calibration" on the Settings screen before you leave. For seven nights alerts arrive quietly, to the first contact only, marked "[Calibrating]". Compare each one, and each day's wake time and bedtime, with what happened. Adjust the times and thresholds until they match. Calibration ends by itself and tells you; press "Start calibration" again if you need longer.
 
 ## Adapt it to their house
 
@@ -46,6 +46,7 @@ Every house and routine is different. Fill in a copy of [HOUSE_PROFILE.md](../HO
 - A nearby key holder or key safe is named.
 - The call order is written down and in the house.
 - The hub watchdog is set up, and you were alerted when you unplugged the hub.
+- Calibration has ended and the alerts you saw during it made sense.
 - They still have a monitored pendant.
 
 ## Optional extras

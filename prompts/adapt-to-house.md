@@ -40,4 +40,6 @@ Tell me which requests in the profile you could not meet and why.
 
 Repeat the walk test in each room, then run a few nights and compare what Haiven recorded with what happened before relying on it again.
 
-Haiven has no visitor setting yet, so a carer's visit is counted as the person's activity. Do not ask the assistant to invent one that silences alerts; note the visit times in the profile so you can read the data with them in mind.
+Press "Start calibration" on the Settings screen after a change to rooms or times, so alerts arrive quietly while you check them.
+
+A visitor's movement is counted as the person's. Use "Visitor here" on the Settings screen during visits, which quietens alerts for a set time. Do not ask the assistant to add anything that silences alerts on a schedule or drops them.

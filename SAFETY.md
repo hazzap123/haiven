@@ -45,9 +45,11 @@ An alert is only useful if someone can act on it. Before going live:
 Frequent false alarms cause unnecessary call-outs and teach families to ignore alerts. To keep them down:
 
 - Set the expected wake time, bedtime and thresholds on the Settings screen. They have no defaults.
-- Run for at least a week and compare what Haiven records with what happened before trusting it.
+- **Calibrate for the first seven nights.** Press "Start calibration" on the Settings screen. Until it ends, alerts still arrive, but quietly: to the first contact only, without sound, marked "[Calibrating]". Compare them with what happened and adjust. This applies to critical alerts too, so do not treat Haiven as live until calibration is over.
+- **Tell it when a visitor is there.** Press "Visitor here" when a carer, cleaner or relative arrives. Alerts are quietened in the same way, marked "[Visitor present]", and it switches itself off after the number of hours you set (1 to 12). Critical alerts are not quietened during a visit.
+- Fault alerts are never quietened.
 - Alerts are skipped while the person is recorded as away from home, which depends on their phone's location being shared with Home Assistant.
-- Pets and visitors set off the sensors. Haiven cannot tell them from the person.
+- Pets and visitors set off the sensors. Haiven cannot tell them from the person, so movement during a visit is still counted in the day's figures. Visits are written to the activity log so you can read a day with them in mind.
 
 ## What leaves the house
 

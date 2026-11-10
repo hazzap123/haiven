@@ -1,0 +1,117 @@
+# Haiven: holding alerts back
+#
+# Two situations where an alert is likely to be a false alarm:
+#
+#   visitor       someone else is in the house, so the sensors are seeing two
+#                 people and a human is on the spot anyway. Switched on from
+#                 the dashboard; switches itself off after a set number of
+#                 hours so it cannot be left on.
+#   calibrating   the first seven nights after install, while the wake time,
+#                 bedtime and thresholds are still being matched to the house.
+#
+# Nothing is dropped. While alerts are held they still arrive, but quietly:
+# passive, to the first contact only, with the reason in the title. That is
+# what calibration is for (seeing what would have fired) and it means a pause
+# can never hide a real event.
+#
+# Never held: fault alerts (sensor offline, low battery, hub watchdog), and,
+# during a visit, critical alerts. See script.send_haiven_notification and
+# script.notify_care_circle in scripts.yaml.
+
+input_boolean:
+  haiven_visitor_present:
+    name: Visitor Present
+    icon: mdi:account-multiple
+
+input_number:
+  # How long "visitor present" lasts before it switches itself off.
+  haiven_visitor_hours:
+    name: Visitor Hours
+    min: 1
+    max: 12
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-outline
+
+input_datetime:
+  haiven_visitor_until:
+    name: Visitor Until
+    has_date: true
+    has_time: true
+    icon: mdi:account-clock
+
+  haiven_calibration_until:
+    name: Calibrating Until
+    has_date: true
+    has_time: true
+    icon: mdi:tune
+
+template:
+  - binary_sensor:
+      - name: "Haiven Alerts Held"
+        unique_id: haiven_alerts_held
+        icon: mdi:bell-sleep
+        # Both halves compare against the clock, so a pause ends on time even
+        # if the automation that tidies up after it never runs.
+        state: >
+          {% set t = as_timestamp(now()) %}
+          {% set calibrating = as_timestamp(states('input_datetime.haiven_calibration_until'), 0) > t %}
+          {% set visitor = is_state('input_boolean.haiven_visitor_present', 'on')
+             and as_timestamp(states('input_datetime.haiven_visitor_until'), 0) > t %}
+          {{ calibrating or visitor }}
+        attributes:
+          calibrating: >
+            {{ as_timestamp(states('input_datetime.haiven_calibration_until'), 0) > as_timestamp(now()) }}
+          visitor: >
+            {{ is_state('input_boolean.haiven_visitor_present', 'on')
+               and as_timestamp(states('input_datetime.haiven_visitor_until'), 0) > as_timestamp(now()) }}
+          label: >
+            {% set t = as_timestamp(now()) %}
+            {% if as_timestamp(states('input_datetime.haiven_calibration_until'), 0) > t %}Calibrating
+            {% elif is_state('input_boolean.haiven_visitor_present', 'on')
+               and as_timestamp(states('input_datetime.haiven_visitor_until'), 0) > t %}Visitor present
+            {% endif %}
+
+script:
+  haiven_visitor_here:
+    alias: "Haiven: Visitor Here"
+    icon: mdi:account-multiple-plus
+    sequence:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.haiven_visitor_until
+        data:
+          timestamp: >
+            {% set hours = states('input_number.haiven_visitor_hours') | float(2) %}
+            {{ now().timestamp() + ([[hours, 1] | max, 12] | min) * 3600 }}
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.haiven_visitor_present
+
+  haiven_visitor_left:
+    alias: "Haiven: Visitor Left"
+    icon: mdi:account-multiple-minus
+    sequence:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.haiven_visitor_present
+
+  haiven_start_calibration:
+    alias: "Haiven: Start Calibration"
+    icon: mdi:tune
+    sequence:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.haiven_calibration_until
+        data:
+          timestamp: "{{ now().timestamp() + 7 * 86400 }}"
+
+  haiven_end_calibration:
+    alias: "Haiven: End Calibration"
+    icon: mdi:check
+    sequence:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.haiven_calibration_until
+        data:
+          timestamp: "{{ now().timestamp() }}"

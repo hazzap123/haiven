@@ -83,6 +83,7 @@ sensor.deviation_count: 0 = normal
        haiven_movement: !include packages/haiven_movement.yaml
        haiven_routine: !include packages/haiven_routine.yaml
        haiven_faults: !include packages/haiven_faults.yaml
+       haiven_pause: !include packages/haiven_pause.yaml
    ```
    If yours is shorter than this, `git pull` — a package is missing.
 

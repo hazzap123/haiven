@@ -22,9 +22,19 @@ notify_care_circle:
         deviation_msg: "{{ states('sensor.current_deviation_message') }}"
         last_activity: "{{ states('sensor.last_activity_display') }}"
         status: "{{ states('sensor.elderly_care_status') }}"
-        alert_title: "{{ title | default('⚠️ Haiven Alert - ' ~ person_name) }}"
+        # Held while calibrating, or while a visitor is present unless the
+        # alert is critical. Held alerts still arrive: quietly, to the first
+        # contact only, with the reason in the title, and without marking the
+        # alert as sent. See packages/haiven_pause.yaml.
+        held: >-
+          {{ is_state('binary_sensor.haiven_alerts_held', 'on')
+             and (state_attr('binary_sensor.haiven_alerts_held', 'calibrating') == true
+                  or (priority | default('time-sensitive')) != 'critical') }}
+        held_label: "{{ (state_attr('binary_sensor.haiven_alerts_held', 'label') or '') | trim }}"
+        base_title: "{{ title | default('⚠️ Haiven Alert - ' ~ person_name) }}"
+        alert_title: "{{ ('[' ~ held_label ~ '] ' ~ base_title) if held and held_label else base_title }}"
         alert_message: "{{ message | default(deviation_msg ~ '\n\nLast activity: ' ~ last_activity ~ '\nStatus: ' ~ status) }}"
-        alert_priority: "{{ priority | default('time-sensitive') }}"
+        alert_priority: "{{ 'passive' if held else (priority | default('time-sensitive')) }}"
         primary_service: "{{ states('input_text.contact_1_notification') }}"
         secondary_service: "{{ states('input_text.contact_2_notification') }}"
 
@@ -50,7 +60,7 @@ notify_care_circle:
     # Notify secondary contact (if configured)
     - if:
         - condition: template
-          value_template: "{{ secondary_service != '' and secondary_service != 'unknown' }}"
+          value_template: "{{ not held and secondary_service != '' and secondary_service != 'unknown' }}"
       then:
         - action: "{{ secondary_service }}"
           data:
@@ -60,10 +70,15 @@ notify_care_circle:
               push:
                 interruption-level: "{{ alert_priority }}"
 
-    # Set flag that alert was sent
-    - action: input_boolean.turn_on
-      target:
-        entity_id: input_boolean.deviation_alert_sent
+    # Set flag that alert was sent. Not for a held alert: it has not really
+    # gone out, and the flag would stop the real one following it.
+    - if:
+        - condition: template
+          value_template: "{{ not held }}"
+      then:
+        - action: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.deviation_alert_sent
 
     # Log the alert
     - action: logbook.log
@@ -326,13 +341,19 @@ send_haiven_notification:
             - time-sensitive
             - passive
   sequence:
+    # While alerts are held (visitor present, or calibrating) the message
+    # still arrives, quietly and with the reason in its title. Nothing is
+    # dropped. See packages/haiven_pause.yaml.
+    - variables:
+        held: "{{ is_state('binary_sensor.haiven_alerts_held', 'on') }}"
+        held_label: "{{ (state_attr('binary_sensor.haiven_alerts_held', 'label') or '') | trim }}"
     - action: "{{ states('input_text.contact_1_notification') }}"
       data:
-        title: "{{ title }}"
+        title: "{{ ('[' ~ held_label ~ '] ' ~ title) if held and held_label else title }}"
         message: "{{ message }}"
         data:
           push:
-            interruption-level: "{{ level | default('time-sensitive') }}"
+            interruption-level: "{{ 'passive' if held else (level | default('time-sensitive')) }}"
   mode: queued
   max: 10
   icon: mdi:bell-ring

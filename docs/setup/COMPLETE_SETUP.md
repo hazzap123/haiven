@@ -87,6 +87,7 @@ packages/haiven_night_insights.yaml       <- Nightly bathroom-visit stats
 packages/haiven_movement.yaml             <- Today's movement vs 7-day average
 packages/haiven_routine.yaml              <- Daily routine verdict
 packages/haiven_faults.yaml               <- Sensor offline, low battery, hub watchdog
+packages/haiven_pause.yaml                <- Visitor present and calibration
 haiven_sensors_3sensor.yaml               <- Core template sensors
 scripts.yaml                              <- Notification scripts
 automations.yaml                          <- Monitoring automations
