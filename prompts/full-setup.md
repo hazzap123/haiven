@@ -104,6 +104,15 @@ Ask, and wait for each answer:
   - Do they carry a mobile phone every time they go out?
   - Does the home have broadband, and a router with a spare network
     socket for the hub?
+  - Do I live there too, or will the hub be in a different house from
+    me and the other carers? If different, tell me now that remote
+    access is required, not optional: it gives the hub a remote address
+    that carers' phones, the dashboard and their location updates go
+    through. Home Assistant Cloud (Nabu Casa, a monthly subscription)
+    is the simple way; free alternatives are in
+    docs/setup/REMOTE_ACCESS.md. Without it, alerts still arrive, but
+    the dashboard, location and alert buttons do not work away from the
+    house, and nobody can fix the hub without going there.
 For each answer that does not fit, say plainly what will not work:
   pets at night: the morning check and the long-silence alert can be
     satisfied by the pet and stay silent when they should not, unless
@@ -231,16 +240,21 @@ STAGE 2. Sensor plan, hardware and the hub
     their keys or bag, and plan to use it as their home and away signal.
     Tell me that while they are recorded as away, alerts are skipped, so
     a tracker left elsewhere or showing away by mistake silences them.
-  - If I do not have Home Assistant: walk me through the hub (a Home
+  - If the hub is not set up yet: walk me through the hub (a Home
     Assistant Green or similar), the admin account, HACS (needs a free
     GitHub account) and kiosk-mode (it hides Home Assistant's own menus
     on the dashboard), one step at a time. I click; you tell me what to
     look for.
-  - Remote access, following docs/setup/REMOTE_ACCESS.md: Home
-    Assistant Cloud or an alternative for carers' phones, and Tailscale
-    with the Terminal & SSH add-on, key login only, for admin access.
-    From here on, connect to the hub with ssh over Tailscale. Never
-    forward a router port, and never handle my private key.
+  - Remote access, straight after the hub's first setup and before any
+    phone is added, following docs/setup/REMOTE_ACCESS.md. Ask which I
+    want for carers' phones: Home Assistant Cloud (Nabu Casa; sign up
+    under Settings, Home Assistant Cloud, and note the remote address it
+    gives) or an alternative. Phones added before it is on will not
+    work away from the house until they are set to the remote address.
+    Then Tailscale with the Terminal & SSH add-on, key login only, for
+    admin access. From here on, connect to the hub with ssh over
+    Tailscale. Never forward a router port, and never handle my private
+    key.
   - Help me pair each sensor and confirm it appears in Home Assistant.
     Label each with its role. Note each one's entity ID.
   - Help each carer install the Home Assistant app. Ask each carer
@@ -249,7 +263,8 @@ STAGE 2. Sensor plan, hardware and the hub
     their distance. Then allow notifications and location, and confirm
     their notify.mobile_app_* service and device_tracker exist. The
     person's phone or tracker only with the person's own agreement.
-  - Before the hub leaves my home, do the away test in
+  - Before the hub leaves my home, or before I leave their house if it
+    was set up there, do the away test in
     REMOTE_ACCESS.md and record the result. Do not go on to stage 5
     tests at their house until it passes.
   - Where an entity ID contains a name, use it only in the hub's
