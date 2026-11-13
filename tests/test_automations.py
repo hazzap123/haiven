@@ -904,6 +904,27 @@ class TestHoldingAlertsBack:
         with open(self.ROOT / "scripts.yaml") as f:
             return yaml.safe_load(f)
 
+    def test_critical_status_is_not_held_for_a_visitor(self, automations, jinja_env):
+        """SAFETY.md: critical alerts are not quietened during a visit. The
+        status-change alert went through send_haiven_notification, which
+        quietened everything while a visitor was present."""
+        held_tpl = self._scripts()['send_haiven_notification']['sequence'][0]['variables']['held']
+        def held(on, calibrating, critical):
+            return jinja_env.from_string(held_tpl).render(
+                is_state=lambda e, v: on,
+                state_attr=lambda e, a: calibrating,
+                critical=critical).strip()
+        assert held(True, False, False) == 'True'      # visitor: routine alert quiet
+        assert held(True, False, True) == 'False'      # visitor: critical alert loud
+        assert held(True, True, True) == 'True'        # calibrating: all quiet
+        assert held(False, False, True) == 'False'
+        auto = next(a for a in automations
+                    if any(s.get('action') == 'script.send_haiven_notification'
+                           and 'CRITICAL' in str(s.get('data', {}).get('title', ''))
+                           for s in a['actions']))
+        call = next(s for s in auto['actions'] if s.get('action') == 'script.send_haiven_notification')
+        assert "== 'critical'" in call['data']['critical']
+
     def test_held_alerts_are_still_sent(self):
         for name in ('send_haiven_notification', 'notify_care_circle'):
             text = str(self._scripts()[name])

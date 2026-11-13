@@ -562,6 +562,8 @@
         level: >
           {% set s = trigger.to_state.state %}
           {% if s in ['critical', 'concern'] %}time-sensitive{% else %}active{% endif %}
+        # Not quietened for a visitor (SAFETY.md); still quiet while calibrating.
+        critical: "{{ trigger.to_state.state == 'critical' }}"
     - action: input_boolean.turn_on
       target:
         entity_id: input_boolean.deviation_alert_sent

@@ -340,12 +340,24 @@ send_haiven_notification:
           options:
             - time-sensitive
             - passive
+    critical:
+      description: >-
+        True for a critical alert. A critical alert is held only while
+        calibrating, never for a visitor, as SAFETY.md says.
+      required: false
+      default: false
+      selector:
+        boolean:
   sequence:
     # While alerts are held (visitor present, or calibrating) the message
     # still arrives, quietly and with the reason in its title. Nothing is
-    # dropped. See packages/haiven_pause.yaml.
+    # dropped. A critical alert is held only while calibrating, the same
+    # rule as notify_care_circle. See packages/haiven_pause.yaml.
     - variables:
-        held: "{{ is_state('binary_sensor.haiven_alerts_held', 'on') }}"
+        held: >-
+          {{ is_state('binary_sensor.haiven_alerts_held', 'on')
+             and (state_attr('binary_sensor.haiven_alerts_held', 'calibrating') == true
+                  or (critical | default(false) | string | lower) != 'true') }}
         held_label: "{{ (state_attr('binary_sensor.haiven_alerts_held', 'label') or '') | trim }}"
     - action: "{{ states('input_text.contact_1_notification') }}"
       data:
