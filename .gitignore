@@ -93,6 +93,7 @@ custom_components/
 
 # Your filled-in house profile stays on your machine
 HOUSE_PROFILE.local.md
+HAIVEN_PROGRESS.local.md
 
 # Camera stills: never commit a picture of someone's home
 haiven_snapshots/

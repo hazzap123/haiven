@@ -6,6 +6,14 @@ A description of one home and one routine, used to adapt Haiven's rules to it. S
 
 Use roles and times. Do not write names, addresses, phone numbers or anything that identifies the person.
 
+## Fit
+
+- Does anyone else live there or stay most nights? If so, Haiven is not suitable: the sensors cannot tell two people apart.
+- Has the person agreed, including which rooms have sensors?
+- Do they have a monitored pendant?
+- Do they carry a mobile phone every time they go out?
+- Broadband, and a spare socket on the router:
+
 ## Rooms
 
 - Kitchen and living room: separate, or open plan?
@@ -50,8 +58,7 @@ Write "unsure" rather than guess. A week of calibration measures it.
 
 ## Alerts
 
-- Who gets which alert (carer 1, carer 2):
-- Quiet hours for carers, and which alerts may break them:
+- Up to two carers. Both get each alert at the same time; carer 1 also gets the quiet alerts during calibration and visits. Haiven cannot route by time of day:
 - Nearby key holder or key safe: yes or no
 - Call order:
 - What should make a carer's phone ring, in your own words:
