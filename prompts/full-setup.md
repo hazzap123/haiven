@@ -105,14 +105,19 @@ Ask, and wait for each answer:
   - Does the home have broadband, and a router with a spare network
     socket for the hub?
   - Do I live there too, or will the hub be in a different house from
-    me and the other carers? If different, tell me now that remote
-    access is required, not optional: it gives the hub a remote address
-    that carers' phones, the dashboard and their location updates go
-    through. Home Assistant Cloud (Nabu Casa, a monthly subscription)
-    is the simple way; free alternatives are in
-    docs/setup/REMOTE_ACCESS.md. Without it, alerts still arrive, but
-    the dashboard, location and alert buttons do not work away from the
-    house, and nobody can fix the hub without going there.
+    me and the other carers? If different, tell me now that two kinds
+    of secure remote access are required, not optional, and that we set
+    both up in stage 2 before the hub is left there:
+      - for carers' phones: a remote address that the dashboard, alert
+        buttons and location updates go through. Home Assistant Cloud
+        (Nabu Casa, a monthly subscription) is the simple way; free
+        alternatives are in docs/setup/REMOTE_ACCESS.md;
+      - for maintenance: Tailscale (free) and the Terminal & SSH add-on
+        with key login only, so I, and you as the assistant, can reach
+        the hub securely to fix and tune it. Nothing is opened on their
+        router.
+    Without them, alerts still arrive, but nothing else works away from
+    the house, and every fix means a trip there.
 For each answer that does not fit, say plainly what will not work:
   pets at night: the morning check and the long-silence alert can be
     satisfied by the pet and stay silent when they should not, unless
