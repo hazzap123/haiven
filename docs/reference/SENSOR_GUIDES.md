@@ -113,7 +113,7 @@ Battery-powered PIR motion sensor for bathroom activity tracking.
    - an ESPHome Bluetooth proxy within range of the bathroom;
    - a mains-powered Shelly Gen2 or later device nearby, acting as a BLU gateway over Wi-Fi.
 
-   It then appears through the BTHome integration (Settings > Devices & services). The Shelly app, over your phone's Bluetooth, is only for setting it up.
+   It then appears through the BTHome integration (Settings > Devices & services). The Shelly app, over your phone's Bluetooth, is only for setting it up. If you turn on encryption in the Shelly app, Home Assistant asks for the device's bindkey, shown in the app.
 
 ### Range
 

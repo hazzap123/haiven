@@ -58,7 +58,7 @@ Write "unsure" rather than guess. A week of calibration measures it.
 
 ## Alerts
 
-- Up to two carers. Both get each alert at the same time; carer 1 also gets the quiet alerts during calibration and visits. Haiven cannot route by time of day:
+- Up to two carers. Carer 1 gets every alert; carer 2 gets night bathroom, concern and critical, fault and gone-out alerts. Haiven cannot route by time of day:
 - Nearby key holder or key safe: yes or no
 - Call order:
 - What should make a carer's phone ring, in your own words:

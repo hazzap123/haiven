@@ -11,7 +11,8 @@ Already running Home Assistant and only want the software installed? [first-inst
 - **Read [SAFETY.md](../SAFETY.md).** Haiven is not a medical device, does not detect falls, and is never a replacement for a monitored pendant.
 - **The person should be part of this, not only the subject of it.** Stage 0 asks about their agreement before anything else.
 - **What you type goes to the AI provider.** The answers in stage 1 describe someone's daily routine, including night-time bathroom visits. They are sent to the company that runs your AI assistant, under its terms. Use roles ("mum", "carer 1"), not full names, and skip anything you would rather not share.
-- **If you have never used Home Assistant or a terminal**, it is worth asking someone technical to sit with you for stages 2 and 3. The assistant runs on your own computer; it tells you when it needs access to the hub and how to give it. On Windows or Mac, install the assistant first (for Claude Code, see claude.com/claude-code).
+- **Who does what.** Stages 0, 1 and 4 to 7 need no technical skill. Stages 2 and 3 need a technical helper for about two hours: someone comfortable with Home Assistant, or willing to learn its basics, who can read a configuration change before agreeing to it. The assistant cannot judge a change for you. If that is not you, ask someone to sit with you for those two stages. The assistant runs on your own computer; install it first (for Claude Code, see claude.com/claude-code).
+- **Costs.** A hub, three sensors and any radio they need, and usually a Home Assistant Cloud subscription so carers' phones work away from home. Tailscale and the watchdog service are free. See [docs/start.md](../docs/start.md).
 - **Set the hub up at your own home first**, then take it to theirs. You need remote access so you can see the dashboard and carers' phones can report location from anywhere. Stage 2 covers it.
 - **Allow about an hour for stages 0 and 1.** They are a conversation about the person's home and day. Ask them, or someone who knows their routine well; the answers matter more than anything else here.
 
@@ -62,8 +63,10 @@ Ask, and wait for each answer:
     where capacity is in doubt, a recorded best-interests decision under
     the Mental Capacity Act that involves them as far as possible. Do
     not continue on my word that "it's fine".
-    Tell me they can change their mind at any time, and that switching
-    monitoring off on the Settings screen is how.
+    Tell me they can change their mind at any time. Switching
+    Monitoring off on the Settings screen stops most alerts, but
+    movement is still recorded and fault and critical alerts still go
+    out; to stop entirely, Haiven is taken out (see Rules).
   - Do they have a monitored pendant? If not, say they should keep or
     get one, and that Haiven is an addition to it.
   - Does anyone else live there or stay most nights: a partner, a
@@ -72,7 +75,7 @@ Ask, and wait for each answer:
     hidden by the other person's movement.
   - Do pets move about in the main room or bedroom at night?
   - Are bed and wake times usually within about four hours of the same
-    time each day, with bed before about 01:00 and up by about 11:00?
+    time each day, with bed usually by about 23:00 and up by about 11:00?
   - Do they carry a mobile phone every time they go out?
   - Does the home have broadband, and a router with a spare network
     socket for the hub?
@@ -122,12 +125,16 @@ Then show me the profile back and tell me, for each answer:
   - what Haiven will use: expected wake time and bedtime and how much
     each may vary, the window bedtime is looked for in, the earliest
     time that counts as getting up, the no-activity hours, and two
-    carers. Both carers get each alert at the same time; carer 1 also
-    gets the quiet alerts during calibration and visits. Extra rooms
-    only if stage 4 adds them.
-  - what Haiven records but cannot act on: a call order, who is woken
-    at night, quiet hours, more than two carers, and anything on a
-    timetable. It cannot quieten alerts on a schedule such as every
+    carers. Carer 1 gets every alert. Carer 2 gets the night bathroom
+    alerts, the concern and critical escalations, fault alerts and the
+    gone-out and home messages, but not the first morning, no-activity
+    or bedtime alerts. A critical alert goes to the nearer carer first
+    and to both two minutes later. Carer 1 also gets the quiet alerts
+    during calibration and visits. Extra rooms only if stage 4 adds
+    them, and fault alerts do not cover extra rooms.
+  - what Haiven records but cannot act on: any other call order, who is
+    woken at night, quiet hours, more than two carers, and anything on
+    a timetable. It cannot quieten alerts on a schedule such as every
     Tuesday: SCOPE.md rule 1 forbids weakening a safety alert. For a
     visit there is the "Visitor here" button; for a day out, their
     phone or a tracker.
@@ -151,10 +158,15 @@ STAGE 2. Hardware and the hub
   - If the person goes out without a phone, propose a small tracker for
     their keys or bag, and plan to use it as their home and away signal.
   - If I do not have Home Assistant: walk me through the hub (a Home
-    Assistant Green or similar), the admin account, remote access (Home
-    Assistant Cloud or a VPN), HACS (needs a free GitHub account) and
-    kiosk-mode (it hides Home Assistant's own menus on the dashboard),
-    one step at a time. I click; you tell me what to look for.
+    Assistant Green or similar), the admin account, HACS (needs a free
+    GitHub account) and kiosk-mode (it hides Home Assistant's own menus
+    on the dashboard), one step at a time. I click; you tell me what to
+    look for.
+  - Remote access, following docs/setup/REMOTE_ACCESS.md: Home
+    Assistant Cloud or an alternative for carers' phones, and Tailscale
+    with the Terminal & SSH add-on, key login only, for admin access.
+    From here on, connect to the hub with ssh over Tailscale. Never
+    forward a router port, and never handle my private key.
   - Help me pair each sensor and confirm it appears in Home Assistant.
     Label each with its role. Note each one's entity ID.
   - Help each carer install the Home Assistant app. Ask each carer
@@ -163,6 +175,9 @@ STAGE 2. Hardware and the hub
     their distance. Then allow notifications and location, and confirm
     their notify.mobile_app_* service and device_tracker exist. The
     person's phone or tracker only with the person's own agreement.
+  - Before the hub leaves my home, do the away test in
+    REMOTE_ACCESS.md and record the result. Do not go on to stage 5
+    tests at their house until it passes.
   - Where an entity ID contains a name, use it only in the hub's
     config. Never write it into HOUSE_PROFILE.local.md, the progress
     file, the response plan or any file git tracks.
@@ -173,8 +188,17 @@ the backup first. Before step 5 also:
   - copy every file of mine you will edit to <name>.pre-haiven, and
     record in the progress file every file Haiven adds, so Haiven can be
     taken out again without restoring the whole hub;
-  - do stage 4's file changes in ~/haiven now, so there is one copy and
-    one restart;
+  - do adapt-to-house.md's sensor-role and extra-room file changes in
+    ~/haiven now, so there is one copy and one restart. Do not put times
+    or thresholds in files: they go on the Settings screen in stage 4;
+  - in step 4, write names and notify services only into the /config
+    copies after step 5, never into ~/haiven, so nothing git tracks
+    holds them;
+  - check that the bedroom sensor's entity ID contains "bedroom" and
+    "presence" or "occupancy", and the bathroom one contains "bathroom"
+    and "motion". The activity log names rooms from these words, and
+    stage 6 cannot read a room logged under another name. If not,
+    rename the entity in Home Assistant first;
   - if my configuration already loads a packages folder, or keeps
     automations in a folder, put Haiven's files in their own subfolder
     or file there, and do not add a second packages or automation key.
@@ -208,7 +232,8 @@ the progress file:
     /config/activity.log on the hub shows "Kitchen Motion (on)",
     "Bedroom Presence (on)" and "Bathroom Motion (on)" lines for those
     rooms. If a room is logged under another name or as "Unknown",
-    stop: stage 6 cannot read it. Tell me, and fix the entity naming.
+    stop: stage 6 cannot read it. Rename the entity as in stage 3, and
+    test again.
   - If pets were an issue: with the pet in the room and nobody else,
     confirm the main-room sensor stays quiet.
   - A test alert reaches each carer's phone.
@@ -232,7 +257,8 @@ Calibration: do not start it within two weeks of a hospital stay or a
 new illness. Press "Start calibration" on the Settings screen and note
 the date in the progress file. For seven nights alerts arrive quietly,
 to carer 1 only, marked [Calibrating]; this includes the critical ones,
-so keep the usual checks going. Fault alerts still go to every carer.
+so keep the usual checks going. Fault alerts, gone-out and home
+messages and Drift Watch alerts are not held.
 Ask me to note anything unusual each day: a late night, a visitor, a
 day out. If I do not live with them, suggest a short daily call.
 Stop here until the seven nights have passed.
@@ -242,10 +268,10 @@ After at least seven nights:
   - On the hub, check python3 is available, then run
     python3 /config/scripts/night_stats.py and read the "nights" list.
     Use only nights dated after calibration started.
-  - Set a night aside if: I said it was unusual and why; wake is
-    missing; bed_rule is "kitchen" (the bathroom rule did not find
-    bedtime, so the time is a guess); it has far more trips than the
-    others; or bed and wake are less than four hours apart. Tell me
+  - Set a night aside if: I said it was unusual and why; bed_rule is
+    "kitchen" (the bathroom rule did not find bedtime, so the time is a
+    guess); it has far more trips than the others and I have said why
+    (a visitor, a pet); or bed and wake are less than four hours apart. Tell me
     which and why. Do not set a night aside only because it looks bad.
   - If fewer than five nights are left, do not propose times. Run
     another week.
@@ -291,8 +317,9 @@ STAGE 7. Hand over
     contains a name, phone number or address.
   - Remind me to review it with the person every six months: their
     agreement first, then stage 6 again with the nights since. Drift
-    Watch, if installed, sets its baseline from the first 28 nights: if
-    those included an illness, reset it once they are back to usual.
+    Watch, if installed, compares with the latest 28 nights until a
+    carer presses "reset usual" on one of its alerts, which freezes the
+    baseline. Do not freeze it on nights that included an illness.
   - Finish with a checklist of every stage and test: done, failed or
     skipped, with the reason for anything not done.
 
@@ -302,7 +329,8 @@ Rules
 - If I describe symptoms or ask whether a pattern is worrying, do not
   interpret it. Say neither Haiven nor you can judge health, and point
   me to their GP, NHS 111, or 999 in an emergency.
-- Never delete anything, and never remove or edit my own automations,
+- Never delete anything, except, when I ask to take Haiven out, the
+  files listed in the progress file. Never remove or edit my own automations,
   scripts, scenes or dashboards.
 - Do not switch on AI wording, the camera or Ask yourself.
 - Follow SCOPE.md in every change. No clinical wording, no claims of
