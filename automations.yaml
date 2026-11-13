@@ -613,7 +613,9 @@
            and trigger.from_state.state not in ['unknown', 'unavailable']
            and trigger.to_state is not none
            and trigger.to_state.state not in ['unknown', 'unavailable']
-           and trigger.to_state.state != trigger.from_state.state }}
+           and trigger.to_state.state != trigger.from_state.state
+           and (not trigger.entity_id.startswith('binary_sensor.')
+                or trigger.to_state.state == 'on') }}
     - condition: state
       entity_id: binary_sensor.morning_window_active
       state: "on"
@@ -648,7 +650,9 @@
            and trigger.from_state.state not in ['unknown', 'unavailable']
            and trigger.to_state is not none
            and trigger.to_state.state not in ['unknown', 'unavailable']
-           and trigger.to_state.state != trigger.from_state.state }}
+           and trigger.to_state.state != trigger.from_state.state
+           and (not trigger.entity_id.startswith('binary_sensor.')
+                or trigger.to_state.state == 'on') }}
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
@@ -855,7 +859,7 @@
   description: Append every monitored activity event to activity.log
   triggers:
     - trigger: state
-      entity_id: binary_sensor.kitchen_motion
+      entity_id: binary_sensor.haiven_kitchen_motion
       to:
         - "on"
         - "off"
@@ -1255,7 +1259,9 @@
            and trigger.from_state.state not in ['unknown', 'unavailable']
            and trigger.to_state is not none
            and trigger.to_state.state not in ['unknown', 'unavailable']
-           and trigger.to_state.state != trigger.from_state.state }}
+           and trigger.to_state.state != trigger.from_state.state
+           and (not trigger.entity_id.startswith('binary_sensor.')
+                or trigger.to_state.state == 'on') }}
   actions:
     - action: input_boolean.turn_on
       target:
@@ -1633,7 +1639,9 @@
            and trigger.from_state.state not in ['unknown', 'unavailable']
            and trigger.to_state is not none
            and trigger.to_state.state not in ['unknown', 'unavailable']
-           and trigger.to_state.state != trigger.from_state.state }}
+           and trigger.to_state.state != trigger.from_state.state
+           and (not trigger.entity_id.startswith('binary_sensor.')
+                or trigger.to_state.state == 'on') }}
     - condition: template
       alias: Ignore unknown/unavailable states
       value_template: >-
@@ -2059,7 +2067,9 @@
            and trigger.from_state.state not in ['unknown', 'unavailable']
            and trigger.to_state is not none
            and trigger.to_state.state not in ['unknown', 'unavailable']
-           and trigger.to_state.state != trigger.from_state.state }}
+           and trigger.to_state.state != trigger.from_state.state
+           and (not trigger.entity_id.startswith('binary_sensor.')
+                or trigger.to_state.state == 'on') }}
     - condition: template
       alias: Valid motion event
       value_template: >-

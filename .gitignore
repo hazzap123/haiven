@@ -94,6 +94,12 @@ custom_components/
 # Your filled-in house profile stays on your machine
 HOUSE_PROFILE.local.md
 HAIVEN_PROGRESS.local.md
+RESPONSE_PLAN.local.md
+*.local.md
+# Built by scripts/setup.sh from www-src
+/www/haiven-*.js
+# Built by scripts/make_package.py
+/haiven.yaml
 
 # Camera stills: never commit a picture of someone's home
 haiven_snapshots/

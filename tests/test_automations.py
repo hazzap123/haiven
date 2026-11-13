@@ -670,7 +670,9 @@ class TestArrivalCountsAsActivity:
             state_attr=lambda e, a: ts if e == 'input_datetime.arrived_home' else None,
             now=lambda: now).strip()
         assert render(now_ts - 120) == '2'
-        assert render(None) == 'unknown'
+        # {{ none }}, which Home Assistant turns into an unknown state; the
+        # string 'unknown' is rejected by a sensor with a unit.
+        assert render(None) == 'None'
 
     def test_no_activity_alert_counts_arrival(self, automations, jinja_env):
         auto = next(a for a in automations if a['id'] == 'haiven_no_activity_alert')

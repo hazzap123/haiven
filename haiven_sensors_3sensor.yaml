@@ -1442,7 +1442,7 @@ template:
           {% if kitchen_last %}
             {{ ((now() - kitchen_last).total_seconds() / 60) | int }}
           {% else %}
-            unknown
+            {{ none }}
           {% endif %}
         icon: mdi:silverware-fork-knife
 
@@ -1458,7 +1458,7 @@ template:
             {% if bedroom_last %}
               {{ ((now() - bedroom_last).total_seconds() / 60) | int }}
             {% else %}
-              unknown
+              {{ none }}
             {% endif %}
           {% endif %}
         icon: mdi:bed
@@ -1475,7 +1475,7 @@ template:
             {% if bathroom_last %}
               {{ ((now() - bathroom_last).total_seconds() / 60) | int }}
             {% else %}
-              unknown
+              {{ none }}
             {% endif %}
           {% endif %}
         icon: mdi:shower
@@ -1490,7 +1490,7 @@ template:
           {% if ts and ts > 0 %}
             {{ ((now().timestamp() - ts) / 60) | int }}
           {% else %}
-            unknown
+            {{ none }}
           {% endif %}
         icon: mdi:home-import-outline
 
@@ -1502,6 +1502,9 @@ template:
       - name: "Average Activity Gap"
         unique_id: average_activity_gap
         unit_of_measurement: "min"
+        # A sensor with a unit must be numeric; before the first trigger of
+        # the day it is unavailable rather than the string "unknown".
+        availability: "{{ states('counter.total_triggers_today') | int(0) > 0 }}"
         state: >
           {% set total = states('counter.total_triggers_today') | int(0) %}
           {% if total > 1 %}
@@ -1509,10 +1512,8 @@ template:
             {% set mins_today = now().hour * 60 + now().minute %}
             {% set avg_gap = (mins_today / total) | round(0) %}
             {{ avg_gap }}
-          {% elif total == 1 %}
-            {{ (now().hour * 60 + now().minute) }}
           {% else %}
-            unknown
+            {{ (now().hour * 60 + now().minute) }}
           {% endif %}
         icon: mdi:timer-outline
         attributes:

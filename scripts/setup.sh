@@ -21,7 +21,7 @@ echo ""
 # Kitchen sensor
 echo "--- Kitchen Sensor ---"
 echo "This should be a motion sensor in the kitchen/living area."
-echo "Examples: event.kitchen_motion, binary_sensor.kitchen_motion"
+echo "Examples: event.kitchen_motion, binary_sensor.kitchen_pir_motion"
 read -p "Kitchen sensor entity ID [event.kitchen_motion]: " KITCHEN
 KITCHEN=${KITCHEN:-event.kitchen_motion}
 
@@ -107,10 +107,12 @@ echo "  Card deployed to www/haiven-cards.js and www/haiven-loader.js"
 
 echo ""
 echo "Done! Next steps:"
-echo "  1. Copy secrets.yaml.example to secrets.yaml and fill in values"
-echo "  2. Edit haiven_persons.yaml with your household members"
-echo "  3. Edit packages/haiven_care_circle_inputs.yaml with contact details"
-echo "  4. Restart Home Assistant"
+echo "  1. Copy the files to /config (prompts/first-install.md, step 5)"
+echo "  2. In the /config copies only, never here: set the phones in"
+echo "     haiven_persons.yaml or haiven.yaml's person list (keep its names)"
+echo "     and the contact names and"
+echo "     notify services in packages/haiven_care_circle_inputs.yaml"
+echo "  3. Check the config, then restart Home Assistant"
 echo ""
 echo "After any future change to www-src/haiven-cards.js, re-run:"
 echo "  cp www-src/haiven-cards.js www/haiven-cards.js"

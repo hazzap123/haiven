@@ -124,5 +124,5 @@ def test_ribbon_kitchen_lane_reads_the_on_off_helper():
     event.kitchen_motion is always empty. The lane must read the helper."""
     js = (ROOT / "www-src" / "haiven-cards.js").read_text()
     row = next(l for l in js.splitlines() if 'key: "kitchen"' in l)
-    assert 'motion: "binary_sensor.kitchen_motion"' in row
-    assert 'name: "Kitchen Motion"' in (ROOT / "configuration.yaml").read_text()
+    assert 'motion: "binary_sensor.haiven_kitchen_motion"' in row
+    assert 'name: "Haiven Kitchen Motion"' in (ROOT / "configuration.yaml").read_text()

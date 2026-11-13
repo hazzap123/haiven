@@ -1,12 +1,6 @@
 # Loads default set of integrations. Do not remove.
 default_config:
 
-http:
-  cors_allowed_origins:
-    - http://localhost:5173
-    - http://localhost:5174
-    - http://localhost:3000
-
 homeassistant:
   # Where camera stills are written (packages/haiven_camera.yaml). Deliberately
   # NOT /config/www: Home Assistant serves that at /local/ with no login.
@@ -57,14 +51,16 @@ frontend:
 # Shell commands for file logging
 shell_command:
   log_activity: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO {{ location }} {{ sensor_type }} | $(date +\"%H:%M:%S\") | $(date +\"%A\")\" >> /config/activity.log"'
-  backup_activity_log: 'cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)"'
+  backup_activity_log: 'git -C /config rev-parse --git-dir >/dev/null 2>&1 || exit 0; cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)"'
   log_haiven_event: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO HAIVEN {{ event_type }} | {{ detail }} | $(date +\"%A\")\" >> /config/activity.log"'
   # MMW sensor detailed logging
 
 # Template sensors
 template:
   - binary_sensor:
-      - name: "Kitchen Motion"
+      # Named "Haiven ..." so its ID cannot clash with a sensor of your own
+      # called binary_sensor.kitchen_motion.
+      - name: "Haiven Kitchen Motion"
         unique_id: kitchen_motion_binary
         device_class: motion
         state: "{{ is_state('input_boolean.kitchen_motion', 'on') }}"
@@ -166,7 +162,7 @@ template:
         unique_id: bathroom_night_visits_status
         state: >
           {% set count = states('sensor.night_bathroom_visits')|int(0) %}
-          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
+          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float(3) %}
           {% if count == 0 %}
             No visits tonight
           {% elif count <= baseline %}
@@ -177,8 +173,8 @@ template:
             {{ count }} visits (high - monitor)
           {% endif %}
         icon: >
-          {% set count = states('sensor.night_bathroom_visits')|int %}
-          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
+          {% set count = states('sensor.night_bathroom_visits')|int(0) %}
+          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float(3) %}
           {% if count > baseline + 1 %}
             mdi:alert-circle
           {% else %}
@@ -224,7 +220,7 @@ lovelace:
 sensor:
   - platform: history_stats
     name: Kitchen Triggers 7 Day Count
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_kitchen_motion
     state: "on"
     type: count
     start: "{{ now() - timedelta(days=7) }}"
@@ -232,7 +228,7 @@ sensor:
 
   - platform: history_stats
     name: Kitchen Triggers 24h Count
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_kitchen_motion
     state: "on"
     type: count
     start: "{{ now() - timedelta(hours=24) }}"
@@ -240,7 +236,7 @@ sensor:
 
   - platform: history_stats
     name: Kitchen Triggers Last Hour
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_kitchen_motion
     state: "on"
     type: count
     start: "{{ now() - timedelta(hours=1) }}"
