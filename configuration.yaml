@@ -179,7 +179,7 @@ template:
             {{ count }} visits (high - monitor)
           {% endif %}
         icon: >
-          {% set count = states('sensor.night_bathroom_visits')|int %}
+          {% set count = states('sensor.night_bathroom_visits')|int(0) %}
           {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
           {% if count > baseline + 1 %}
             mdi:alert-circle

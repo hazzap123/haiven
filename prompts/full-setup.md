@@ -80,7 +80,8 @@ Ask, and wait for each answer:
     hidden by the other person's movement.
   - Do pets move about in the main room or bedroom at night?
   - Are bed and wake times usually within about four hours of the same
-    time each day, with bed usually by about 23:00 and up by about 11:00?
+    time each day, with bed before about 23:15 on most nights and up by about 11:00?
+    Later than that, the bedtime check will alert on most nights.
   - Do they carry a mobile phone every time they go out?
   - Does the home have broadband, and a router with a spare network
     socket for the hub?
@@ -217,7 +218,10 @@ Start loose; stage 6 tightens it:
   - Expected wake time and bedtime from the profile, or my best guess.
   - Wake and bedtime variance at 60 minutes, or 90 where I said "unsure"
     or that it varies a lot. Keep expected bedtime plus its variance at
-    or before 23:45: the bedtime check stops at midnight.
+    or before 23:45: the bedtime check stops at midnight. If it would be
+    later, lower the variance first, to no less than 30; if still later,
+    set bedtime 23:15 with variance 30 and tell me it will alert on
+    nights they go to bed after about 23:15.
   - Leave the bedtime window and earliest wake at 00:00, which means:
     bedtime is looked for from three hours before expected bedtime to
     two hours after, and getting up counts from three hours before
@@ -256,7 +260,8 @@ the progress file:
     location to their home (it was set up at mine), then confirm
     person.elderly_person (not any other person entity) shows as Home
     and binary_sensor.elderly_person_home is on. If it is missing, the
-    names in haiven_persons.yaml were changed: see that file. Until then they read as away and the morning
+    names in haiven_persons.yaml (route B: haiven.yaml's person list)
+    were changed: see that file. Until then they read as away and the morning
     check is skipped.
   - Home and away, if they carry a phone or tracker: a real trip out of
     15 minutes or more gives "has gone out" and "is home".
@@ -305,7 +310,8 @@ After at least seven nights. Do the steps in this order.
      is clearly different if any of these hold: the median night visits
      is more than one above what I described; the median trips is more
      than one above what I described, unless I said in stage 0 or 1 that
-     a pet uses the kitchen at night; "rising" in the
+     a pet uses the kitchen at night; "rising" (only meaningful once
+     there are three weeks of nights) in the
      output is true; the median wake or bed time is more than 45 minutes
      from what I said; or the median wake of the last three kept nights
      is more than 45 minutes later than that of the first three.

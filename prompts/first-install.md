@@ -67,7 +67,8 @@ configuration.yaml.
      the same phone is harmless. Change only names, trackers and notify
      services. Leave the phone fields as placeholders unless I give you a
      number.
-   - In haiven_persons.yaml change only the device_trackers, never the
+   - In haiven_persons.yaml, or haiven_core's person list on route B,
+     change only the device_trackers, never the
      names "Elderly Person", "Contact 1" and "Contact 2": Home Assistant
      builds person.elderly_person and the others from those names, and
      Haiven treats the person as always away if they change. Real names
@@ -80,7 +81,9 @@ configuration.yaml.
      (entities without a unique_id are not in the registry). Report any
      clash, never rename my entity, and stop until we agree what to do.
    - Copy each file of mine you will change to <name>.pre-haiven. Record
-     in the progress list every file and folder Haiven adds.
+     in the progress list every file Haiven adds, and only the folders
+     that did not exist before (check first: /config/scripts or
+     /config/www may already be mine).
    Then take ONE of these two routes, and tell me which and why:
    A. My configuration.yaml, automations.yaml and scripts.yaml are empty
       or only have Home Assistant's defaults: copy Haiven's
