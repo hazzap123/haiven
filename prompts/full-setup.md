@@ -223,8 +223,8 @@ me each value to type on the Settings screen, by its label there.
 Start loose; stage 6 tightens it:
   - Expected wake time and bedtime from the profile, or my best guess.
   - Wake and bedtime variance at 60 minutes, or 90 where I said "unsure"
-    or that it varies a lot. Keep expected bedtime plus its variance
-    before midnight: past midnight the bedtime check does not work.
+    or that it varies a lot. Keep expected bedtime plus its variance at
+    or before 23:45: the bedtime check stops at midnight.
   - Leave the bedtime window and earliest wake at 00:00, which means:
     bedtime is looked for from three hours before expected bedtime to
     two hours after, and getting up counts from three hours before
@@ -274,47 +274,64 @@ day out. If I do not live with them, suggest a short daily call.
 Stop here until the seven nights have passed.
 
 STAGE 6. Calibrate against real data
-After at least seven nights:
-  - On the hub, check python3 is available, then run
-    python3 /config/scripts/night_stats.py and read the "nights" list.
-    Use only nights dated after calibration started.
-  - Set a night aside if: I said it was unusual and why; bed_rule is
-    "kitchen" (the bathroom rule did not find bedtime, so the time is a
-    guess); it has far more trips than the others and I have said why
-    (a visitor, a pet); or bed and wake are less than four hours apart. Tell me
-    which and why. Do not set a night aside only because it looks bad.
-  - If fewer than five nights are left, do not propose times. Run
-    another week.
-  - Order bed times from 16:00 onward, so 00:30 comes after 23:30.
-    Show me a table: what I said in stage 1, what was measured
-    (earliest, middle, latest), and what you propose:
-      Expected wake time and bedtime: the middle measured value, rounded
-        to 5 minutes. With an even number of nights, the later of the
-        two middle values.
-      Variances: the larger of 30 minutes and the furthest a kept night
-        was from the middle, rounded up to 15 minutes. The settings take
-        15 to 120 minutes. If the routine needs more, or expected
-        bedtime plus variance would pass midnight, say the bedtime check
-        will not work well for this routine; do not set a value the
-        screen cannot take.
-      Bedtime window and earliest wake: leave at 00:00 if that covers
-        every kept night; otherwise propose an hour beyond the earliest
-        and latest.
-  - Compare the week with stage 1, especially (d). If bathroom visits,
-    night trips or bed and wake times are clearly different from what I
-    described, do not widen anything to fit. Say: "This week looks
-    different from what you described. Haiven cannot say why. If you
-    are concerned, speak to their GP or call NHS 111, or 999 in an
-    emergency." Do not interpret
-    it. Widen a setting only where I can name a cause that is not about
-    health, such as a visitor or a day out.
-  - Go through every alert from the week with me: real or false alarm,
-    and which setting caused it. Any widening must name the false alarms
-    it removes. Never widen for a single alert, and never raise the
-    no-activity hours to cover days out.
-  - Never propose turning off the morning check, the no-activity alert,
-    the night bathroom alerts, the status-change notification or the
-    fault alerts (SCOPE.md rule 1).
+After at least seven nights. Do the steps in this order.
+  1. On the hub, check python3 is available, then run
+     python3 /config/scripts/night_stats.py and read the "nights" list.
+     A night is dated by the evening it starts. Use nights dated on or
+     after the day calibration started if it was pressed before 16:00,
+     otherwise from the next day.
+  2. Set a night aside, and tell me which and why, if:
+     - I said it was unusual and gave a reason;
+     - bed_rule is "kitchen" (the bathroom rule did not find bedtime, so
+       the time is a guess);
+     - it has at least two more trips than the median of the other
+       nights, and I have said why for that night or said a pet uses the
+       kitchen at night;
+     - bed and wake are less than four hours apart.
+     Do not set a night aside only because it looks bad.
+     If fewer than five nights are left, propose nothing. Run another
+     week.
+  3. Compare the week with stage 1 before proposing anything. The week
+     is clearly different if any of these hold: the median night visits
+     or trips is more than one above what I described; "rising" in the
+     output is true; the median wake or bed time is more than 45 minutes
+     from what I said; or wake times get later night after night.
+     If it is clearly different, show me the measured values, propose
+     no change to any time or variance, keep the stage 4 values, and
+     say: "This week looks different from what you described. Haiven
+     cannot say why. If you are concerned, speak to their GP or call
+     NHS 111, or 999 in an emergency." Do not interpret it. "Nothing
+     unusual" from me is not a reason; only a named cause that is not
+     about health, such as a visitor or a day out, lets you go on.
+  4. Otherwise show me a table: what I said in stage 1, what was
+     measured (earliest, middle, latest) and what you propose. Order bed
+     times from 16:00 onward, so 00:30 comes after 23:30.
+       Expected wake time and bedtime: the middle kept value. With an
+         even number of nights, the later of the two middle values.
+         Round to 5 minutes.
+       Variances: the furthest a kept night was from the unrounded
+         middle value, rounded up to 15 minutes, and at least 30. If
+         that is over 120, keep the stage 4 value and tell me how many
+         kept nights would have alerted.
+       The bedtime check runs every 15 minutes and stops at midnight, so
+         expected bedtime plus its variance must be 23:45 or earlier. If
+         the routine needs later, propose the latest pair that ends at
+         23:45 and tell me how many kept nights were later.
+       Earliest wake: leave at 00:00 if three hours before the proposed
+         wake time is at or before the earliest kept wake; otherwise set
+         it one hour before the earliest kept wake.
+       Bedtime window: leave both at 00:00 if every kept bed time is
+         between three hours before and two hours after the proposed
+         bedtime; otherwise one hour before the earliest kept bed time to
+         one hour after the latest.
+  5. Go through every alert from the week with me: real or false alarm,
+     and which setting caused it. Any widening, including moving an
+     expected time, must name the false alarms it removes. Never widen
+     for a single alert, and never raise the no-activity hours to cover
+     days out.
+  6. Never propose turning off the morning check, the no-activity alert,
+     the night bathroom alerts, the status-change notification or the
+     fault alerts (SCOPE.md rule 1).
 I type the new values on the Settings screen myself. If false alarms
 were more than about one a day, I may run a second calibration week.
 

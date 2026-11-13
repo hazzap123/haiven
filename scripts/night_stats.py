@@ -9,8 +9,9 @@ produces tonight's count.
 
 Rules (all from the log, all local time):
   window   16:00 -> 12:00 next day
-  bedtime  first bathroom-on after 16:00 with no kitchen motion in the next
-           120 min and bedroom presence within 60 min. Short evening trips
+  bedtime  first bathroom-on from 16:00 to 03:00 with no kitchen motion in the
+           next 120 min and bedroom presence within 60 min. After midnight it
+           also needs kitchen motion in the hour before, or it is a night visit. Short evening trips
            to the bedroom fail the kitchen test. When
            no bathroom visit qualifies (pets setting off the kitchen sensor all evening), the
            kitchen motion that opens the longest kitchen silence of the
@@ -19,6 +20,8 @@ Rules (all from the log, all local time):
            the sensor was down, not a night with nothing in it.
   wake     first kitchen motion after 03:00 that has at least three kitchen
            events within 30 min. A lone pet trigger in the small hours does not count.
+           A run with a bathroom visit in the 30 min before it is preferred, so a
+           pet running about the kitchen at 04:00 is not taken for getting up.
   visits   bathroom on-events between bedtime and wake, grouped with a 15 min
            gap (the PIR fires several times per visit), minus the settling
            visit (<= 30 min after bedtime) and the rising visit (<= 30 min
@@ -83,11 +86,17 @@ def cluster(times, gap_min):
 def bedtime(K, B, T_ON, day, now):
     """(time, rule) or (None, None)."""
     w0 = dt.datetime.combine(day, dt.time(16))
-    w1 = dt.datetime.combine(day + dt.timedelta(1), dt.time(0))
+    midnight = dt.datetime.combine(day + dt.timedelta(1), dt.time(0))
+    w1 = dt.datetime.combine(day + dt.timedelta(1), dt.time(3))
     for t in between(T_ON, w0, w1):
         if t + 120 * MIN > now:
             return None, None                  # too soon to know
         if between(K, t, t + 120 * MIN):
+            continue
+        # After midnight a bathroom visit is only a bedtime if they were
+        # downstairs within the hour before. Otherwise they were already in
+        # bed and this is a night visit.
+        if t >= midnight and not between(K, t - 60 * MIN, t):
             continue
         if between(B, t, t + 60 * MIN):
             return t, "bathroom"
@@ -103,14 +112,23 @@ def bedtime(K, B, T_ON, day, now):
     return None, None
 
 
-def wake(K, day, now):
+def wake(K, day, now, T_ON=()):
+    """First kitchen run of three or more within 30 min after 03:00.
+
+    A run with a bathroom visit in the 30 min before it is preferred, so a
+    pet in the kitchen at 04:00 is not taken for getting up when the person
+    came down later via the bathroom. If no run has one, the first run is
+    used, so a morning without a bathroom visit is not lost.
+    """
     w0 = dt.datetime.combine(day + dt.timedelta(1), dt.time(3))
     w1 = dt.datetime.combine(day + dt.timedelta(1), dt.time(12))
     ks = between(K, w0, min(w1, now))
-    for i, t in enumerate(ks):
-        if len([x for x in ks[i:] if x <= t + 30 * MIN]) >= 3:
+    runs = [t for i, t in enumerate(ks)
+            if len([x for x in ks[i:] if x <= t + 30 * MIN]) >= 3]
+    for t in runs:
+        if between(T_ON, t - 30 * MIN, t):
             return t
-    return None
+    return runs[0] if runs else None
 
 
 def night(K, B, T_ON, T_OFF, day, now):
@@ -121,7 +139,7 @@ def night(K, B, T_ON, T_OFF, day, now):
     bed, rule = bedtime(K, B, T_ON, day, now)
     if bed is None:
         return None
-    wk = wake(K, day, now)
+    wk = wake(K, day, now, T_ON)
     end = wk if wk else min(now, dt.datetime.combine(day + dt.timedelta(1), dt.time(12)))
     visits = []
     for s, e, n in cluster(between(T_ON, bed, end), 15):

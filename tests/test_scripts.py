@@ -76,3 +76,51 @@ class TestLocationLines:
         )
         away = drift_stats.load_away(str(log))
         assert [(a.hour, b.hour) for a, b in away] == [(8, 10)]
+
+
+class TestNightStatsEdges:
+    """From the stage 6 calibration dry run: a bedtime after midnight was
+    only found by the kitchen fallback, so stage 6 set those nights aside,
+    and a cat in the kitchen at 04:10 was read as getting up."""
+
+    D = __import__('datetime')
+
+    def t(self, s):
+        return self.D.datetime.fromisoformat(s)
+
+    def night(self, K, B, T_ON, day='2026-11-06'):
+        d = self.D.date.fromisoformat(day)
+        now = self.t('2026-11-08 12:00:00')
+        return night_stats.night(sorted(K), sorted(B), sorted(T_ON), [], d, now)
+
+    def test_bedtime_after_midnight_found_by_bathroom_rule(self):
+        n = self.night(
+            K=[self.t('2026-11-06 23:42:00'), self.t('2026-11-07 08:24:00'),
+               self.t('2026-11-07 08:26:00'), self.t('2026-11-07 08:30:00')],
+            B=[self.t('2026-11-07 00:17:00')],
+            T_ON=[self.t('2026-11-07 00:10:00'), self.t('2026-11-07 08:15:00')])
+        assert (n['bed'], n['bed_rule']) == ('00:10', 'bathroom')
+
+    def test_night_visit_after_midnight_is_not_bedtime(self):
+        # Real bedtime 22:30 without a bathroom visit; 02:40 is a night visit.
+        n = self.night(
+            K=[self.t('2026-11-06 22:28:00'), self.t('2026-11-07 07:00:00'),
+               self.t('2026-11-07 07:03:00'), self.t('2026-11-07 07:06:00')],
+            B=[self.t('2026-11-06 22:33:00'), self.t('2026-11-07 02:45:00')],
+            T_ON=[self.t('2026-11-07 02:40:00'), self.t('2026-11-07 06:50:00')])
+        assert n['bed_rule'] == 'kitchen'
+
+    def test_pet_run_before_dawn_is_not_wake(self):
+        n = self.night(
+            K=[self.t('2026-11-06 22:10:00')] + [self.t(f'2026-11-07 04:{m}:00') for m in (10, 13, 16, 19)]
+              + [self.t(f'2026-11-07 06:{m}:00') for m in (53, 56, 59)],
+            B=[self.t('2026-11-06 22:20:00')],
+            T_ON=[self.t('2026-11-06 22:15:00'), self.t('2026-11-07 06:45:00')])
+        assert n['wake'] == '06:53'
+
+    def test_morning_without_bathroom_still_found(self):
+        n = self.night(
+            K=[self.t('2026-11-06 22:10:00')] + [self.t(f'2026-11-07 07:{m:02d}:00') for m in (0, 3, 6)],
+            B=[self.t('2026-11-06 22:20:00')],
+            T_ON=[self.t('2026-11-06 22:15:00')])
+        assert n['wake'] == '07:00'
