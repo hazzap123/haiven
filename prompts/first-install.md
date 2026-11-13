@@ -83,7 +83,8 @@ configuration.yaml.
    - Copy each file of mine you will change to <name>.pre-haiven. Record
      in the progress list every file Haiven adds, and only the folders
      that did not exist before (check first: /config/scripts or
-     /config/www may already be mine).
+     /config/www may already be mine). Running the scripts later creates
+     /config/scripts/__pycache__; remove it too when taking Haiven out.
    Then take ONE of these two routes, and tell me which and why:
    A. My configuration.yaml, automations.yaml and scripts.yaml are empty
       or only have Home Assistant's defaults: copy Haiven's

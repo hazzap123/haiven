@@ -35,6 +35,7 @@ writes "Kitchen Motion (off)" with nothing moving.
 import bisect
 import datetime as dt
 import json
+import os
 import re
 import statistics
 import sys
@@ -49,6 +50,8 @@ MIN = dt.timedelta(minutes=1)
 
 def load():
     k, b, t_on, t_off = [], [], [], []
+    if not os.path.exists(LOG):
+        return k, b, t_on, t_off           # first boot: nothing logged yet
     with open(LOG, errors="replace") as fh:
         for line in fh:
             m = LINE.match(line)

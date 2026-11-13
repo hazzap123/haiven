@@ -1,12 +1,6 @@
 # Loads default set of integrations. Do not remove.
 default_config:
 
-http:
-  cors_allowed_origins:
-    - http://localhost:5173
-    - http://localhost:5174
-    - http://localhost:3000
-
 homeassistant:
   # Where camera stills are written (packages/haiven_camera.yaml). Deliberately
   # NOT /config/www: Home Assistant serves that at /local/ with no login.
@@ -57,7 +51,7 @@ frontend:
 # Shell commands for file logging
 shell_command:
   log_activity: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO {{ location }} {{ sensor_type }} | $(date +\"%H:%M:%S\") | $(date +\"%A\")\" >> /config/activity.log"'
-  backup_activity_log: 'cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)"'
+  backup_activity_log: 'git -C /config rev-parse --git-dir >/dev/null 2>&1 || exit 0; cd /config && git add activity.log 2>/dev/null; git diff --cached --quiet || git commit -m "Auto-backup: activity data $(date +%Y-%m-%d\ %H:%M)"'
   log_haiven_event: '/bin/sh -c "echo \"$(date +\"%Y-%m-%d %H:%M:%S\") INFO HAIVEN {{ event_type }} | {{ detail }} | $(date +\"%A\")\" >> /config/activity.log"'
   # MMW sensor detailed logging
 
@@ -168,7 +162,7 @@ template:
         unique_id: bathroom_night_visits_status
         state: >
           {% set count = states('sensor.night_bathroom_visits')|int(0) %}
-          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
+          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float(3) %}
           {% if count == 0 %}
             No visits tonight
           {% elif count <= baseline %}
@@ -180,7 +174,7 @@ template:
           {% endif %}
         icon: >
           {% set count = states('sensor.night_bathroom_visits')|int(0) %}
-          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float %}
+          {% set baseline = states('input_number.bathroom_night_baseline_visits')|float(3) %}
           {% if count > baseline + 1 %}
             mdi:alert-circle
           {% else %}
