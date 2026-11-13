@@ -1172,19 +1172,36 @@
   mode: single
 - id: haiven_evening_activity
   alias: "Haiven: Evening Activity Check"
-  description: Ensure there's activity before bedtime
+  description: >
+    Two hours before their expected bedtime, check there has been activity in
+    the last three hours. It ran at a fixed 20:00, which is the middle of the
+    evening for one person and after bed for another. Skipped while they are
+    away: three quiet hours out of the house mean nothing.
   triggers:
-    - trigger: time
-      at: "20:00:00"
+    - trigger: time_pattern
+      minutes: /15
   conditions:
     - condition: state
       entity_id: input_boolean.haiven_monitoring_enabled
       state: "on"
+    - condition: state
+      entity_id: binary_sensor.elderly_person_home
+      state: "on"
     - condition: template
-      alias: Only fire once per day
+      alias: Within the hour starting two hours before expected bedtime
+      value_template: >-
+        {% set n = now() %}
+        {% set evening = today_at('00:00') - timedelta(days=1 if n.hour < 12 else 0) %}
+        {% set e = today_at(states('input_datetime.expected_bedtime')) %}
+        {% set mins = e.hour * 60 + e.minute + (1440 if e.hour < 12 else 0) %}
+        {% set at = evening + timedelta(minutes=mins - 120) %}
+        {{ at <= n < at + timedelta(hours=1) }}
+    - condition: template
+      alias: Only fire once an evening
       value_template: >-
         {% set last = state_attr('automation.haiven_evening_activity_check', 'last_triggered') %}
-        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
+        {% set noon = today_at('12:00') - timedelta(days=1 if now().hour < 12 else 0) %}
+        {{ last is none or as_datetime(last) < noon }}
     - condition: template
       alias: No activity in last 3 hours
       value_template: >-
@@ -1216,20 +1233,28 @@
     - condition: template
       alias: Past bedtime cutoff time
       value_template: >-
-        {% set expected = states('input_datetime.expected_bedtime') %}
-        {% set variance = states('input_number.bedtime_variance_minutes') | float %}
-        {% set cutoff = today_at(expected) + timedelta(minutes=variance) %}
-        {{ now() >= cutoff }}
+        {# The night is anchored to the evening it starts, so the cutoff can
+           fall after midnight (an expected bedtime of 23:30 plus 45 minutes,
+           or one of 00:30). today_at() alone rolled over at midnight and the
+           check never fired. An expected time before 12:00 is after
+           midnight. Before noon, the evening was yesterday's. #}
+        {% set n = now() %}
+        {% set evening = today_at('00:00') - timedelta(days=1 if n.hour < 12 else 0) %}
+        {% set e = today_at(states('input_datetime.expected_bedtime')) %}
+        {% set mins = e.hour * 60 + e.minute + (1440 if e.hour < 12 else 0) %}
+        {% set variance = states('input_number.bedtime_variance_minutes') | float(60) %}
+        {{ n >= evening + timedelta(minutes=mins + variance) }}
     - condition: template
       alias: Only alert if bedtime hasn't been detected yet
       value_template: >-
         {% set actual = states('input_datetime.actual_bedtime_today') %}
         {{ actual in ['unknown', 'unavailable', none, '', '00:00:00'] }}
     - condition: template
-      alias: Only fire once (not already sent)
+      alias: Only fire once a night (not already sent since noon)
       value_template: >-
         {% set last = state_attr('automation.haiven_bedtime_routine_check', 'last_triggered') %}
-        {{ last is none or (as_datetime(last) | as_local).date() < now().date() }}
+        {% set noon = today_at('12:00') - timedelta(days=1 if now().hour < 12 else 0) %}
+        {{ last is none or as_datetime(last) < noon }}
   actions:
     - action: script.send_haiven_notification
       data:
