@@ -5,6 +5,10 @@
 #
 #   sensor offline   a role sensor reporting unknown or unavailable
 #   low battery      any battery on a role sensor's device at 15% or below
+#   camera offline   the camera is switched on but its entity is unknown,
+#                    unavailable or missing. The camera is only used after an
+#                    alert, so without this a dead camera is found out in the
+#                    middle of one
 #   hub offline      Home Assistant cannot report its own death, so the hub
 #                    sends a heartbeat OUT every five minutes to a service
 #                    that alerts you when the heartbeats stop
@@ -22,6 +26,13 @@ input_text:
     max: 255
     mode: password
     icon: mdi:heart-pulse
+
+input_boolean:
+  # Set when the camera fault alert goes out, so "working again" is only sent
+  # after it. Restored across restarts (no `initial:`).
+  haiven_camera_fault_sent:
+    name: Camera Fault Alert Sent
+    icon: mdi:cctv-off
 
 input_datetime:
   haiven_heartbeat_last_ok:
@@ -60,6 +71,11 @@ template:
               {% endfor %}
             {% endif %}
           {% endfor %}
+          {% set cam = states('input_text.haiven_camera_entity') | trim %}
+          {% if is_state('input_boolean.haiven_camera_snapshots', 'on')
+                and states(cam) in ['unknown', 'unavailable'] %}
+            {% set ns.n = ns.n + 1 %}
+          {% endif %}
           {{ ns.n }}
         attributes:
           offline: >
@@ -89,6 +105,13 @@ template:
               {% endif %}
             {% endfor %}
             {{ ns.out | join(', ') }}
+          # The configured camera, when the snapshot switch is on and it is
+          # not reporting. Empty otherwise. states() of an empty or unknown
+          # entity id is 'unknown', so a missing camera counts as offline.
+          camera: >
+            {% set cam = states('input_text.haiven_camera_entity') | trim %}
+            {% if is_state('input_boolean.haiven_camera_snapshots', 'on')
+                  and states(cam) in ['unknown', 'unavailable'] %}{{ cam or 'not set' }}{% endif %}
           watchdog: >
             {% set url = states('input_text.haiven_heartbeat_url') %}
             {{ 'on' if url.startswith('http') else 'not set up' }}

@@ -853,6 +853,23 @@ class TestFaultAlerts:
         assert 'MARK_SAFE' not in text
         assert 'contact_1_notification' in text and 'contact_2_notification' in text
 
+    def test_camera_fault_not_gated_and_uses_the_fault_notifier(self, automations):
+        auto = next(a for a in automations if a['id'] == 'haiven_fault_camera')
+        assert 'haiven_monitoring_enabled' not in str(auto)
+        assert any(t.get('trigger') == 'time' for t in auto['triggers'])
+        branch = auto['actions'][0]
+        calls = [s.get('action') for s in branch['then'] + branch['else']]
+        assert calls.count('script.haiven_notify_fault') == 2
+        assert 'notify_care_circle' not in str(auto)
+
+    def test_camera_fault_only_counts_when_the_camera_is_switched_on(self):
+        with open(self.ROOT / 'packages' / 'haiven_faults.yaml') as f:
+            pkg = yaml.safe_load(f)
+        sensor = pkg['template'][0]['sensor'][0]
+        for tpl in (sensor['state'], sensor['attributes']['camera']):
+            assert "is_state('input_boolean.haiven_camera_snapshots', 'on')" in tpl
+        assert 'initial' not in (pkg['input_boolean']['haiven_camera_fault_sent'] or {})
+
     def test_heartbeat_needs_a_url_and_survives_a_failed_request(self, automations):
         auto = next(a for a in automations if a['id'] == 'haiven_hub_heartbeat')
         assert "startswith('http')" in str(auto['conditions'])
