@@ -21,6 +21,7 @@ Keep a monitored pendant or telecare service. Haiven is an addition to it, never
 | A sensor's battery runs low | The sensor will stop soon | A fault alert at 15% or below, repeated each morning. Only for sensors that report a battery level to Home Assistant |
 | A sensor keeps reporting "no motion" when it is in fact dead | The same as going offline, but Home Assistant cannot tell | Nothing automatic. The dashboard's Sensors screen shows how long each has been quiet |
 | The camera, if you use one, stops reporting | No picture can follow an alert. The alerts themselves still work | A fault alert to every carer after 15 minutes, repeated each morning, and a message when it is back. A camera that reports but returns no picture is only found when an alert asks for one |
+| A pet moves in the bedroom while the person is in the bathroom at night | It is taken as their return to bed, so the long-visit and no-return alerts may not fire | Nothing. Keep pets out of the bedroom at night if you rely on those alerts |
 | The hub loses power or crashes | All monitoring and all alerts stop | The hub watchdog, if you set it up. See below |
 | Broadband or Wi-Fi goes down | Alerts cannot leave the house | Nothing from Haiven |
 | The carer's phone is off, silenced or out of signal | The alert arrives late or is missed | Nothing |

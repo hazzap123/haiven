@@ -122,7 +122,8 @@ lines, then ask where I am starting from. Cover:
 Then ask, one at a time:
   1. Where are you starting from: just looking, nothing bought yet;
      some or all of the kit bought; or Home Assistant already running?
-  2. Is the hub, or will it be, in your house or theirs?
+  2. Do you and the other carers live in their house? (The hub goes in
+     their house either way.)
 Use the answers to route the rest:
   - Nothing bought: tell me not to buy anything yet. Stages 0 and 1
     decide what fits the house; stage 2 then recommends specific,
@@ -182,6 +183,11 @@ For each answer that does not fit, say plainly what will not work:
   pets at night: the morning check and the long-silence alert can be
     satisfied by the pet and stay silent when they should not, unless
     the main-room sensor ignores the pet (stage 2);
+  a pet in the bedroom at night: while they are in the bathroom, the
+    pet moving in the bedroom is taken as their return to bed, so the
+    long-visit and no-return alerts can stay silent. No sensor tells a
+    pet from a person here; keeping the pet out of the bedroom at night
+    does;
   irregular or late sleep: the bedtime and morning checks will
     false-alarm or not fire, and stage 6 cannot measure the routine;
   no phone on trips out: Haiven thinks they are home, so a trip out
@@ -283,7 +289,8 @@ STAGE 2. Sensor plan, hardware and the hub
         whether this hub has that radio;
       - what Home Assistant gets from it: Haiven needs an on/off motion
         or occupancy entity (binary_sensor), or a motion event, for each
-        role;
+        role. Where a sensor gives several, use its occupancy or motion
+        entity and name it in the plan;
       - mains or battery, and whether it is pet-immune or has zones;
       - anything known to go wrong with it in Home Assistant.
     Say which facts you found and where, and which you could not
@@ -322,6 +329,9 @@ STAGE 2. Sensor plan, hardware and the hub
       a. Plug the hub into their router by Ethernet, open
          homeassistant.local:8123 on a computer on the same network, and
          create the admin account.
+      a2. If a radio dongle is needed, plug it in on its USB extension
+         lead, accept it under Settings, Devices & services, and choose
+         Zigbee (ZHA) unless I already use Zigbee2MQTT.
       b. Turn on Advanced mode in my user profile (the add-on is hidden
          without it), then install the Terminal & SSH add-on, paste in
          the public SSH key
@@ -366,7 +376,8 @@ STAGE 2. Sensor plan, hardware and the hub
     router port, and never handle my private key.
   - Help me pair each sensor and confirm it appears in Home Assistant.
     Label each with its role. Note each one's entity ID.
-  - Help each carer install the Home Assistant app. Ask each carer
+  - Help each carer, and the person if they carry a phone and agree,
+    install the Home Assistant app. Ask each carer
     directly whether they agree to their phone's location being read
     all the time, and tell them alerts may name the nearest carer and
     their distance. Then allow notifications and location, and confirm
@@ -383,7 +394,9 @@ STAGE 2. Sensor plan, hardware and the hub
 STAGE 3. Install
 Follow prompts/first-install.md steps 1 to 6 exactly as written, with
 the backup first, keeping its list of added files and folders in the
-progress file. Before its step 3 (setup.sh):
+progress file. Use what I have already told you (the kit, the sensor
+roles, kiosk-mode or not) instead of asking again. Before its step 3
+(setup.sh):
   - check that the bedroom sensor's entity ID contains "bedroom", the
     bathroom one "bathroom", and each also "motion", "presence" or
     "occupancy". The activity log names rooms from these words, and
@@ -432,7 +445,10 @@ the progress file:
     binary_sensor.haiven_kitchen_motion exists: it comes from Haiven's
     template block, which must have been installed. Then test again.
   - If pets were an issue: with the pet in the room and nobody else,
-    confirm the main-room sensor stays quiet.
+    confirm the main-room sensor stays quiet. If a pet sleeps in the
+    bedroom, say again that it can end a night bathroom visit early and
+    silence those alerts, and record whether the family accepts that or
+    will keep the pet out at night.
   - A test alert reaches each carer's phone.
   - Fault alert: I unplug or take the battery out of one sensor. Note
     how long Home Assistant takes to show it as unavailable; every
