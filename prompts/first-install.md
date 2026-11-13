@@ -53,11 +53,20 @@ configuration.yaml.
    - Ask me for the monitored person's first name, each carer's name, and
      which device_tracker and notify.mobile_app_* service belongs to each.
      List the ones that exist so I can choose.
-   - Fill in haiven_persons.yaml and packages/haiven_care_circle_inputs.yaml
-     in ~/haiven. Keep the ids elderly_person, contact_1 and contact_2:
-     everything else refers to them. Change only names, trackers and
-     notify services. Leave the phone fields as placeholders unless I give
-     you a number.
+   - Do not write names, trackers or notify services into ~/haiven: git
+     tracks it. Fill them in after step 5, in the copies on the hub:
+     route A, /config/haiven_persons.yaml and
+     /config/packages/haiven_care_circle_inputs.yaml; route B, the
+     haiven_core person list and the haiven_care_circle_inputs package
+     in /config/packages/haiven.yaml. Regenerating haiven.yaml overwrites
+     them, so keep a note of what you changed in the progress file and
+     redo it after any regenerate.
+   - Keep the ids elderly_person, contact_1 and contact_2, even if a carer
+     already has a person of mine: two automations trigger on
+     person.contact_1 and person.contact_2 by name. A second person for
+     the same phone is harmless. Change only names, trackers and notify
+     services. Leave the phone fields as placeholders unless I give you a
+     number.
 
 5. Copy into /config
    Before anything is copied:
@@ -82,7 +91,8 @@ configuration.yaml.
       themes folder. Change nothing else in my configuration.yaml,
       automations.yaml or scripts.yaml.
    On either route:
-   - Copy scripts/*.py and scripts/*.sh, except setup.sh, into
+   - Copy scripts/*.py and scripts/*.sh, except setup.sh and
+     make_package.py, into
      /config/scripts. Never run setup.sh in /config: it rewrites every
      YAML file under the folder it runs in.
    - Copy www/haiven-*.js, made by setup.sh, into /config/www.

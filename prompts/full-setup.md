@@ -205,12 +205,8 @@ Before its step 5:
   - do adapt-to-house.md's sensor-role and extra-room file changes in
     ~/haiven now, so there is one copy and one restart. Do not put times
     or thresholds in files: they go on the Settings screen in stage 4;
-  - in step 4, write names and notify services only into the /config
-    copies after step 5, never into ~/haiven, so nothing git tracks
-    holds them;
-  - if a carer already has a person entity of mine, point Haiven's
-    contact at it instead of adding person.contact_1 or contact_2 for the
-    same phone.
+  - names and notify services go only into the copies on the hub, as
+    first-install step 4 says, never into ~/haiven.
 Run scripts/setup.sh only inside ~/haiven, never in /config.
 Ask me before the restart.
 
@@ -410,7 +406,7 @@ Rules
 
 ## If it goes wrong
 
-To take Haiven out, delete the files the assistant listed in `HAIVEN_PROGRESS.local.md`, put back the `.pre-haiven` copies of your own files, and restart. If Home Assistant will not start, restore the `pre-haiven` backup: Settings, System, Backups. A full restore also undoes everything else changed on the hub since, including history and devices paired after it.
+Follow "If it goes wrong" in [first-install.md](first-install.md): it takes Haiven out file by file, using the list in `HAIVEN_PROGRESS.local.md`, without restoring the whole hub. Restore the `pre-haiven` backup only if Home Assistant will not start: that also undoes everything else changed on the hub since, including history and devices paired after it.
 
 ## Why stage 6 matters
 
