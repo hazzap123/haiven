@@ -22,13 +22,25 @@ Decide this from the layout and the routine, not from the kit. Each role does a 
 
 | Role | What Haiven uses it for | What it must see | Best sensor |
 |---|---|---|---|
-| Bedroom | Bedtime, still in bed, night trips out of bed | The person lying still in bed | Presence (mmWave). A PIR cannot see someone lying still, so it reads an empty room |
+| Bedroom | Bedtime, in bed, night trips out of bed | The person going to bed and getting up | Presence (mmWave) sees them lying still; a PIR works, with in bed taken from the bedtime routine |
 | Main room | The morning check, wake time, daytime silence alerts | The person moving about where they first go on waking and where they spend the day | Motion (PIR) where they move about; presence (mmWave) only if they sit still for long spells and no pet uses the room |
 | Bathroom | Night visits, long visits, no return to bed | Someone coming in | Motion (PIR, battery is fine), inside the door, pointing in |
 
+### PIR or mmWave
+
+A PIR sees movement and turns off a minute or so after someone stops moving. An mmWave (radar) sensor sees a person who is still, and stays on.
+
+| Room | With a PIR | With mmWave |
+|---|---|---|
+| Bathroom | Works fully: night visits, long visits and no return only need it to fire on the way in | Works, but usually needs mains, which bathrooms rarely have |
+| Main room | Works for the morning check and wake time. Long spells sitting still look like quiet: set the room transition timeout to 90 minutes | Sees them sitting still, but also sees pets |
+| Bedroom | Works. It goes off while they sleep, so Haiven treats them as in bed from the bedtime routine (bathroom, then bedroom) until their first morning activity, and does not count the night as quiet | Best: it stays on while they are in bed. An Everything Presence Lite also gives the bed itself (in bed, asleep) |
+
+Neither can tell sleep from someone lying still after a fall. Haiven does not detect falls with any sensor.
+
 Rules, in order:
 
-1. **Bedroom gets presence.** If you have one mmWave sensor, it goes here. Aim it at the bed from the side or the foot, not through the doorway.
+1. **Bedroom prefers presence.** If you have one mmWave sensor and no pet sleeps in the bedroom, it goes here. A PIR works too (see the table above). Aim it at the bed from the side or the foot, not through the doorway.
 2. **Main room goes where the day starts.** Cover the spot they reach first on getting up (the kettle, the chair, the curtains), and where they spend most of the day. Open plan: one sensor covering both. Separate kitchen and living room: cover the kitchen if the day starts with the kettle; add the living room as an extra activity source only if they sit there for hours.
 3. **Pets decide the main room.** mmWave sees any moving body, including a dog or cat, so a pet in the room makes a silence look like activity and hides it. Where a pet uses the main room, use a PIR (not camera motion, which also fires on pets) mounted high (about 2 m) and angled down and away from the floor, ideally pet-immune, and test it with the pet alone in the room. Where the pet sleeps in the bedroom, the bedroom sensor will see it too: say so, and test.
 4. **No sensor sees into another role's room.** mmWave passes through doors and thin walls. Do not aim it at a wall shared with the bathroom or landing: set its zone or maximum distance to stop short of that wall, and test from the other side. Keep the bathroom PIR pointing away from the door to the landing.

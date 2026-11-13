@@ -26,8 +26,12 @@ configuration.yaml.
 
 1. Check before touching anything
    - Home Assistant is 2024.10 or later (`ha core info`).
-   - kiosk-mode is installed through HACS (/config/www/community/kiosk-mode
-     exists). If not, stop and tell me how to install it.
+   - Whether kiosk-mode is installed (/config/www/community/kiosk-mode
+     through HACS, or /config/www/kiosk-mode). It is optional: it only
+     hides Home Assistant's own menus on the dashboard. If it is not
+     there, ask whether I want it; if not, remove the kiosk-mode line
+     from Haiven's frontend extra_module_url so the browser does not
+     ask for a missing file.
    - Make a full backup: `ha backups new --name pre-haiven`. Wait for it
      to finish and confirm it is listed. Do nothing else until it is.
    - Tell me whether /config already has its own configuration.yaml,

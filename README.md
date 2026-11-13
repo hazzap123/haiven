@@ -29,7 +29,7 @@
 
 **Software:**
 - Home Assistant 2024.10 or later
-- [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), installed through HACS. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`, and the dashboard uses it to hide Home Assistant's header and sidebar.
+- [kiosk-mode](https://github.com/NemesisRE/kiosk-mode), optional, through HACS or downloaded into `/config/www/kiosk-mode/`. `configuration.yaml` loads it from `/hacsfiles/kiosk-mode/`; change that to `/local/kiosk-mode/` for a direct download, or remove the line to go without. It hides Home Assistant's header and sidebar on the dashboard.
 - **Optional AI wording.** AI wording is optional and off by default. With it off, summaries and alerts are plain text built on the hub and no activity data is sent to any AI provider. To turn it on, install a conversation agent (the Anthropic Conversation integration gives `conversation.claude_conversation`, the default), then switch on `input_boolean.haiven_ai_summaries`. Expect roughly $1-5 a month on Claude Haiku 4.5.
 
 **Privacy:** with AI wording off, activity data stays on the hub and only the alert text leaves, through the notification channel. With it on, each summary and alert also sends the person's recent activity (rooms, times, bathroom visits, wake and bedtime) to your AI provider. An alert still sends as plain text if the AI call fails.

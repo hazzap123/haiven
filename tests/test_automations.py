@@ -1079,3 +1079,30 @@ class TestHomeAwayNotifications:
         with open(Path(__file__).parent.parent / "scripts.yaml") as f:
             text = str(yaml.safe_load(f)['haiven_notify_carers'])
         assert 'deviation_alert_sent' not in text and 'MARK_SAFE' not in text
+
+
+class TestBedroomPIR:
+    """A PIR goes off while someone lies still, so with any bedroom sensor
+    other than a bed-zone radar the night counted as a growing silence. Bed
+    state now comes from the bedtime routine and the first morning activity,
+    and in bed counts as bedroom activity."""
+
+    def _auto(self, automations, aid):
+        return next(a for a in automations if a['id'] == aid)
+
+    def test_bedtime_puts_them_in_bed(self, automations):
+        auto = next(a for a in automations
+                    if any('Haiven Bedtime Confirmation' in str(s.get('data', {}).get('name', ''))
+                           for s in a['actions']))
+        branch = next(s for s in auto['actions'] if 'if' in s and 'bed_state' in str(s))
+        assert branch['then'][0]['data']['option'] == 'in_bed'
+
+    def test_morning_activity_takes_them_out_of_bed(self, automations):
+        auto = self._auto(automations, 'haiven_morning_activity_confirmation')
+        steps = [s for s in auto['actions'] if s.get('action') == 'input_select.select_option']
+        assert steps and steps[0]['data']['option'] == 'not_in_bed'
+
+    def test_in_bed_counts_as_bedroom_activity(self):
+        text = (Path(__file__).parent.parent / 'haiven_sensors_3sensor.yaml').read_text()
+        block = text[text.index('name: "Minutes Since Bedroom Activity"'):][:900]
+        assert "states('input_select.bed_state') in ['in_bed', 'sleeping']" in block

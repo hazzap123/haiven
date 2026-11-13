@@ -20,6 +20,7 @@ Two roles, which can be the same person:
 | Ongoing, recommended | Home Assistant Cloud | So carers' phones work away from home. Alternatives in [REMOTE_ACCESS.md](setup/REMOTE_ACCESS.md) |
 | Ongoing, free | Tailscale personal plan, Healthchecks.io | Admin access, hub watchdog |
 | Ongoing, optional | AI wording, about $1-5 a month; Ask, capped at $50 a month | Off by default |
+| For setup | An AI coding assistant that runs on your computer, such as Claude Code or Codex | Usually a paid plan; one month covers the setup. Not needed for the by-hand route |
 
 Prices change; check each supplier's page. Get the person's agreement before installing, including which rooms have sensors.
 

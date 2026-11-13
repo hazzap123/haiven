@@ -1462,8 +1462,11 @@ template:
         unique_id: minutes_since_bedroom_activity
         unit_of_measurement: "min"
         state: >
-          {# If occupancy is currently ON, someone is actively there — report 0 #}
-          {% if is_state('binary_sensor.haiven_bedroom_occupancy', 'on') %}
+          {# If occupancy is currently ON, someone is actively there — report 0.
+             In bed counts too: a PIR goes off while they lie still, and a
+             night asleep is not a silence. #}
+          {% if is_state('binary_sensor.haiven_bedroom_occupancy', 'on')
+                or states('input_select.bed_state') in ['in_bed', 'sleeping'] %}
             0
           {% else %}
             {% set bedroom_last = states.binary_sensor.haiven_bedroom_occupancy.last_changed if states.binary_sensor.haiven_bedroom_occupancy.state not in ['unknown', 'unavailable'] else none %}

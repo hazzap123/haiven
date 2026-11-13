@@ -680,6 +680,13 @@
         entity_id: input_datetime.actual_wake_time_today
       data:
         time: "{{ now().strftime('%H:%M:%S') }}"
+    # Up for the day: out of bed, whatever the bedroom sensor is. With a
+    # bed-zone radar this is already so; with a PIR it is how bed ends.
+    - action: input_select.select_option
+      target:
+        entity_id: input_select.bed_state
+      data:
+        option: "not_in_bed"
     - action: homeassistant.update_entity
       target:
         entity_id:
@@ -848,6 +855,20 @@
       target:
         entity_id:
           - sensor.today_bedtime
+    # Gone to bed. A bed-zone radar (Everything Presence Lite) sets this
+    # from the bed itself; any other bedroom sensor, including a PIR that
+    # goes off while they lie still, gets it from the bedtime routine, so
+    # the night is not counted as a silence.
+    - if:
+        - condition: state
+          entity_id: input_select.bed_state
+          state: "not_in_bed"
+      then:
+        - action: input_select.select_option
+          target:
+            entity_id: input_select.bed_state
+          data:
+            option: "in_bed"
     - action: logbook.log
       data:
         name: Haiven Bedtime Confirmation V4
