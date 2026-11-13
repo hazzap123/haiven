@@ -112,7 +112,7 @@ def bedtime(K, B, T_ON, day, now):
     return None, None
 
 
-def wake(K, day, now, T_ON=()):
+def wake(K, day, now, T_ON=(), B=()):
     """First kitchen run of three or more within 30 min after 03:00.
 
     A run with a bathroom visit in the 30 min before it is preferred, so a
@@ -126,7 +126,10 @@ def wake(K, day, now, T_ON=()):
     runs = [t for i, t in enumerate(ks)
             if len([x for x in ks[i:] if x <= t + 30 * MIN]) >= 3]
     for t in runs:
-        if between(T_ON, t - 30 * MIN, t):
+        visits = between(T_ON, t - 30 * MIN, t)
+        # A bathroom visit followed by going back to bed is a night visit,
+        # not getting up: it does not vouch for a later kitchen run.
+        if visits and not between(B, visits[-1], t):
             return t
     return runs[0] if runs else None
 
@@ -139,7 +142,7 @@ def night(K, B, T_ON, T_OFF, day, now):
     bed, rule = bedtime(K, B, T_ON, day, now)
     if bed is None:
         return None
-    wk = wake(K, day, now, T_ON)
+    wk = wake(K, day, now, T_ON, B)
     end = wk if wk else min(now, dt.datetime.combine(day + dt.timedelta(1), dt.time(12)))
     visits = []
     for s, e, n in cluster(between(T_ON, bed, end), 15):

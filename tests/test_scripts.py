@@ -158,3 +158,16 @@ class TestMakePackage:
         cfg = (ROOT / "configuration.yaml").read_text()
         names = set(re.findall(r"^    (haiven_\w+): !include", cfg, re.M))
         assert names and names <= set(self.build())
+
+
+def test_night_visit_then_pet_run_is_not_wake():
+    """Round 2 dry run: a 04:55 bathroom visit, back to bed, then a cat in
+    the kitchen at 05:15 was taken as getting up."""
+    import datetime as D
+    t = D.datetime.fromisoformat
+    K = [t('2026-11-06 22:10:00')] + [t(f'2026-11-07 05:{m}:00') for m in (15, 16, 18, 20)] \
+        + [t(f'2026-11-07 07:{m:02d}:00') for m in (5, 8, 11)]
+    B = [t('2026-11-06 22:20:00'), t('2026-11-07 05:00:00')]
+    T_ON = [t('2026-11-06 22:15:00'), t('2026-11-07 04:55:00'), t('2026-11-07 06:58:00')]
+    n = night_stats.night(K, B, T_ON, [], D.date(2026, 11, 6), t('2026-11-08 12:00:00'))
+    assert n['wake'] == '07:05'

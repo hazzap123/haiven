@@ -296,18 +296,21 @@ After at least seven nights. Do the steps in this order.
        the time is a guess);
      - it has at least two more trips than the median of the other
        nights, and I have said why for that night or said a pet uses the
-       kitchen at night;
+       kitchen at night: leave that night out of the trips median in step
+       3 only, and keep its bed and wake times;
      - bed and wake are less than four hours apart.
      Do not set a night aside only because it looks bad.
      If fewer than five nights are left, propose nothing. Run another
      week.
-  3. Compare the week with stage 1 before proposing anything. The week
+  3. Compare the week with stage 1 before proposing anything. Use kept
+     nights only; where I gave a range, compare with its top. The week
      is clearly different if any of these hold: the median night visits
      is more than one above what I described; the median trips is more
      than one above what I described, unless I said in stage 0 or 1 that
      a pet uses the kitchen at night; "rising" in the
      output is true; the median wake or bed time is more than 45 minutes
-     from what I said; or wake times get later night after night.
+     from what I said; or the median wake of the last three kept nights
+     is more than 45 minutes later than that of the first three.
      If it is clearly different, show me the measured values, propose
      no change to any time or variance, keep the stage 4 values, and
      say: "This week looks different from what you described. Haiven
@@ -321,17 +324,24 @@ After at least seven nights. Do the steps in this order.
        Expected wake time and bedtime: the middle kept value. With an
          even number of nights, the later of the two middle values.
          Round to 5 minutes.
-       Variances: the furthest a kept night was from the unrounded
-         middle value, rounded up to 15 minutes, and at least 30. If
-         that is over 120, keep the stage 4 value and tell me how many
-         kept nights would have alerted.
+       Wake variance: the furthest a kept wake was after the unrounded
+         middle, rounded up to 15 minutes, and at least 30. Early wakes do
+         not count: the morning check only fires on a late one.
+       Bedtime variance: the latest kept bed time minus the unrounded
+         middle, plus 45 minutes, rounded up to 15. The 45 is because
+         Haiven confirms bed about half an hour after the bedtime
+         bathroom visit.
+       If a variance is over 120, keep the stage 4 value and tell me how
+         many kept nights would have alerted.
        The bedtime check runs every 15 minutes and stops at midnight, so
          expected bedtime plus its variance must be 23:45 or earlier. If
-         the routine needs later, propose the latest pair that ends at
-         23:45 and tell me how many kept nights were later.
-       Earliest wake: leave at 00:00 if three hours before the proposed
-         wake time is at or before the earliest kept wake; otherwise set
-         it one hour before the earliest kept wake.
+         it would be later, propose bedtime 23:15 with variance 30, and
+         tell me how many kept nights had bed after 23:15, when the check
+         would alert before bed is confirmed.
+       Earliest wake: the later of one hour before the earliest kept
+         wake and three hours before the proposed wake time. If that is
+         exactly three hours before, leave it at 00:00. A pet in the
+         kitchen before this time is not taken for getting up.
        Bedtime window: leave both at 00:00 if every kept bed time is
          between three hours before and two hours after the proposed
          bedtime; otherwise one hour before the earliest kept bed time to
@@ -382,7 +392,8 @@ Rules
   it, delete it once I confirm.
 - Never delete anything, except, when I ask to take Haiven out, the
   files and folders listed in the progress file, the .pre-haiven copies
-  once restored, and activity.log. Never remove or edit my own automations,
+  once restored, and activity.log; and, after the person withdraws
+  agreement and I confirm, the data listed in the rule above. Never remove or edit my own automations,
   scripts, scenes or dashboards.
 - Do not switch on AI wording, the camera or Ask yourself.
 - Follow SCOPE.md in every change. No clinical wording, no claims of
