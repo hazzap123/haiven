@@ -192,28 +192,25 @@ STAGE 2. Hardware and the hub
 
 STAGE 3. Install
 Follow prompts/first-install.md steps 1 to 6 exactly as written, with
-the backup first. Before step 5 also:
-  - copy every file of mine you will edit to <name>.pre-haiven, and
-    record in the progress file every file Haiven adds, so Haiven can be
-    taken out again without restoring the whole hub;
+the backup first, keeping its list of added files and folders in the
+progress file. Before its step 3 (setup.sh):
+  - check that the bedroom sensor's entity ID contains "bedroom" and
+    "presence" or "occupancy", and the bathroom one contains "bathroom"
+    and "motion". The activity log names rooms from these words, and
+    stage 6 cannot read a room logged under another name. If not,
+    rename the entity in Home Assistant first. The main room needs no
+    check: its log lines come from Haiven's own
+    binary_sensor.haiven_kitchen_motion.
+Before its step 5:
   - do adapt-to-house.md's sensor-role and extra-room file changes in
     ~/haiven now, so there is one copy and one restart. Do not put times
     or thresholds in files: they go on the Settings screen in stage 4;
   - in step 4, write names and notify services only into the /config
     copies after step 5, never into ~/haiven, so nothing git tracks
     holds them;
-  - check that the bedroom sensor's entity ID contains "bedroom" and
-    "presence" or "occupancy", and the bathroom one contains "bathroom"
-    and "motion". The activity log names rooms from these words, and
-    stage 6 cannot read a room logged under another name. If not,
-    rename the entity in Home Assistant first;
-  - if my configuration already loads a packages folder, or keeps
-    automations in a folder, put Haiven's files in their own subfolder
-    or file there, and do not add a second packages or automation key.
-    Never append to my automations.yaml if the UI editor manages it;
-  - check that none of Haiven's entity IDs (kitchen_motion,
-    person.contact_1 and the others in its packages) already exist in
-    my entity registry. Report any clash before copying.
+  - if a carer already has a person entity of mine, point Haiven's
+    contact at it instead of adding person.contact_1 or contact_2 for the
+    same phone.
 Run scripts/setup.sh only inside ~/haiven, never in /config.
 Ask me before the restart.
 
@@ -229,7 +226,9 @@ Start loose; stage 6 tightens it:
     bedtime is looked for from three hours before expected bedtime to
     two hours after, and getting up counts from three hours before
     expected wake. Change them only for a reason in the profile.
-  - The no-activity hours as the profile suggests.
+  - No-activity hours: 4, unless the profile gives a reason.
+  - Room transition timeout: 90 minutes if the main-room sensor is
+    motion only (a PIR); leave it otherwise.
 
 STAGE 5. Prove it works
 Walk me through each test, one at a time, and record pass or fail in
@@ -240,8 +239,10 @@ the progress file:
     /config/activity.log on the hub shows "Kitchen Motion (on)",
     "Bedroom Presence (on)" and "Bathroom Motion (on)" lines for those
     rooms. If a room is logged under another name or as "Unknown",
-    stop: stage 6 cannot read it. Rename the entity as in stage 3, and
-    test again.
+    stop: stage 6 cannot read it. For the bedroom or bathroom, rename
+    the entity as in stage 3. If Kitchen lines are missing, check that
+    binary_sensor.haiven_kitchen_motion exists: it comes from Haiven's
+    template block, which must have been installed. Then test again.
   - If pets were an issue: with the pet in the room and nobody else,
     confirm the main-room sensor stays quiet.
   - A test alert reaches each carer's phone.
@@ -249,9 +250,16 @@ the progress file:
     how long Home Assistant takes to show it as unavailable; every
     carer is told about 15 minutes after that, and again when it is
     back. If Home Assistant takes hours, tell me how to shorten that
-    for this sensor's integration.
+    for this sensor's integration. If it never shows as unavailable
+    (some battery Bluetooth sensors do not), tell me Haiven cannot warn
+    me that this sensor has stopped, and to check the Sensors screen
+    each week.
   - Hub watchdog: set up as SAFETY.md describes, then I unplug the hub
     and the alert arrives. Plug it back in.
+  - Home location: in their house, set Settings, System, General,
+    location to their home (it was set up at mine), then confirm the
+    person shows as Home. Until then they read as away and the morning
+    check is skipped.
   - Home and away, if they carry a phone or tracker: a real trip out of
     15 minutes or more gives "has gone out" and "is home".
   - Optional features: tell me what AI wording, the camera and Ask each
@@ -270,7 +278,9 @@ to carer 1 only, marked [Calibrating]; this includes the critical ones,
 so keep the usual checks going. Fault alerts, gone-out and home
 messages and Drift Watch alerts are not held.
 Ask me to note anything unusual each day: a late night, a visitor, a
-day out. If I do not live with them, suggest a short daily call.
+day out. A note about a day belongs to the night that starts that
+evening. If a test failed, fix it before calibration; do not start it
+with a failed test. If I do not live with them, suggest a short daily call.
 Stop here until the seven nights have passed.
 
 STAGE 6. Calibrate against real data
@@ -293,7 +303,9 @@ After at least seven nights. Do the steps in this order.
      week.
   3. Compare the week with stage 1 before proposing anything. The week
      is clearly different if any of these hold: the median night visits
-     or trips is more than one above what I described; "rising" in the
+     is more than one above what I described; the median trips is more
+     than one above what I described, unless I said in stage 0 or 1 that
+     a pet uses the kitchen at night; "rising" in the
      output is true; the median wake or bed time is more than 45 minutes
      from what I said; or wake times get later night after night.
      If it is clearly different, show me the measured values, propose
@@ -324,9 +336,12 @@ After at least seven nights. Do the steps in this order.
          between three hours before and two hours after the proposed
          bedtime; otherwise one hour before the earliest kept bed time to
          one hour after the latest.
-  5. Go through every alert from the week with me: real or false alarm,
-     and which setting caused it. Any widening, including moving an
-     expected time, must name the false alarms it removes. Never widen
+  5. The step 4 values come from the measured week and replace the
+     loose stage 4 values; that is calibration, not widening. Any change
+     beyond them, including moving an expected time or raising a
+     variance further, is widening. Go through every alert from the week
+     with me: real or false alarm, and which setting caused it. Any
+     widening must name the false alarms it removes. Never widen
      for a single alert, and never raise the no-activity hours to cover
      days out.
   6. Never propose turning off the morning check, the no-activity alert,
@@ -336,7 +351,8 @@ I type the new values on the Settings screen myself. If false alarms
 were more than about one a day, I may run a second calibration week.
 
 STAGE 7. Hand over
-  - Write a one-page response plan from the profile using roles only:
+  - Write a one-page response plan, RESPONSE_PLAN.local.md next to the
+    profile, from the profile using roles only:
     who is told, who can get there, who holds a key, where the hub is
     and "do not unplug", and how to switch Haiven off if the person
     withdraws agreement. I add names and numbers on paper.
@@ -365,7 +381,8 @@ Rules
   profile and progress files. Keeping it needs their agreement; without
   it, delete it once I confirm.
 - Never delete anything, except, when I ask to take Haiven out, the
-  files listed in the progress file. Never remove or edit my own automations,
+  files and folders listed in the progress file, the .pre-haiven copies
+  once restored, and activity.log. Never remove or edit my own automations,
   scripts, scenes or dashboards.
 - Do not switch on AI wording, the camera or Ask yourself.
 - Follow SCOPE.md in every change. No clinical wording, no claims of
@@ -375,8 +392,7 @@ Rules
 - Names, phones and addresses go into my hub only. Do not commit them
   to git or paste them anywhere public.
 - If something fails, stop and tell me what failed. To take Haiven out,
-  delete the files listed in the progress file and put back the
-  .pre-haiven copies, then restart. Restore the full backup from stage
+  follow "If it goes wrong" in prompts/first-install.md. Restore the full backup from stage
   3 only if Home Assistant will not start: it also undoes everything
   else changed on the hub since.
 ```

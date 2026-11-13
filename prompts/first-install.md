@@ -43,8 +43,11 @@ configuration.yaml.
    - Ask me which one is the main room, the bedroom and the bathroom.
    - Run scripts/setup.sh in ~/haiven with my three answers, then confirm
      no default sensor IDs remain:
-     grep -rn "event.kitchen_motion\|haiven_bedroom_occupancy\|haiven_bathroom_motion"
-     should only match my answers.
+     grep -rn "event.kitchen_motion\|haiven_bedroom_occupancy\|haiven_bathroom_motion" \
+       packages configuration.yaml automations.yaml scripts.yaml \
+       haiven_sensors_3sensor.yaml www-src lovelace
+     should only match my answers. Run pytest before setup.sh, not after:
+     some tests name the default sensor IDs.
 
 4. People and carers
    - Ask me for the monitored person's first name, each carer's name, and
@@ -57,30 +60,37 @@ configuration.yaml.
      you a number.
 
 5. Copy into /config
-   - Copy packages, scripts, www, www-src, lovelace and themes, plus
-     haiven_sensors_3sensor.yaml, haiven_persons.yaml and haiven_zones.yaml.
-     If any file of the same name already exists in /config, show me the
-     difference and ask before replacing it.
-   - Never overwrite my configuration.yaml, automations.yaml, scripts.yaml
-     or scenes.yaml if they hold anything of mine. Merge instead:
-     add Haiven's homeassistant (packages, allowlist_external_dirs,
-     media_dirs), frontend, lovelace, shell_command, command_line,
-     recorder, sensor and person blocks to my configuration.yaml, and
-     append Haiven's automations and scripts to mine. If a key already
-     exists in mine, show me both and ask. Show me the full diff of each
-     file before saving.
-   - If my configuration already loads a packages folder
-     (!include_dir_merge_named) or keeps automations in a folder, put
-     Haiven's files in their own subfolder or file there instead, and do
-     not add a second packages or automation key. Never append to an
-     automations.yaml that the UI editor manages.
-   - Before copying, check none of Haiven's entity IDs already exist in
-     my entity registry (/config/.storage/core.entity_registry), and
-     report any clash.
-   - Before saving, copy each file of mine you change to
-     <name>.pre-haiven and list every file Haiven adds, so it can be
-     taken out again without restoring the whole hub.
-   - If my files are empty or missing, use Haiven's as they are.
+   Before anything is copied:
+   - Check none of Haiven's entity IDs already exist in my entity
+     registry (/config/.storage/core.entity_registry) or in my YAML
+     (entities without a unique_id are not in the registry). Report any
+     clash, never rename my entity, and stop until we agree what to do.
+   - Copy each file of mine you will change to <name>.pre-haiven. Record
+     in the progress list every file and folder Haiven adds.
+   Then take ONE of these two routes, and tell me which and why:
+   A. My configuration.yaml, automations.yaml and scripts.yaml are empty
+      or only have Home Assistant's defaults: copy Haiven's
+      configuration.yaml, automations.yaml, scripts.yaml, scenes.yaml,
+      haiven_sensors_3sensor.yaml, haiven_persons.yaml, haiven_zones.yaml,
+      packages, lovelace and themes as they are.
+   B. Otherwise: run python3 scripts/make_package.py --out haiven.yaml in
+      ~/haiven and copy haiven.yaml into the folder my configuration.yaml
+      loads with packages: !include_dir_merge_named. If I have no packages
+      key, add exactly that one line under homeassistant:, after showing
+      me. If my packages are listed by name instead, show me and ask.
+      Copy Haiven's lovelace folder, and its themes/haiven*.yaml into my
+      themes folder. Change nothing else in my configuration.yaml,
+      automations.yaml or scripts.yaml.
+   On either route:
+   - Copy scripts/*.py and scripts/*.sh, except setup.sh, into
+     /config/scripts. Never run setup.sh in /config: it rewrites every
+     YAML file under the folder it runs in.
+   - Copy www/haiven-*.js, made by setup.sh, into /config/www.
+   - Route A only: create /config/haiven_snapshots before the check.
+     Haiven's configuration.yaml names it, and Home Assistant rejects the
+     core config if it is missing. On route B, add it and the
+     allowlist_external_dirs and media_dirs lines only if I choose the
+     camera later.
 
 6. Check, then restart only when I say so
    - Run `ha core check`. If it reports errors, fix only what Haiven
@@ -111,4 +121,4 @@ Rules
 
 ## If it goes wrong
 
-To take Haiven out, delete the files the assistant listed and put back the `.pre-haiven` copies of your own files, then restart. If Home Assistant will not start, restore the backup from step 1: Settings, System, Backups, then the `pre-haiven` backup, then Restore. A full restore also undoes everything else changed on the hub since.
+To take Haiven out: delete the files and folders the assistant listed, put back the `.pre-haiven` copies of your own files and then delete those copies, delete `/config/activity.log`, and restart. Then remove the leftover Haiven entities under Settings, Devices & services, Entities (filter on "haiven" and on "not provided"). Their history ages out of the recorder on its own. If Home Assistant will not start, restore the backup from step 1: Settings, System, Backups, then the `pre-haiven` backup, then Restore. A full restore also undoes everything else changed on the hub since.

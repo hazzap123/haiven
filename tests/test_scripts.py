@@ -124,3 +124,37 @@ class TestNightStatsEdges:
             B=[self.t('2026-11-06 22:20:00')],
             T_ON=[self.t('2026-11-06 22:15:00')])
         assert n['wake'] == '07:00'
+
+
+class TestMakePackage:
+    """An expert config that loads a packages folder cannot take Haiven's
+    configuration.yaml merged in by hand: the dry run gave about 30 errors.
+    make_package.py writes one file of named packages instead; Home
+    Assistant 2026.2.3's check_config passed it beside a user's own
+    packages, split automations and a binary_sensor.kitchen_motion."""
+
+    def build(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import make_package
+        return make_package.build()
+
+    def test_every_top_level_key_is_a_haiven_package(self):
+        data = self.build()
+        assert all(k.startswith("haiven_") and isinstance(v, dict) for k, v in data.items())
+
+    def test_no_core_config_inside_a_package(self):
+        for name, pkg in self.build().items():
+            assert "homeassistant" not in pkg, name
+            assert "default_config" not in pkg and "http" not in pkg, name
+
+    def test_carries_all_automations_and_scripts(self):
+        core = self.build()["haiven_core"]
+        autos = yaml.safe_load((ROOT / "automations.yaml").read_text())
+        scripts = yaml.safe_load((ROOT / "scripts.yaml").read_text())
+        assert len(core["automation"]) == len(autos)
+        assert set(core["script"]) == set(scripts)
+
+    def test_every_configuration_package_is_included(self):
+        cfg = (ROOT / "configuration.yaml").read_text()
+        names = set(re.findall(r"^    (haiven_\w+): !include", cfg, re.M))
+        assert names and names <= set(self.build())

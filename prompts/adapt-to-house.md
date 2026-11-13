@@ -27,7 +27,7 @@ Follow every rule in SCOPE.md. In particular:
 - no clinical wording
 - no names or addresses in any file
 
-Run `pytest` and show me the diff before changing anything live.
+Run `pytest` on a clean clone before scripts/setup.sh, and show me the diff before changing anything live. After setup.sh, check the config on the hub instead: some tests name the default sensor IDs.
 Tell me which requests in the profile you could not meet and why.
 ```
 

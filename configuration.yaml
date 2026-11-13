@@ -64,7 +64,9 @@ shell_command:
 # Template sensors
 template:
   - binary_sensor:
-      - name: "Kitchen Motion"
+      # Named "Haiven ..." so its ID cannot clash with a sensor of your own
+      # called binary_sensor.kitchen_motion.
+      - name: "Haiven Kitchen Motion"
         unique_id: kitchen_motion_binary
         device_class: motion
         state: "{{ is_state('input_boolean.kitchen_motion', 'on') }}"
@@ -224,7 +226,7 @@ lovelace:
 sensor:
   - platform: history_stats
     name: Kitchen Triggers 7 Day Count
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_kitchen_motion
     state: "on"
     type: count
     start: "{{ now() - timedelta(days=7) }}"
@@ -232,7 +234,7 @@ sensor:
 
   - platform: history_stats
     name: Kitchen Triggers 24h Count
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_kitchen_motion
     state: "on"
     type: count
     start: "{{ now() - timedelta(hours=24) }}"
@@ -240,7 +242,7 @@ sensor:
 
   - platform: history_stats
     name: Kitchen Triggers Last Hour
-    entity_id: binary_sensor.kitchen_motion
+    entity_id: binary_sensor.haiven_kitchen_motion
     state: "on"
     type: count
     start: "{{ now() - timedelta(hours=1) }}"

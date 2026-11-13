@@ -21,7 +21,7 @@ echo ""
 # Kitchen sensor
 echo "--- Kitchen Sensor ---"
 echo "This should be a motion sensor in the kitchen/living area."
-echo "Examples: event.kitchen_motion, binary_sensor.kitchen_motion"
+echo "Examples: event.kitchen_motion, binary_sensor.kitchen_pir_motion"
 read -p "Kitchen sensor entity ID [event.kitchen_motion]: " KITCHEN
 KITCHEN=${KITCHEN:-event.kitchen_motion}
 

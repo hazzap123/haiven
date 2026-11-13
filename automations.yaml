@@ -855,7 +855,7 @@
   description: Append every monitored activity event to activity.log
   triggers:
     - trigger: state
-      entity_id: binary_sensor.kitchen_motion
+      entity_id: binary_sensor.haiven_kitchen_motion
       to:
         - "on"
         - "off"
