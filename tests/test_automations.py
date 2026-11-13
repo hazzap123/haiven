@@ -567,9 +567,18 @@ class TestLocalTimeComparisons:
         guards = [c['value_template'] for a in automations for c in a.get('conditions', [])
                   if isinstance(c, dict) and 'last_triggered' in str(c.get('value_template', ''))
                   and '.date()' in str(c.get('value_template', ''))]
-        assert len(guards) >= 10
+        assert len(guards) >= 8
         for g in guards:
             assert 'as_local' in g, g
+
+    def test_evening_guards_run_noon_to_noon(self, automations):
+        """The bedtime and evening checks belong to the evening they start,
+        so they must not reset at midnight."""
+        for aid in ('haiven_bedtime_check', 'haiven_evening_activity'):
+            auto = next(a for a in automations if a['id'] == aid)
+            text = str(auto['conditions'])
+            assert "today_at('12:00')" in text and '.date()' not in text, aid
+            assert "1440 if e.hour < 12" in text, aid
 
 
 # =============================================================================

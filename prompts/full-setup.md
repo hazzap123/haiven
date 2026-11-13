@@ -80,8 +80,8 @@ Ask, and wait for each answer:
     hidden by the other person's movement.
   - Do pets move about in the main room or bedroom at night?
   - Are bed and wake times usually within about four hours of the same
-    time each day, with bed before about 23:15 on most nights and up by about 11:00?
-    Later than that, the bedtime check will alert on most nights.
+    time each day, with bed before about 01:00 and up by about 11:00?
+    Outside that, stage 6 cannot measure the routine.
   - Do they carry a mobile phone every time they go out?
   - Does the home have broadband, and a router with a spare network
     socket for the hub?
@@ -217,11 +217,8 @@ me each value to type on the Settings screen, by its label there.
 Start loose; stage 6 tightens it:
   - Expected wake time and bedtime from the profile, or my best guess.
   - Wake and bedtime variance at 60 minutes, or 90 where I said "unsure"
-    or that it varies a lot. Keep expected bedtime plus its variance at
-    or before 23:45: the bedtime check stops at midnight. If it would be
-    later, lower the variance first, to no less than 30; if still later,
-    set bedtime 23:15 with variance 30 and tell me it will alert on
-    nights they go to bed after about 23:15.
+    or that it varies a lot. A bedtime after midnight is fine: type it
+    as it is (00:30).
   - Leave the bedtime window and earliest wake at 00:00, which means:
     bedtime is looked for from three hours before expected bedtime to
     two hours after, and getting up counts from three hours before
@@ -337,11 +334,6 @@ After at least seven nights. Do the steps in this order.
          bathroom visit.
        If a variance is over 120, keep the stage 4 value and tell me how
          many kept nights would have alerted.
-       The bedtime check runs every 15 minutes and stops at midnight, so
-         expected bedtime plus its variance must be 23:45 or earlier. If
-         it would be later, propose bedtime 23:15 with variance 30, and
-         tell me how many kept nights had bed after 23:15, when the check
-         would alert before bed is confirmed.
        Earliest wake: the later of one hour before the earliest kept
          wake and three hours before the proposed wake time. If that is
          exactly three hours before, leave it at 00:00. A pet in the

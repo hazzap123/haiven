@@ -229,9 +229,12 @@ template:
           {% set k = states.event.kitchen_motion %}
           {% set b = states.binary_sensor.haiven_bedroom_occupancy %}
           {% set ba = states.binary_sensor.haiven_bathroom_motion %}
-          {% if (k and k.state not in invalid and k.last_changed.date() == now().date()) or
-                (b and b.state not in invalid and b.last_changed.date() == now().date()) or
-                (ba and ba.state not in invalid and ba.last_changed.date() == now().date()) %}
+          {# Morning evidence is activity since the earliest wake time, not
+             since midnight: a 03:00 bathroom visit is not getting up. #}
+          {% set ws = states('sensor.wake_window_start') %}{% set since = today_at(ws if ws not in ['unknown', 'unavailable', ''] else '04:00') %}
+          {% if (k and k.state not in invalid and k.last_changed >= since) or
+                (b and b.state not in invalid and b.last_changed >= since) or
+                (ba and ba.state not in invalid and ba.last_changed >= since) %}
             {% set had_any_activity = true %}
           {% endif %}
           {% set avg_wake = states('sensor.average_wake_time_week') %}
@@ -302,13 +305,16 @@ template:
             {% set bathroom_last = states.binary_sensor.haiven_bathroom_motion.last_changed if states.binary_sensor.haiven_bathroom_motion.state not in invalid_states else none %}
 
             {% set had_activity_today = false %}
-            {% if kitchen_last and as_datetime(kitchen_last).date() == now().date() %}
+            {# Morning evidence is activity since the earliest wake time, not
+               since midnight: a 03:00 bathroom visit is not getting up. #}
+            {% set ws = states('sensor.wake_window_start') %}{% set since = today_at(ws if ws not in ['unknown', 'unavailable', ''] else '04:00') %}
+            {% if kitchen_last and as_datetime(kitchen_last) >= since %}
               {% set had_activity_today = true %}
             {% endif %}
-            {% if bedroom_last and as_datetime(bedroom_last).date() == now().date() %}
+            {% if bedroom_last and as_datetime(bedroom_last) >= since %}
               {% set had_activity_today = true %}
             {% endif %}
-            {% if bathroom_last and as_datetime(bathroom_last).date() == now().date() %}
+            {% if bathroom_last and as_datetime(bathroom_last) >= since %}
               {% set had_activity_today = true %}
             {% endif %}
 
@@ -490,13 +496,16 @@ template:
 
             {# Check if any morning activity detected today #}
             {% set morning_activity = false %}
-            {% if kitchen_last and as_datetime(kitchen_last).date() == now().date() %}
+            {# Morning evidence is activity since the earliest wake time, not
+               since midnight: a 03:00 bathroom visit is not getting up. #}
+            {% set ws = states('sensor.wake_window_start') %}{% set since = today_at(ws if ws not in ['unknown', 'unavailable', ''] else '04:00') %}
+            {% if kitchen_last and as_datetime(kitchen_last) >= since %}
               {% set morning_activity = true %}
             {% endif %}
-            {% if bedroom_last and as_datetime(bedroom_last).date() == now().date() %}
+            {% if bedroom_last and as_datetime(bedroom_last) >= since %}
               {% set morning_activity = true %}
             {% endif %}
-            {% if bathroom_last and as_datetime(bathroom_last).date() == now().date() %}
+            {% if bathroom_last and as_datetime(bathroom_last) >= since %}
               {% set morning_activity = true %}
             {% endif %}
 
@@ -549,13 +558,16 @@ template:
           {% set morning_cutoff = today_at(expected_wake) + timedelta(minutes=variance_minutes) %}
 
           {% set morning_activity = false %}
-          {% if kitchen_last and as_datetime(kitchen_last).date() == now().date() %}
+          {# Morning evidence is activity since the earliest wake time, not
+             since midnight: a 03:00 bathroom visit is not getting up. #}
+          {% set ws = states('sensor.wake_window_start') %}{% set since = today_at(ws if ws not in ['unknown', 'unavailable', ''] else '04:00') %}
+          {% if kitchen_last and as_datetime(kitchen_last) >= since %}
             {% set morning_activity = true %}
           {% endif %}
-          {% if bedroom_last and as_datetime(bedroom_last).date() == now().date() %}
+          {% if bedroom_last and as_datetime(bedroom_last) >= since %}
             {% set morning_activity = true %}
           {% endif %}
-          {% if bathroom_last and as_datetime(bathroom_last).date() == now().date() %}
+          {% if bathroom_last and as_datetime(bathroom_last) >= since %}
             {% set morning_activity = true %}
           {% endif %}
 
