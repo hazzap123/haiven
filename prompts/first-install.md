@@ -1,6 +1,6 @@
 # First install with an AI coding assistant
 
-A prompt for Claude Code, Codex or a similar tool that walks through installing Haiven on a Home Assistant hub with you. Use it for Path 1 in [docs/start.md](../docs/start.md): Home Assistant is already running and you can reach it.
+A prompt for Claude Code, Codex or a similar tool that walks through installing Haiven on a Home Assistant hub with you. Use it for Path 1 in [docs/start.md](../docs/start.md): Home Assistant is already running and you can reach it. For the whole job, from planning the house to calibration, use [full-setup.md](full-setup.md).
 
 ## Before you start
 
@@ -69,6 +69,17 @@ configuration.yaml.
      append Haiven's automations and scripts to mine. If a key already
      exists in mine, show me both and ask. Show me the full diff of each
      file before saving.
+   - If my configuration already loads a packages folder
+     (!include_dir_merge_named) or keeps automations in a folder, put
+     Haiven's files in their own subfolder or file there instead, and do
+     not add a second packages or automation key. Never append to an
+     automations.yaml that the UI editor manages.
+   - Before copying, check none of Haiven's entity IDs already exist in
+     my entity registry (/config/.storage/core.entity_registry), and
+     report any clash.
+   - Before saving, copy each file of mine you change to
+     <name>.pre-haiven and list every file Haiven adds, so it can be
+     taken out again without restoring the whole hub.
    - If my files are empty or missing, use Haiven's as they are.
 
 6. Check, then restart only when I say so
@@ -100,4 +111,4 @@ Rules
 
 ## If it goes wrong
 
-Restore the backup from step 1: Settings, System, Backups, then the `pre-haiven` backup, then Restore. Nothing Haiven adds survives a restore.
+To take Haiven out, delete the files the assistant listed and put back the `.pre-haiven` copies of your own files, then restart. If Home Assistant will not start, restore the backup from step 1: Settings, System, Backups, then the `pre-haiven` backup, then Restore. A full restore also undoes everything else changed on the hub since.

@@ -78,7 +78,7 @@ On each person's phone:
 1. **Connect to your server**
    - App will auto-discover (if on same network)
    - Or enter URL: `http://homeassistant.local:8123`
-   - Or use Nabu Casa URL for remote access
+   - Away from home, the app needs remote access to report location and use alert buttons: see [REMOTE_ACCESS.md](REMOTE_ACCESS.md)
 
 2. **Log in**
    - **Recommended:** Create a separate user account for each person

@@ -9,7 +9,7 @@ What Haiven is for, what it is not for, and the rules any change must keep. Read
 - **Routine, not events.** Wake time, bedtime, movement between rooms, night bathroom visits, and how each day compares with the person's own usual days.
 - **Alerts to named carers** when the routine does not happen: no morning activity, a long silence, an unusually long night bathroom visit.
 - **Slow change.** Drift Watch compares a month of nights with a fixed baseline.
-- **Running on a hub in the house**, with no subscription and no account.
+- **Running on a hub in the house.** Haiven itself needs no subscription and no account. Reaching the hub from outside the house usually means one: see [docs/setup/REMOTE_ACCESS.md](docs/setup/REMOTE_ACCESS.md).
 
 ## Out of scope
 

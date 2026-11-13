@@ -108,33 +108,23 @@ Battery-powered PIR motion sensor for bathroom activity tracking.
    - LED flashes rapidly (red/amber)
    - Release and wait 30 seconds
 
-2. **Connect via Shelly App (recommended):**
-   - Enable Bluetooth on phone
-   - Open Shelly App
-   - App detects "Shelly Blu PIR"
-   - Follow setup prompts
-   - Select WiFi network
-   - Device shows "Online"
+2. **Re-add it to Home Assistant.** The BLU Motion talks Bluetooth Low Energy only; it has no Wi-Fi. Home Assistant receives it through one of:
+   - a Bluetooth adapter on the hub. A Home Assistant Green has no Bluetooth radio, so it needs a USB Bluetooth adapter or one of the options below;
+   - an ESPHome Bluetooth proxy within range of the bathroom;
+   - a mains-powered Shelly Gen2 or later device nearby, acting as a BLU gateway over Wi-Fi.
 
-3. **Re-add to Home Assistant:**
-   - Wait 1-2 minutes for device to stabilise
-   - Settings > Integrations > should see Shelly discovery
-   - Click Configure
-   - If not discovered: add manually with device IP
+   It then appears through the BTHome integration (Settings > Devices & services). The Shelly app, over your phone's Bluetooth, is only for setting it up. If you turn on encryption in the Shelly app, Home Assistant asks for the device's bindkey, shown in the app.
 
-### Bluetooth vs WiFi
+### Range
 
-- **BLE:** Used for setup and configuration (via Shelly App)
-- **WiFi:** Used for continuous monitoring (Home Assistant)
-- After setup, Bluetooth is not required
+Bluetooth reaches roughly one room through walls. Put the adapter, proxy or gateway close enough that the sensor's readings arrive reliably, then do the walk test in docs/start.md.
 
 ### Troubleshooting
 
 **Device not appearing after reset:**
-- Confirm "Online" in Shelly App
-- Verify same WiFi network
-- Try accessing `http://[device-ip]` in browser
-- If Shelly App shows offline, repeat reset
+- Check the adapter, proxy or gateway is online and within range
+- Check the BTHome integration in Home Assistant lists it
+- If the Shelly app cannot see it over Bluetooth, repeat the reset
 
 **Motion not detecting:**
 - Check battery level

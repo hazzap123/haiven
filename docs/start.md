@@ -1,6 +1,27 @@
 # Install Haiven
 
-Read [SAFETY.md](../SAFETY.md) first. Get the person's agreement before installing, including which rooms have sensors.
+**Want to be walked through all of it?** [prompts/full-setup.md](../prompts/full-setup.md) is a prompt for Claude Code, Codex or a similar AI coding assistant that goes from planning the home and routine, through buying sensors, installing and testing, to a week of calibration against real data and handover. The steps below are the same work done by hand.
+
+Read [SAFETY.md](../SAFETY.md) first.
+
+## Who can do this
+
+Two roles, which can be the same person:
+
+- **The family**: agreement with the person, the home and routine, the settings, the tests, the first week and the handover. No technical skill needed.
+- **A technical helper**, for about two hours: setting up the hub and sensors, installing Haiven, and remote access. Someone comfortable with Home Assistant, or willing to learn its basics, who can read a configuration change before saying yes to it. An AI assistant helps, but it cannot judge a change for you.
+
+## Costs
+
+| | What | Notes |
+|---|---|---|
+| One-off | A hub, such as a Home Assistant Green | |
+| One-off | Three sensors, plus any radio they need | A Home Assistant Green has no Bluetooth or Zigbee radio; see [SENSOR_GUIDES.md](reference/SENSOR_GUIDES.md) |
+| Ongoing, recommended | Home Assistant Cloud | So carers' phones work away from home. Alternatives in [REMOTE_ACCESS.md](setup/REMOTE_ACCESS.md) |
+| Ongoing, free | Tailscale personal plan, Healthchecks.io | Admin access, hub watchdog |
+| Ongoing, optional | AI wording, about $1-5 a month; Ask, capped at $50 a month | Off by default |
+
+Prices change; check each supplier's page. Get the person's agreement before installing, including which rooms have sensors.
 
 Needs Home Assistant 2024.10 or later.
 
@@ -22,7 +43,7 @@ Prefer to be walked through it? [prompts/first-install.md](../prompts/first-inst
 1. Set up the hub and create the admin account.
 2. Pair every sensor on the table and label each one with its role.
 3. Follow Path 1 above.
-4. Set up remote access so you can reach the dashboard from your own home.
+4. Set up remote access, for carers' phones and for you to reach the hub over SSH, and do the away test: [setup/REMOTE_ACCESS.md](setup/REMOTE_ACCESS.md).
 5. Send a test alert.
 
 **One visit**
@@ -39,7 +60,7 @@ Press "Start calibration" on the Settings screen before you leave. For seven nig
 
 ## Adapt it to their house
 
-Every house and routine is different. Fill in a copy of [HOUSE_PROFILE.md](../HOUSE_PROFILE.md), then use [prompts/adapt-to-house.md](../prompts/adapt-to-house.md) with an AI coding assistant to adapt the rules. The limits any change must keep are in [SCOPE.md](../SCOPE.md).
+Every house and routine is different. Fill in a copy of [HOUSE_PROFILE.md](../HOUSE_PROFILE.md) (stage 1 of [full-setup.md](../prompts/full-setup.md) does this as an interview), then use [prompts/adapt-to-house.md](../prompts/adapt-to-house.md) with an AI coding assistant to adapt the rules. The limits any change must keep are in [SCOPE.md](../SCOPE.md).
 
 ## Before you go live
 

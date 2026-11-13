@@ -12,9 +12,10 @@ Adapt the Haiven package to this house:
   are replaced by scripts/setup.sh, so use the IDs already in the files
 - add rooms the profile lists, such as a separate living room, as extra
   activity sources alongside the kitchen
-- set the expected wake time, bedtime, their variances, the bedtime window
-  and the earliest wake time from the profile's routine; these are helpers
-  in packages/haiven_monitoring_inputs.yaml, not fixed clock times
+- tell me the expected wake time, bedtime, their variances, the bedtime
+  window and the earliest wake time to type on the Settings screen, from
+  the profile's routine. Do not write them into files: an `initial:`
+  value is reset on every restart
 - note pets and uncovered rooms in the "Household notes" section of
   ha_integrations/haiven_chat/rules.txt if Ask is installed
 
