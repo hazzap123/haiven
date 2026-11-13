@@ -111,7 +111,7 @@ Bed-vs-room detection comes from zone coordinates (a bed zone, a bathroom-door/s
 
 ### Firmware
 
-Do not factory-reset this device expecting to just reconnect it to WiFi afterwards. A factory reset returns it to Everything Smart Home's stock firmware, not the custom LD2450 build Haiven needs — recovering from that means reflashing the custom ESPHome config, which (per the gap above) isn't published in this repo yet. If the device is genuinely unresponsive, treat it as a hardware-recovery problem, not a quick reset-and-reconnect.
+Do not factory-reset this device expecting to just reconnect it to WiFi afterwards. A factory reset returns it to Everything Smart Home's stock firmware, which works with Haiven; only the reference bed-vs-room zones need the custom build — recovering from that means reflashing the custom ESPHome config, which (per the gap above) isn't published in this repo yet. If the device is genuinely unresponsive, treat it as a hardware-recovery problem, not a quick reset-and-reconnect.
 
 ---
 

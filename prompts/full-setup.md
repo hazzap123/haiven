@@ -17,7 +17,7 @@ Already running Home Assistant and only want the software installed? [first-inst
 - **Read [SAFETY.md](../SAFETY.md).** Haiven watches a routine. It does not detect falls and does not replace a pendant, telecare, visits or calls.
 - **The person should be part of this, not only the subject of it.** Stage 0 asks about their agreement before anything else.
 - **What you type goes to the AI provider.** The answers in stage 1 describe someone's daily routine, including night-time bathroom visits. They are sent to the company that runs your AI assistant, under its terms. Use roles ("mum", "carer 1"), not full names, and skip anything you would rather not share.
-- **Who does what.** Stages 0, 1 and 4 to 7 need no technical skill. Stages 2 and 3 need a technical helper for about two hours: someone comfortable with Home Assistant, or willing to learn its basics, who can read a configuration change before agreeing to it. The assistant cannot judge a change for you. If that is not you, ask someone to sit with you for those two stages. The assistant runs on your own computer; install it first (for Claude Code, see claude.com/claude-code).
+- **Who does what.** Stages 0, 1 and 4 to 7 need no technical skill. Stages 2, 3 and 5 happen on a visit to their house (allow four to five hours) and need a technical helper: someone comfortable with Home Assistant, or willing to learn its basics, who can read a configuration change before agreeing to it. The assistant cannot judge a change for you. If that is not you, ask someone to sit with you for those two stages. The assistant runs on your own computer; install it first (for Claude Code, see claude.com/claude-code).
 - **Costs.** A hub, three sensors and any radio they need, and usually a Home Assistant Cloud subscription so carers' phones work away from home. Tailscale and the watchdog service are free. See [docs/start.md](../docs/start.md).
 - **Set the hub up at your own home first** if you can, then take it to theirs. If it has to be set up in their house, that works too, but get remote access working before you leave: you need it to see the dashboard, for carers' phones to report location, and for the assistant to reach the hub later. Stage 2 covers it.
 - **A chat assistant in a browser** (ChatGPT, Claude.ai) can do the conversation stages, 0, 1, 4 and 7, but cannot run commands on the hub. For stages 2, 3, 5 and 6 use an assistant that runs on your computer, or paste its commands into the hub yourself.
@@ -32,7 +32,7 @@ You are helping me set up Haiven, an open source Home Assistant package
 that watches one person's daily routine at home with three sensors and
 alerts their family when the routine does not happen. It does not
 detect falls and does not replace a pendant, telecare, visits or calls.
-Say that once at the start; do not repeat it unless I ask.
+Say that once, in the overview; do not repeat it unless I ask.
 
 Before anything else, including the overview below, tell me whether
 you can run commands on my computer and save files. If you cannot (a chat in a browser), say so:
@@ -96,9 +96,9 @@ lines, then ask where I am starting from. Cover:
     get a message when the day does not happen as usual (no sign of
     getting up, a long silence, a long night-time bathroom visit). It
     does not detect falls and does not replace a pendant or visits.
-  - What it takes: about an hour of conversation, about two hours of
-    technical setup (a helper comfortable with Home Assistant, or
-    willing to learn), then a week of quiet calibration before it is
+  - What it takes: about an hour of conversation, a day at their house
+    for setup and tests (allow four to five hours, with a helper
+    comfortable with Home Assistant, or willing to learn), then a week of quiet calibration before it is
     relied on. About two weeks in all. It falls into three parts:
       before the visit, anywhere: stages 0 and 1, the sensor plan, and
         buying anything missing;
@@ -145,8 +145,8 @@ Ask, and wait for each answer:
     Monitoring off on the Settings screen stops most alerts, but
     movement is still recorded and fault and critical alerts still go
     out; to stop entirely, Haiven is taken out (see Rules).
-  - Do they have a monitored pendant or telecare? Record the answer. If
-    not, say once that Haiven does not replace one, and carry on.
+  - Do they have a monitored pendant or telecare? Record the answer and
+    carry on.
   - Does anyone else live there or stay most nights: a partner, a
     lodger, a live-in carer? If yes, stop and do not continue, even if
     I ask: SCOPE.md excludes it, because
@@ -160,8 +160,8 @@ Ask, and wait for each answer:
   - Do they carry a mobile phone every time they go out?
   - Does the home have broadband, and a router with a spare network
     socket for the hub?
-  - Do I live there too, or will the hub be in a different house from
-    me and the other carers? If different, tell me now that two kinds
+  - If the hub will be in a different house from me and the other
+    carers (from the overview), tell me now that two kinds
     of secure remote access are required, not optional, and that we set
     both up in stage 2 before the hub is left there:
       - for carers' phones: a remote address that the dashboard, alert
@@ -302,32 +302,54 @@ STAGE 2. Sensor plan, hardware and the hub
   - A camera is optional and comes later, after reading SAFETY.md. A
     Ring camera cannot give Home Assistant a still on its own: it needs
     go2rtc, and some models give none at all.
-  - If the person goes out without a phone, propose a small tracker for
-    their keys or bag, and plan to use it as their home and away signal.
+  - If the person goes out without a phone, propose a tracker for their
+    keys or bag that reports to Home Assistant, checked as above (a
+    Bluetooth tag needs a Bluetooth adapter or proxy, which a Green
+    lacks), and plan to use it as their home and away signal.
     Tell me that while they are recorded as away, alerts are skipped, so
     a tracker left elsewhere or showing away by mistake silences them.
+  - Before the visit, give me a list to bring: any radio dongle and a
+    USB extension lead for it, power supplies, spare batteries, mounting
+    kit, a step ladder, labels, and their Wi-Fi password. Check now that
+    my computer has git, bash, python3, pytest and ssh (on Windows, Git
+    for Windows), and help me install what is missing.
   - The hub. Tell me which steps are mine and do the rest yourself.
     Mine, because they need my accounts, my click or my phone:
       a. Plug the hub into their router by Ethernet, open
          homeassistant.local:8123 on a computer on the same network, and
          create the admin account.
-      b. Install the Terminal & SSH add-on, paste in the public SSH key
+      b. Turn on Advanced mode in my user profile (the add-on is hidden
+         without it), then install the Terminal & SSH add-on, paste in
+         the public SSH key
          you make on my computer (never the private one), leave the
          password empty, set the SSH port, and start it.
-      c. Sign up for Home Assistant Cloud if we chose it, under
-         Settings, Home Assistant Cloud, and tell you the remote address.
-      d. Click Tailscale's sign-in link when you show it to me.
-      e. Install the Home Assistant app on each carer's phone (below).
+      c. Choose how carers' phones reach the hub: ask me, with the
+         options in docs/setup/REMOTE_ACCESS.md. If Home Assistant Cloud,
+         sign up under Settings, Home Assistant Cloud, and tell you the
+         remote address.
+      d. Install Tailscale on my computer and sign in; click the hub's
+         sign-in link when you show it to me; then, in Tailscale's admin
+         page, turn off key expiry for the hub, or it locks us out after
+         about six months.
+      e. Create a Home Assistant login for each carer under Settings,
+         People (not an administrator), and install the Home Assistant
+         app on each carer's phone (below).
+      f. Create a check at an uptime service for the hub watchdog, as
+         SAFETY.md describes (Healthchecks.io: every 5 minutes, 15
+         minutes' grace), and give you its address.
     Then, over SSH from my computer on their network, showing me each
     command before running it:
       - check the add-on and app commands with `ha --help` before using
         them (their names have changed between versions);
-      - install and start the Tailscale add-on and show me its sign-in
-        link; then check you can reach the hub over Tailscale;
+      - install the Tailscale add-on, turn on Start on boot and the
+        watchdog for it and for Terminal & SSH, confirm with the add-on
+        info command, start it and show me its sign-in link; then check
+        you can reach the hub over Tailscale;
       - optionally, kiosk-mode, which only hides Home Assistant's own
         menus on the dashboard. Download its release file from its
-        GitHub releases page into /config/www/kiosk-mode/ and change
-        Haiven's frontend line from /hacsfiles/kiosk-mode/kiosk-mode.js
+        GitHub releases page into /config/www/kiosk-mode/, and in stage 3,
+        before setup.sh, change the frontend line in
+        ~/haiven/configuration.yaml from /hacsfiles/kiosk-mode/kiosk-mode.js
         to /local/kiosk-mode/kiosk-mode.js. This way needs neither HACS
         nor a GitHub account. Skip it if I would rather not.
     Remote access follows docs/setup/REMOTE_ACCESS.md, and comes straight
@@ -368,7 +390,8 @@ Before its step 5:
     or thresholds in files: they go on the Settings screen in stage 4;
   - names and notify services go only into the copies on the hub, as
     first-install step 4 says, never into ~/haiven.
-Run scripts/setup.sh only inside ~/haiven, never in /config.
+Run scripts/setup.sh only inside ~/haiven, never in /config. Copy files
+to the hub with tar over ssh (scp may not work with the add-on).
 Ask me before the restart.
 
 STAGE 4. Fit it to the house
@@ -412,8 +435,8 @@ the progress file:
     (some battery Bluetooth sensors do not), tell me Haiven cannot warn
     me that this sensor has stopped, and to check the Sensors screen
     each week.
-  - Hub watchdog: set up as SAFETY.md describes, then I unplug the hub
-    and the alert arrives. Plug it back in.
+  - Hub watchdog: set up as SAFETY.md describes. The unplug test is
+    item 7 of the checklist below.
   - Home location: in their house, set Settings, System, General,
     location to their home (if it was set up elsewhere), then confirm
     person.elderly_person (not any other person entity) shows as Home

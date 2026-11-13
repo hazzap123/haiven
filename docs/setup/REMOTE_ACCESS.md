@@ -7,7 +7,7 @@ The hub lives in the person's house; you and the carers mostly do not. Two kinds
 | **Carers' phones** | Each carer's location (for "who's nearest"), the person's home and away, the buttons on alerts, and the dashboard from anywhere | Home Assistant Cloud |
 | **Admin access** | You, or an AI assistant on your computer, fixing and tuning the hub over SSH | Tailscale and the Terminal & SSH add-on |
 
-Set both up **at your own home, before the hub moves**, and test them from another network (see the last section).
+Set both up **before the hub is left in their house**, and test them from another network (see the last section).
 
 ## What works without remote access
 
@@ -32,7 +32,7 @@ Whichever you choose, set each carer's Home Assistant app to use it, then turn o
 
 ## Admin access: Tailscale and SSH
 
-Tailscale makes a private network between your computer and the hub. Nothing is opened on the person's router, and it keeps working if they change broadband provider. The personal plan is free: [tailscale.com/pricing](https://tailscale.com/pricing).
+Tailscale makes a private network between your computer and the hub. Nothing is opened on the person's router, and it keeps working if they change broadband provider. The personal plan is free: [tailscale.com/pricing](https://tailscale.com/pricing). In the add-on, turn on Start on boot and the watchdog, so it comes back after a power cut; in Tailscale's admin page, turn off key expiry for the hub, or access stops after about six months.
 
 1. **Tailscale on the hub.** Settings, Add-ons, Add-on store, Tailscale. Install, start it, open its web page and sign in with your Tailscale account.
 2. **Tailscale on your computer.** Install it from tailscale.com and sign in with the same account. In the Tailscale admin page, note the hub's name (for example `homeassistant`).
@@ -49,9 +49,9 @@ Rules:
 - Only people who help run the hub get Tailscale access. Remove a person from the Tailscale admin page when they stop helping, and remove their key from `authorized_keys`.
 - An AI assistant uses your SSH key on your computer. It must never be given the key itself, and the key never goes into a file in git.
 
-## Before the hub moves: the away test
+## Before you leave it: the away test
 
-On your own home network everything looks fine, so test from somewhere else:
+On the same network as the hub everything looks fine, so test from somewhere else before you leave it in their house:
 
 1. Put your computer on your phone's hotspot. Run `ssh root@homeassistant` and `ha core info`.
 2. On a carer's phone with Wi-Fi off, open the Home Assistant app, and check the dashboard loads and the carer's location has updated in Settings, People.
