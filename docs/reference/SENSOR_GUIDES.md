@@ -16,6 +16,27 @@ Haiven uses 3 sensors for triangulated monitoring. The sensor types below are wh
 | MMW radar presence sensor | `binary_sensor.haiven_bedroom_occupancy` | Bedroom |
 | PIR motion sensor | `binary_sensor.haiven_bathroom_motion` | Bathroom |
 
+### Choosing where each sensor goes
+
+Decide this from the layout and the routine, not from the kit. Each role does a different job in Haiven, so the wrong sensor in a room breaks a specific alert.
+
+| Role | What Haiven uses it for | What it must see | Best sensor |
+|---|---|---|---|
+| Bedroom | Bedtime, still in bed, night trips out of bed | The person lying still in bed | Presence (mmWave). A PIR cannot see someone lying still, so it reads an empty room |
+| Main room | The morning check, wake time, daytime silence alerts | The person moving about where they first go on waking and where they spend the day | Motion (PIR) where they move about; presence (mmWave) only if they sit still for long spells and no pet uses the room |
+| Bathroom | Night visits, long visits, no return to bed | Someone coming in | Motion (PIR, battery is fine), inside the door, pointing in |
+
+Rules, in order:
+
+1. **Bedroom gets presence.** If you have one mmWave sensor, it goes here. Aim it at the bed from the side or the foot, not through the doorway.
+2. **Main room goes where the day starts.** Cover the spot they reach first on getting up (the kettle, the chair, the curtains), and where they spend most of the day. Open plan: one sensor covering both. Separate kitchen and living room: cover the kitchen if the day starts with the kettle; add the living room as an extra activity source only if they sit there for hours.
+3. **Pets decide the main room.** mmWave sees any moving body, including a dog or cat, so a pet in the room makes a silence look like activity and hides it. Where a pet uses the main room, use a PIR mounted high (about 2 m) and angled down and away from the floor, ideally pet-immune, and test it with the pet alone in the room. Where the pet sleeps in the bedroom, the bedroom sensor will see it too: say so, and test.
+4. **No sensor sees into another role's room.** mmWave passes through doors and thin walls. Keep it off walls shared with the bathroom or landing, and keep the bathroom PIR pointing away from the door to the landing.
+5. **Power and radio.** mmWave usually needs mains: check there is a socket where it must go. A Home Assistant Green has no Zigbee or Bluetooth radio, so Zigbee and Bluetooth sensors need a dongle, a Bluetooth proxy or a gateway.
+6. **Kit already bought.** Allocate it by these rules, not by what it was bought for. If it does not fit (two mmWave sensors and a dog downstairs, say), say what will not work and what one extra sensor would fix.
+
+Write the plan as a table, room by room: sensor, where it is mounted and what it points at, why, what could go wrong (pet, a neighbouring room, no socket), and how stage 5 will test it.
+
 ### Coverage Pattern
 
 ```

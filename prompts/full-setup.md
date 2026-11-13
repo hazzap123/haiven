@@ -1,5 +1,11 @@
 # Full setup with an AI coding assistant
 
+**To start, paste this one line into Claude Code, Codex or a similar AI coding assistant:**
+
+> Read https://github.com/hazzap123/haiven/blob/main/prompts/full-setup.md and run the prompt in it with me, stage by stage, exactly as written.
+
+Pasting only the link, without asking it to run the prompt, gets you a summary instead.
+
 A prompt for Claude Code, Codex or a similar tool that takes a family from nothing to a tuned, handed-over Haiven install. It covers consent, whether Haiven suits the household, planning the home and routine, buying and pairing sensors, installing, testing, a week of calibration against real data, and handover.
 
 It runs in stages over about two weeks, most of it waiting for the calibration nights. The assistant stops at the end of each stage and waits for you to say go on. It keeps a progress file, so you can close it and come back days later with "We are at stage N".
@@ -8,12 +14,13 @@ Already running Home Assistant and only want the software installed? [first-inst
 
 ## Before you start
 
-- **Read [SAFETY.md](../SAFETY.md).** Haiven is not a medical device, does not detect falls, and is never a replacement for a monitored pendant.
+- **Read [SAFETY.md](../SAFETY.md).** Haiven watches a routine. It does not detect falls and does not replace a pendant, telecare, visits or calls.
 - **The person should be part of this, not only the subject of it.** Stage 0 asks about their agreement before anything else.
 - **What you type goes to the AI provider.** The answers in stage 1 describe someone's daily routine, including night-time bathroom visits. They are sent to the company that runs your AI assistant, under its terms. Use roles ("mum", "carer 1"), not full names, and skip anything you would rather not share.
 - **Who does what.** Stages 0, 1 and 4 to 7 need no technical skill. Stages 2 and 3 need a technical helper for about two hours: someone comfortable with Home Assistant, or willing to learn its basics, who can read a configuration change before agreeing to it. The assistant cannot judge a change for you. If that is not you, ask someone to sit with you for those two stages. The assistant runs on your own computer; install it first (for Claude Code, see claude.com/claude-code).
 - **Costs.** A hub, three sensors and any radio they need, and usually a Home Assistant Cloud subscription so carers' phones work away from home. Tailscale and the watchdog service are free. See [docs/start.md](../docs/start.md).
-- **Set the hub up at your own home first**, then take it to theirs. You need remote access so you can see the dashboard and carers' phones can report location from anywhere. Stage 2 covers it.
+- **Set the hub up at your own home first** if you can, then take it to theirs. If it has to be set up in their house, that works too, but get remote access working before you leave: you need it to see the dashboard, for carers' phones to report location, and for the assistant to reach the hub later. Stage 2 covers it.
+- **A chat assistant in a browser** (ChatGPT, Claude.ai) can do the conversation stages, 0, 1, 4 and 7, but cannot run commands on the hub. For stages 2, 3, 5 and 6 use an assistant that runs on your computer, or paste its commands into the hub yourself.
 - **Allow about an hour for stages 0 and 1.** They are a conversation about the person's home and day. Ask them, or someone who knows their routine well; the answers matter more than anything else here.
 
 AI tools make mistakes. Read each change before you agree to it.
@@ -23,9 +30,20 @@ AI tools make mistakes. Read each change before you agree to it.
 ```
 You are helping me set up Haiven, an open source Home Assistant package
 that watches one person's daily routine at home with three sensors and
-alerts their family when the routine does not happen. It is not a
-medical device, it does not detect falls, and it does not replace a
-monitored pendant, visits or phone calls.
+alerts their family when the routine does not happen. It does not
+detect falls and does not replace a pendant, telecare, visits or calls.
+Say that once at the start; do not repeat it unless I ask.
+
+Before anything else, tell me whether you can run commands on my
+computer and save files. If you cannot (a chat in a browser), say so:
+you can guide stages 0, 1, 4 and 7, and for the rest I will need an
+assistant that runs on my computer, or to paste your commands into the
+hub myself. Instead of a progress file, end each stage with a short
+progress block for me to copy and paste back next time.
+
+Ask one question per message, and do not move on while a question is
+unanswered. If I answer two questions with one word, check which one I
+answered.
 
 Work in the stages below. At the end of each stage, show me what was
 done and what is next, then stop and wait for me to say go on. Keep a
@@ -71,14 +89,15 @@ Ask, and wait for each answer:
     Monitoring off on the Settings screen stops most alerts, but
     movement is still recorded and fault and critical alerts still go
     out; to stop entirely, Haiven is taken out (see Rules).
-  - Do they have a monitored pendant? If not, say they should keep or
-    get one, and that Haiven is an addition to it.
+  - Do they have a monitored pendant or telecare? Record the answer. If
+    not, say once that Haiven does not replace one, and carry on.
   - Does anyone else live there or stay most nights: a partner, a
     lodger, a live-in carer? If yes, stop and do not continue, even if
     I ask: SCOPE.md excludes it, because
     the sensors cannot tell two people apart and every alert would be
     hidden by the other person's movement.
-  - Do pets move about in the main room or bedroom at night?
+  - Do they have pets, and where do the pets go during the day and at
+    night?
   - Are bed and wake times usually within about four hours of the same
     time each day, with bed before about 01:00 and up by about 11:00?
     Outside that, stage 6 cannot measure the routine.
@@ -105,28 +124,51 @@ assistant; HOUSE_PROFILE.local.md stays on my computer. I can say
 be deleted.
 
 Interview me to fill in HOUSE_PROFILE.local.md, a copy of
-HOUSE_PROFILE.md. Ask one short group of questions at a time:
-  a. Rooms: floors, stairs, open-plan or separate kitchen and living
-     room, where the bathroom is and how many there are, rooms they use
-     most days.
+HOUSE_PROFILE.md. Do not ask about kit or sensors yet, even if I say I
+have already bought them: the sensors are placed to fit the house and
+the routine, not the other way round.
+
+First the layout, one question at a time. Each answer decides where a
+sensor goes; say in a few words why you are asking.
+  L1. One storey, or stairs? If stairs, which floor are the bedroom and
+      the toilet they use at night on?
+  L2. Are the kitchen and the living room one open space, or separate
+      rooms?
+  L3. Where do they spend most of the day: which room, and which chair?
+  L4. When they get up, what do they do first, and where: the toilet,
+      the kettle, the chair, the curtains?
+  L5. At night, how do they get from bed to the toilet: en-suite,
+      across a landing, downstairs? Is there more than one toilet, and
+      which is used at night?
+  L6. In the bedroom, where is the bed in relation to the door, and is
+      the door left open? Does the bedroom share a wall with the
+      bathroom?
+  L7. For each pet: which rooms during the day, which at night, and
+      does it go upstairs or into the bedroom or bathroom?
+  L8. Which room do they pass through to leave the house?
+  L9. Is there a mains socket near the bed, near the chair or kettle,
+      and near the bathroom door?
+  L10. Does the Wi-Fi reach every room?
+Then draw the layout back to me as a short text plan, room by room,
+with where they sit, sleep and wash, the night route, and where each
+pet goes, and ask me to correct it.
+
+Then the routine, one question at a time:
   b. A normal weekday, from waking to bed: when they get up and how much
-     that varies, the first room they go to, meals, any nap and where,
-     the evening, when they go to bed and how much that varies.
+     that varies, meals, any nap and where, the evening, when they go to
+     bed and how much that varies.
   c. The week: days that differ (a day centre, church, shopping), and
      regular visits by carers, family or friends.
   d. Nights: how often they usually get up, to where, and whether that
      has changed recently. If it has, suggest they see their GP before
      calibration starts, so a change is not taken as their normal.
-  e. Household: pets and where they sleep, anything else that moves
-     (fans, curtains, a robot vacuum).
+  e. Anything else that moves: fans, curtains by an open window, a
+     robot vacuum.
   f. Alerts: up to two carers, by role. Who could get there, and a
      nearby key holder or key safe.
   g. What should make a carer's phone ring, and what they do not want
      to hear about. Ask the person this too, if they are here.
 If I am unsure of a time, write "unsure": stage 6 measures it.
-If I mention falls, collapse, illness or emergencies, say plainly that
-Haiven will not detect them: a fall that leaves someone still in a room,
-or in a room with no sensor, may raise no alert for hours.
 
 Then show me the profile back and tell me, for each answer:
   - what Haiven will use: expected wake time and bedtime and how much
@@ -149,19 +191,42 @@ Then show me the profile back and tell me, for each answer:
 Write only roles and times in the file. No names, addresses or phone
 numbers.
 
-STAGE 2. Hardware and the hub
-  - Propose one sensor per role (main room, bedroom, bathroom), plus an
-    extra room sensor only where the layout needs one. For each: why,
-    mains or battery, the radio it needs, a rough price, and whether it
-    copes with the pets from stage 0. Propose only sensors that pair
-    with the hub as bought, or name the extra radio needed (a Zigbee or
-    Bluetooth dongle, or a Bluetooth proxy). Do not propose the
+STAGE 2. Sensor plan, hardware and the hub
+  - Now ask what I already have: the hub, and the make and model of
+    each sensor, camera or other device. Check each model before
+    planning with it. If you can browse the web, look it up; if you
+    cannot, say so and give me the page to check. Use, in this order:
+    the Home Assistant integrations list (home-assistant.io/integrations),
+    the Zigbee2MQTT supported devices list (zigbee2mqtt.io), the ZHA
+    device list (zigbee.blakadder.com), ESPHome's device pages, and the
+    maker's own page. For each model, tell me:
+      - which integration it uses, and whether it works locally or
+        through the maker's cloud (prefer local: a cloud outage or a
+        lapsed account stops the sensor);
+      - the radio it needs (Zigbee, Bluetooth, Thread or Wi-Fi), and
+        whether this hub has that radio;
+      - what Home Assistant gets from it: Haiven needs an on/off motion
+        or occupancy entity (binary_sensor), or a motion event, for each
+        role;
+      - mains or battery, and whether it is pet-immune or has zones;
+      - anything known to go wrong with it in Home Assistant.
+    Say which facts you found and where, and which you could not
+    confirm. Do not state compatibility from memory as if checked.
+    Then make the sensor plan with
+    "Choosing where each sensor goes" in docs/reference/SENSOR_GUIDES.md
+    and the layout from stage 1. Show it as a table, room by room:
+    which sensor, where it is mounted and what it points at, why, what
+    could go wrong (a pet, a neighbouring room, no socket), and how
+    stage 5 will test it. Use what I have if it fits the rules; if it
+    does not, say what will not work and recommend the sensor that
+    would fix it: two or three current models that the sources above
+    list as supported, local where possible, with the radio each needs
+    and a rough price, checked the same way. Do not propose the
     reference bedroom radar in SENSOR_GUIDES.md: its firmware is not
-    published. Check that no sensor will see into the next room. I
-    choose.
-  - If pets use the main room at night, propose a placement or a sensor
-    that ignores them, or a smart plug on the kettle as an extra sign of
-    activity, and plan to test it in stage 5.
+    published. I choose.
+  - A camera is optional and comes later, after reading SAFETY.md. A
+    Ring camera cannot give Home Assistant a still on its own: it needs
+    go2rtc, and some models give none at all.
   - If the person goes out without a phone, propose a small tracker for
     their keys or bag, and plan to use it as their home and away signal.
     Tell me that while they are recorded as away, alerts are skipped, so
@@ -363,7 +428,7 @@ STAGE 7. Hand over
     and "do not unplug", and how to switch Haiven off if the person
     withdraws agreement. I add names and numbers on paper.
   - Check every item in "Before you go live" in docs/start.md with me.
-    Do not mark the pendant item done unless they have one.
+    For the pendant item, record what they have.
   - Run git status in ~/haiven and show me that no tracked file
     contains a name, phone number or address.
   - Remind me to review it with the person every six months: their
