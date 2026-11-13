@@ -121,9 +121,10 @@ Fault alerts are sent whether or not monitoring is switched on.
 
 | Entity ID | Purpose |
 |-----------|---------|
-| `sensor.haiven_faults` | Number of faults. `offline` names role sensors reporting unknown or unavailable; `low_batteries` names batteries at 15% or below on those sensors' devices; `watchdog` says whether the heartbeat is set up |
+| `sensor.haiven_faults` | Number of faults. `offline` names role sensors reporting unknown or unavailable; `low_batteries` names batteries at 15% or below on those sensors' devices; `camera` names the camera when the snapshot switch is on and it is not reporting; `watchdog` says whether the heartbeat is set up |
 | `input_text.haiven_heartbeat_url` | The address the hub requests every five minutes. Empty means no watchdog. Kept out of the recorder |
 | `input_datetime.haiven_heartbeat_last_ok` | When the watchdog service last accepted a heartbeat |
+| `input_boolean.haiven_camera_fault_sent` | Set when the camera fault alert goes out, so the "working again" message only follows one |
 | `script.haiven_notify_fault` | Sends a fault alert to every carer without marking a routine alert as sent |
 
 ### Holding alerts back (`packages/haiven_pause.yaml`)
@@ -287,7 +288,7 @@ Find your notification service names in **Developer Tools > Actions** (search "n
 | `packages/haiven_night_insights.yaml` | Nightly bathroom-visit and downstairs-trip stats |
 | `packages/haiven_movement.yaml` | Today's all-room movement vs a 7-day average |
 | `packages/haiven_routine.yaml` | Daily routine verdict against the last 28 days |
-| `packages/haiven_faults.yaml` | Sensor offline, low battery and the hub watchdog |
+| `packages/haiven_faults.yaml` | Sensor and camera offline, low battery and the hub watchdog |
 | `packages/haiven_pause.yaml` | Visitor present and calibration: alerts quietened, never dropped |
 | `packages/haiven_camera.yaml` | Optional: one camera still after an alert, with an optional AI description |
 | `haiven_sensors_3sensor.yaml` | Core template sensors |
