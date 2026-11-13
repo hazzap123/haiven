@@ -2250,6 +2250,72 @@
           Change it before the sensor stops and that room goes quiet.
   mode: single
 
+- id: haiven_fault_camera
+  alias: "Haiven: Fault - Camera"
+  description: >
+    Tell every carer when the camera is switched on but not reporting for 15
+    minutes, again each morning while it stays down, and once when it is back.
+    The camera is only used after an alert, so this is how a dead camera is
+    found before an alert needs it. Catches an entity that has gone
+    unavailable, for example a cloud camera whose login has expired; a camera
+    that reports but returns no picture is caught when the picture is taken.
+  triggers:
+    - trigger: template
+      value_template: "{{ (state_attr('sensor.haiven_faults', 'camera') or '') | trim | length > 0 }}"
+      for: "00:15:00"
+      id: down
+    - trigger: time
+      at: "09:00:00"
+      id: down
+    - trigger: template
+      value_template: "{{ (state_attr('sensor.haiven_faults', 'camera') or '') | trim | length == 0 }}"
+      for: "00:05:00"
+      id: back
+  conditions:
+    - condition: or
+      conditions:
+        - condition: and
+          conditions:
+            - condition: trigger
+              id: down
+            - condition: template
+              value_template: "{{ (state_attr('sensor.haiven_faults', 'camera') or '') | trim | length > 0 }}"
+        - condition: and
+          conditions:
+            - condition: trigger
+              id: back
+            - condition: template
+              alias: Only after a camera alert went out
+              value_template: "{{ is_state('input_boolean.haiven_camera_fault_sent', 'on') }}"
+  actions:
+    - if:
+        - condition: trigger
+          id: down
+      then:
+        - action: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.haiven_camera_fault_sent
+        - action: script.haiven_notify_fault
+          data:
+            title: "Haiven fault: camera not working"
+            priority: active
+            message: >-
+              The camera ({{ state_attr('sensor.haiven_faults', 'camera') | trim }})
+              is not reporting, so no picture can follow an alert. The alerts
+              themselves still work. Check its power and connection, and
+              whether its integration in Home Assistant needs you to sign in
+              again.
+      else:
+        - action: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.haiven_camera_fault_sent
+        - action: script.haiven_notify_fault
+          data:
+            title: "Haiven: camera working again"
+            priority: passive
+            message: The camera is reporting again.
+  mode: queued
+
 - id: haiven_hub_heartbeat
   alias: "Haiven: Hub Watchdog Heartbeat"
   description: >
