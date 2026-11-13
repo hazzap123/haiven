@@ -1442,7 +1442,7 @@ template:
           {% if kitchen_last %}
             {{ ((now() - kitchen_last).total_seconds() / 60) | int }}
           {% else %}
-            unknown
+            {{ none }}
           {% endif %}
         icon: mdi:silverware-fork-knife
 
@@ -1458,7 +1458,7 @@ template:
             {% if bedroom_last %}
               {{ ((now() - bedroom_last).total_seconds() / 60) | int }}
             {% else %}
-              unknown
+              {{ none }}
             {% endif %}
           {% endif %}
         icon: mdi:bed
@@ -1475,7 +1475,7 @@ template:
             {% if bathroom_last %}
               {{ ((now() - bathroom_last).total_seconds() / 60) | int }}
             {% else %}
-              unknown
+              {{ none }}
             {% endif %}
           {% endif %}
         icon: mdi:shower
@@ -1490,7 +1490,7 @@ template:
           {% if ts and ts > 0 %}
             {{ ((now().timestamp() - ts) / 60) | int }}
           {% else %}
-            unknown
+            {{ none }}
           {% endif %}
         icon: mdi:home-import-outline
 

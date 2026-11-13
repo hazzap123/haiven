@@ -253,8 +253,10 @@ the progress file:
   - Hub watchdog: set up as SAFETY.md describes, then I unplug the hub
     and the alert arrives. Plug it back in.
   - Home location: in their house, set Settings, System, General,
-    location to their home (it was set up at mine), then confirm the
-    person shows as Home. Until then they read as away and the morning
+    location to their home (it was set up at mine), then confirm
+    person.elderly_person (not any other person entity) shows as Home
+    and binary_sensor.elderly_person_home is on. If it is missing, the
+    names in haiven_persons.yaml were changed: see that file. Until then they read as away and the morning
     check is skipped.
   - Home and away, if they carry a phone or tracker: a real trip out of
     15 minutes or more gives "has gone out" and "is home".

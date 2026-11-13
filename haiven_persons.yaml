@@ -1,12 +1,23 @@
 # Haiven Care Circle - Person Tracking Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 # Configure person entities for location tracking
+#
+# DO NOT CHANGE THE NAMES BELOW. Home Assistant makes a person's entity ID
+# from its name, not from `id:` (that is only the unique ID). Haiven looks
+# for person.elderly_person, person.contact_1 and person.contact_2; rename
+# "Elderly Person" to a real name and Haiven cannot find them, treats them
+# as always away, and skips their alerts. Real names go in "Elderly Person
+# Name" and the contact name helpers (packages/haiven_care_circle_inputs.yaml).
+# Change only the device_trackers here.
+#
+# Already restarted with other names? Rename the entity IDs back under
+# Settings, Devices & services, Entities.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ELDERLY PERSON (Being Cared For) - REQUIRED
 # ─────────────────────────────────────────────────────────────────────────────
-- name: "Your Person"
+- name: "Elderly Person"
   id: elderly_person  # → person.elderly_person
   device_trackers:
     - device_tracker.your_person_phone
@@ -14,7 +25,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # CONTACT 1 (Carer 1)
 # ─────────────────────────────────────────────────────────────────────────────
-- name: "Carer 1"
+- name: "Contact 1"
   id: contact_1  # → person.contact_1
   device_trackers:
     - device_tracker.carer_1_phone
@@ -22,7 +33,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # CONTACT 2 (Carer 2)
 # ─────────────────────────────────────────────────────────────────────────────
-- name: "Carer 2"
+- name: "Contact 2"
   id: contact_2  # → person.contact_2
   device_trackers:
     - device_tracker.carer_2_phone

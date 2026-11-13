@@ -46,7 +46,7 @@ configuration.yaml.
      grep -rn "event.kitchen_motion\|haiven_bedroom_occupancy\|haiven_bathroom_motion" \
        packages configuration.yaml automations.yaml scripts.yaml \
        haiven_sensors_3sensor.yaml www-src lovelace
-     should only match my answers. Run pytest before setup.sh, not after:
+     should print nothing. Run pytest before setup.sh, not after:
      some tests name the default sensor IDs.
 
 4. People and carers
@@ -67,6 +67,11 @@ configuration.yaml.
      the same phone is harmless. Change only names, trackers and notify
      services. Leave the phone fields as placeholders unless I give you a
      number.
+   - In haiven_persons.yaml change only the device_trackers, never the
+     names "Elderly Person", "Contact 1" and "Contact 2": Home Assistant
+     builds person.elderly_person and the others from those names, and
+     Haiven treats the person as always away if they change. Real names
+     go in the name helpers in haiven_care_circle_inputs.
 
 5. Copy into /config
    Before anything is copied:

@@ -171,3 +171,16 @@ def test_night_visit_then_pet_run_is_not_wake():
     T_ON = [t('2026-11-06 22:15:00'), t('2026-11-07 04:55:00'), t('2026-11-07 06:58:00')]
     n = night_stats.night(K, B, T_ON, [], D.date(2026, 11, 6), t('2026-11-08 12:00:00'))
     assert n['wake'] == '07:05'
+
+
+def test_one_pet_trigger_after_bedtime_keeps_bathroom_rule():
+    """Round 2 dry run: one cat trigger at 23:45 turned a 23:05 bedtime into
+    a 02:15 kitchen-rule guess, and stage 6 then threw the night away."""
+    import datetime as D
+    t = D.datetime.fromisoformat
+    K = [t('2026-11-11 22:58:00'), t('2026-11-11 23:45:00')] \
+        + [t(f'2026-11-12 07:{m:02d}:00') for m in (0, 3, 6)]
+    B = [t('2026-11-11 23:10:00')]
+    T_ON = [t('2026-11-11 23:05:00'), t('2026-11-12 06:52:00')]
+    n = night_stats.night(K, B, T_ON, [], D.date(2026, 11, 11), t('2026-11-13 12:00:00'))
+    assert (n['bed'], n['bed_rule']) == ('23:05', 'bathroom')

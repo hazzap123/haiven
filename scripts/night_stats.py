@@ -9,8 +9,8 @@ produces tonight's count.
 
 Rules (all from the log, all local time):
   window   16:00 -> 12:00 next day
-  bedtime  first bathroom-on from 16:00 to 03:00 with no kitchen motion in the
-           next 120 min and bedroom presence within 60 min. After midnight it
+  bedtime  first bathroom-on from 16:00 to 03:00 with at most one kitchen
+           trigger (a pet) in the next 120 min and bedroom presence within 60 min. After midnight it
            also needs kitchen motion in the hour before, or it is a night visit. Short evening trips
            to the bedroom fail the kitchen test. When
            no bathroom visit qualifies (pets setting off the kitchen sensor all evening), the
@@ -91,7 +91,9 @@ def bedtime(K, B, T_ON, day, now):
     for t in between(T_ON, w0, w1):
         if t + 120 * MIN > now:
             return None, None                  # too soon to know
-        if between(K, t, t + 120 * MIN):
+        # One lone kitchen trigger (a pet) does not mean they went back
+        # downstairs; two or more does.
+        if len(between(K, t, t + 120 * MIN)) >= 2:
             continue
         # After midnight a bathroom visit is only a bedtime if they were
         # downstairs within the hour before. Otherwise they were already in
