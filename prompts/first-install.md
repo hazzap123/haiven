@@ -1,6 +1,6 @@
 # First install with an AI coding assistant
 
-A prompt for Claude Code, Codex or a similar tool that walks through installing Haiven on a Home Assistant hub with you. Use it for Path 1 in [docs/start.md](../docs/start.md): Home Assistant is already running and you can reach it.
+A prompt for Claude Code, Codex or a similar tool that walks through installing Haiven on a Home Assistant hub with you. Use it for Path 1 in [docs/start.md](../docs/start.md): Home Assistant is already running and you can reach it. For the whole job, from planning the house to calibration, use [full-setup.md](full-setup.md).
 
 ## Before you start
 

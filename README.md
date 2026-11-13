@@ -68,6 +68,7 @@ See [docs/setup/QUICKSTART.md](docs/setup/QUICKSTART.md) for the full 30-minute 
 | [Safety and limits](SAFETY.md) | Read first: what it is not, what can fail, what leaves the house, consent |
 | [Install](docs/start.md) | Two paths: already on Home Assistant, or new to it |
 | [Scope](SCOPE.md) | What Haiven is for, and the rules every change keeps |
+| [Full setup prompt](prompts/full-setup.md) | Planning the home and routine, sensors, install, tests, a week of calibration against real data, handover |
 | [First install prompt](prompts/first-install.md) | A prompt for an AI coding assistant to walk you through the install |
 | [House profile](HOUSE_PROFILE.md) | Template for adapting the rules to one home, with [the prompt](prompts/adapt-to-house.md) |
 | [Quick Start](docs/setup/QUICKSTART.md) | 30-minute fast path |

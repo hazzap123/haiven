@@ -1,5 +1,7 @@
 # Install Haiven
 
+**Want to be walked through all of it?** [prompts/full-setup.md](../prompts/full-setup.md) is a prompt for Claude Code, Codex or a similar AI coding assistant that goes from planning the home and routine, through buying sensors, installing and testing, to a week of calibration against real data and handover. The steps below are the same work done by hand.
+
 Read [SAFETY.md](../SAFETY.md) first. Get the person's agreement before installing, including which rooms have sensors.
 
 Needs Home Assistant 2024.10 or later.
@@ -39,7 +41,7 @@ Press "Start calibration" on the Settings screen before you leave. For seven nig
 
 ## Adapt it to their house
 
-Every house and routine is different. Fill in a copy of [HOUSE_PROFILE.md](../HOUSE_PROFILE.md), then use [prompts/adapt-to-house.md](../prompts/adapt-to-house.md) with an AI coding assistant to adapt the rules. The limits any change must keep are in [SCOPE.md](../SCOPE.md).
+Every house and routine is different. Fill in a copy of [HOUSE_PROFILE.md](../HOUSE_PROFILE.md) (stage 1 of [full-setup.md](../prompts/full-setup.md) does this as an interview), then use [prompts/adapt-to-house.md](../prompts/adapt-to-house.md) with an AI coding assistant to adapt the rules. The limits any change must keep are in [SCOPE.md](../SCOPE.md).
 
 ## Before you go live
 
