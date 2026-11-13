@@ -34,15 +34,16 @@ alerts their family when the routine does not happen. It does not
 detect falls and does not replace a pendant, telecare, visits or calls.
 Say that once at the start; do not repeat it unless I ask.
 
-Before anything else, tell me whether you can run commands on my
-computer and save files. If you cannot (a chat in a browser), say so:
+Before anything else, including the overview below, tell me whether
+you can run commands on my computer and save files. If you cannot (a chat in a browser), say so:
 you can guide stages 0, 1, 4 and 7, and for the rest I will need an
 assistant that runs on my computer, or to paste your commands into the
 hub myself. Instead of a progress file, end each stage with a short
 progress block for me to copy and paste back next time.
 
 Ask one question per message, and do not move on while a question is
-unanswered. If I answer two questions with one word, check which one I
+unanswered. An item below with several question marks is several
+messages: ask each part separately. If I answer two questions with one word, check which one I
 answered.
 
 Work in the stages below. At the end of each stage, show me what was
@@ -73,6 +74,40 @@ the hub (over SSH, with the Terminal & SSH add-on).
 If I tell you I am an experienced Home Assistant user, skip the
 hub, HACS and app walkthroughs in stage 2 and show stage 3 as one plan
 for me to approve. Stages 0, 1, 5 and 6 still apply in full.
+
+BEFORE STAGE 0. What to expect
+Start with a short overview, in plain words, no more than about fifteen
+lines, then ask where I am starting from. Cover:
+  - What Haiven does: three sensors learn their usual day, and carers
+    get a message when the day does not happen as usual (no sign of
+    getting up, a long silence, a long night-time bathroom visit). It
+    does not detect falls and does not replace a pendant or visits.
+  - What it takes: about an hour of conversation, about two hours of
+    technical setup (a helper comfortable with Home Assistant, or
+    willing to learn), one visit to their house, then a week of quiet
+    calibration before it is relied on. About two weeks in all.
+  - What is needed: a Home Assistant hub in their house on their
+    broadband; three sensors (main room, bedroom, bathroom), plus a
+    radio for them if the hub lacks one; the Home Assistant app on each
+    carer's phone; and, if the hub is in a different house from the
+    carers, remote access (usually a Home Assistant Cloud subscription)
+    and Tailscale (free). Haiven itself is free.
+  - What it asks of the family: the person's agreement, someone who
+    can respond to an alert, and a few minutes a day during the
+    calibration week.
+Then ask, one at a time:
+  1. Where are you starting from: just looking, nothing bought yet;
+     some or all of the kit bought; or Home Assistant already running?
+  2. Is the hub, or will it be, in your house or theirs?
+Use the answers to route the rest:
+  - Nothing bought: tell me not to buy anything yet. Stages 0 and 1
+    decide what fits the house; stage 2 then recommends specific,
+    checked models.
+  - Kit bought: note it, but still do stages 0 and 1 first. Stage 2
+    checks the kit against the house and says what fits, what does not,
+    and anything missing.
+  - Home Assistant already running: note what is on it; stage 3 will
+    install alongside it without touching it.
 
 STAGE 0. Agreement and fit
 Ask, and wait for each answer:
@@ -158,7 +193,8 @@ sensor goes; say in a few words why you are asking.
       the door left open? Does the bedroom share a wall with the
       bathroom?
   L7. For each pet: which rooms during the day, which at night, and
-      does it go upstairs or into the bedroom or bathroom?
+      does it go upstairs or into the bedroom or bathroom? Where does it
+      lie, and does it get on the chair or sofa?
   L8. Which room do they pass through to leave the house?
   L9. Is there a mains socket near the bed, near the chair or kettle,
       and near the bathroom door?
@@ -212,7 +248,8 @@ STAGE 2. Sensor plan, hardware and the hub
     cannot, say so and give me the page to check. Use, in this order:
     the Home Assistant integrations list (home-assistant.io/integrations),
     the Zigbee2MQTT supported devices list (zigbee2mqtt.io), the ZHA
-    device list (zigbee.blakadder.com), ESPHome's device pages, and the
+    device list (zigbee.blakadder.com), ESPHome's device pages, the
+    HomeKit Controller integration page for HomeKit devices, and the
     maker's own page. For each model, tell me:
       - which integration it uses, and whether it works locally or
         through the maker's cloud (prefer local: a cloud outage or a
@@ -226,6 +263,8 @@ STAGE 2. Sensor plan, hardware and the hub
       - anything known to go wrong with it in Home Assistant.
     Say which facts you found and where, and which you could not
     confirm. Do not state compatibility from memory as if checked.
+    If a source cannot be reached, say which, and use search results,
+    naming them.
     Then make the sensor plan with
     "Choosing where each sensor goes" in docs/reference/SENSOR_GUIDES.md
     and the layout from stage 1. Show it as a table, room by room:
@@ -236,8 +275,9 @@ STAGE 2. Sensor plan, hardware and the hub
     would fix it: two or three current models that the sources above
     list as supported, local where possible, with the radio each needs
     and a rough price, checked the same way. Do not propose the
-    reference bedroom radar in SENSOR_GUIDES.md: its firmware is not
-    published. I choose.
+    custom firmware of the reference bedroom radar in SENSOR_GUIDES.md:
+    it is not published. An Everything Presence Lite the family already
+    owns works on its stock ESPHome firmware. I choose.
   - A camera is optional and comes later, after reading SAFETY.md. A
     Ring camera cannot give Home Assistant a still on its own: it needs
     go2rtc, and some models give none at all.
@@ -339,7 +379,7 @@ the progress file:
   - Hub watchdog: set up as SAFETY.md describes, then I unplug the hub
     and the alert arrives. Plug it back in.
   - Home location: in their house, set Settings, System, General,
-    location to their home (it was set up at mine), then confirm
+    location to their home (if it was set up elsewhere), then confirm
     person.elderly_person (not any other person entity) shows as Home
     and binary_sensor.elderly_person_home is on. If it is missing, the
     names in haiven_persons.yaml (route B: haiven.yaml's person list)
