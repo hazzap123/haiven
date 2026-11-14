@@ -184,3 +184,19 @@ def test_one_pet_trigger_after_bedtime_keeps_bathroom_rule():
     T_ON = [t('2026-11-11 23:05:00'), t('2026-11-12 06:52:00')]
     n = night_stats.night(K, B, T_ON, [], D.date(2026, 11, 11), t('2026-11-13 12:00:00'))
     assert (n['bed'], n['bed_rule']) == ('23:05', 'bathroom')
+
+
+def test_pir_bedroom_and_mmwave_bathroom_lines_are_read(tmp_path):
+    """A PIR in the bedroom logs "Bedroom Motion"; an mmWave in the bathroom
+    logs "Bathroom Presence". Both were ignored, so stage 6 lost the room."""
+    log = tmp_path / "a.log"
+    log.write_text(
+        "2026-11-10 22:15:00 INFO Bathroom Presence (on) | 22:15:00 | Tuesday\n"
+        "2026-11-10 22:20:00 INFO Bedroom Motion (on) | 22:20:00 | Tuesday\n")
+    old = night_stats.LOG
+    night_stats.LOG = str(log)
+    try:
+        k, b, t_on, t_off = night_stats.load()
+    finally:
+        night_stats.LOG = old
+    assert len(b) == 1 and len(t_on) == 1

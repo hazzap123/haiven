@@ -16,6 +16,39 @@ Haiven uses 3 sensors for triangulated monitoring. The sensor types below are wh
 | MMW radar presence sensor | `binary_sensor.haiven_bedroom_occupancy` | Bedroom |
 | PIR motion sensor | `binary_sensor.haiven_bathroom_motion` | Bathroom |
 
+### Choosing where each sensor goes
+
+Decide this from the layout and the routine, not from the kit. Each role does a different job in Haiven, so the wrong sensor in a room breaks a specific alert.
+
+| Role | What Haiven uses it for | What it must see | Best sensor |
+|---|---|---|---|
+| Bedroom | Bedtime, in bed, night trips out of bed | The person going to bed and getting up | Presence (mmWave) sees them lying still; a PIR works, with in bed taken from the bedtime routine |
+| Main room | The morning check, wake time, daytime silence alerts | The person moving about where they first go on waking and where they spend the day | Motion (PIR) where they move about; presence (mmWave) only if they sit still for long spells and no pet uses the room |
+| Bathroom | Night visits, long visits, no return to bed | Someone coming in | Motion (PIR, battery is fine), inside the door, pointing in |
+
+### PIR or mmWave
+
+A PIR sees movement and turns off a minute or so after someone stops moving. An mmWave (radar) sensor sees a person who is still, and stays on.
+
+| Room | With a PIR | With mmWave |
+|---|---|---|
+| Bathroom | Works fully: night visits, long visits and no return only need it to fire on the way in | Works, but usually needs mains, which bathrooms rarely have |
+| Main room | Works for the morning check and wake time. Long spells sitting still look like quiet: set the room transition timeout to 90 minutes | Sees them sitting still, but also sees pets |
+| Bedroom | Works. It goes off while they sleep, so Haiven treats them as in bed from the bedtime routine (bathroom, then bedroom) until their first morning activity, and does not count the night as quiet | Best: it stays on while they are in bed. An Everything Presence Lite also gives the bed itself (in bed, asleep) |
+
+Neither can tell sleep from someone lying still after a fall. Haiven does not detect falls with any sensor.
+
+Rules, in order:
+
+1. **Bedroom prefers presence.** If you have one mmWave sensor and no pet sleeps in the bedroom, it goes here. A PIR works too (see the table above). Aim it at the bed from the side or the foot, not through the doorway.
+2. **Main room goes where the day starts.** Cover the spot they reach first on getting up (the kettle, the chair, the curtains), and where they spend most of the day. Open plan: one sensor covering both. Separate kitchen and living room: cover the kitchen if the day starts with the kettle; add the living room as an extra activity source only if they sit there for hours.
+3. **Pets decide the main room.** mmWave sees any moving body, including a dog or cat, so a pet in the room makes a silence look like activity and hides it. Where a pet uses the main room, use a PIR (not camera motion, which also fires on pets) mounted high (about 2 m) and angled down and away from the floor, ideally pet-immune, and test it with the pet alone in the room. Where the pet sleeps in the bedroom, the bedroom sensor will see it too, whatever the type, and its movement while the person is in the bathroom at night is taken as their return to bed: the long-visit and no-return alerts can then stay silent. Only keeping the pet out of the bedroom at night fixes that; say so plainly.
+4. **No sensor sees into another role's room.** mmWave passes through doors and thin walls. Do not aim it at a wall shared with the bathroom or landing: set its zone or maximum distance to stop short of that wall, and test from the other side. Keep the bathroom PIR pointing away from its door, whether that opens onto the landing or, for an en-suite, the bedroom; and keep the bedroom sensor from seeing into the en-suite.
+5. **Power and radio.** mmWave usually needs mains: check there is a socket where it must go. A Home Assistant Green has no Zigbee or Bluetooth radio, so Zigbee and Bluetooth sensors need a dongle, a Bluetooth proxy or a gateway.
+6. **Kit already bought.** Allocate it by these rules, not by what it was bought for. If it does not fit (two mmWave sensors and a dog downstairs, say), say what will not work and what one extra sensor would fix. Give an owned battery PIR to the bathroom first, since the bathroom usually has no socket and the fewest options.
+
+Write the plan as a table, room by room: sensor, where it is mounted and what it points at, why, what could go wrong (pet, a neighbouring room, no socket), and how stage 5 will test it.
+
 ### Coverage Pattern
 
 ```
@@ -78,7 +111,7 @@ Bed-vs-room detection comes from zone coordinates (a bed zone, a bathroom-door/s
 
 ### Firmware
 
-Do not factory-reset this device expecting to just reconnect it to WiFi afterwards. A factory reset returns it to Everything Smart Home's stock firmware, not the custom LD2450 build Haiven needs — recovering from that means reflashing the custom ESPHome config, which (per the gap above) isn't published in this repo yet. If the device is genuinely unresponsive, treat it as a hardware-recovery problem, not a quick reset-and-reconnect.
+Do not factory-reset this device expecting to just reconnect it to WiFi afterwards. A factory reset returns it to Everything Smart Home's stock firmware, which works with Haiven; only the reference bed-vs-room zones need the custom build — recovering from that means reflashing the custom ESPHome config, which (per the gap above) isn't published in this repo yet. If the device is genuinely unresponsive, treat it as a hardware-recovery problem, not a quick reset-and-reconnect.
 
 ---
 

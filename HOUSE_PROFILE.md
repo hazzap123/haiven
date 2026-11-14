@@ -14,12 +14,20 @@ Use roles and times. Do not write names, addresses, phone numbers or anything th
 - Do they carry a mobile phone every time they go out?
 - Broadband, and a spare socket on the router:
 
-## Rooms
+## Layout
 
-- Kitchen and living room: separate, or open plan?
-- Floors, and where the stairs are:
-- Bathroom: en-suite, on the landing, downstairs? More than one?
-- Rooms with no sensor that the person uses most days:
+Each answer decides where a sensor goes.
+
+- One storey, or stairs? Which floor are the bedroom and the night-time toilet on?
+- Kitchen and living room: one open space, or separate?
+- Where they spend most of the day (room and chair):
+- What they do first on getting up, and where:
+- Night route from bed to toilet (en-suite, landing, downstairs); which toilet at night:
+- Bed position relative to the bedroom door; door open or shut; shared wall with the bathroom?
+- Each pet: rooms by day, rooms at night, upstairs or not:
+- Room passed through to leave the house:
+- Mains sockets near the bed, the chair or kettle, the bathroom door:
+- Wi-Fi in every room?
 
 ## Sensors
 

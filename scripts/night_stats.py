@@ -29,7 +29,9 @@ Rules (all from the log, all local time):
   trips    kitchen motion between bedtime+30 and wake-30, grouped with a
            15 min gap. Downstairs trips in the night.
 
-Only "Kitchen Motion (on)" lines are kitchen events. A template reload
+A bedroom or bathroom sensor may be a motion sensor (PIR) or a presence
+sensor (mmWave); either name is read. Only "Kitchen Motion (on)" lines
+are kitchen events. A template reload
 writes "Kitchen Motion (off)" with nothing moving.
 """
 import bisect
@@ -43,7 +45,7 @@ import sys
 LOG = sys.argv[1] if len(sys.argv) > 1 else "/config/activity.log"
 LINE = re.compile(
     r"(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \w+ "
-    r"(Kitchen Motion|Bedroom Presence|Bathroom Motion)(?: \((on|off)\))?"
+    r"(Kitchen Motion|Bedroom (?:Presence|Motion)|Bathroom (?:Motion|Presence))(?: \((on|off)\))?"
 )   # early log lines carry no state; each one was an "on"
 MIN = dt.timedelta(minutes=1)
 
@@ -61,9 +63,9 @@ def load():
             what, state = m.group(2), m.group(3) or "on"
             if what == "Kitchen Motion" and state == "on":
                 k.append(t)
-            elif what == "Bedroom Presence" and state == "on":
+            elif what.startswith("Bedroom") and state == "on":
                 b.append(t)
-            elif what == "Bathroom Motion":
+            elif what.startswith("Bathroom"):
                 (t_on if state == "on" else t_off).append(t)
     for lst in (k, b, t_on, t_off):
         lst.sort()
