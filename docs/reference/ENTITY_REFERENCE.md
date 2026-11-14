@@ -14,7 +14,7 @@ Single source of truth for all entity IDs used in the Haiven monitoring system.
 |-----------|------|----------|-------------|
 | `event.kitchen_motion` | Event | Kitchen | Kitchen motion detection |
 | `binary_sensor.haiven_bedroom_occupancy` | Binary | Bedroom | MMW presence (LD2450 radar — not LD2410, a different sensor with a different ESPHome component) |
-| `binary_sensor.haiven_bathroom_motion` | Binary | Bathroom | Shelly BLU PIR motion |
+| `binary_sensor.haiven_bathroom_motion` | Binary | Bathroom | Battery PIR motion sensor |
 
 ### MMW Sensor Extended Entities
 

@@ -297,10 +297,10 @@ views:
                 kind: Motion sensor
                 covers: wake detection, daytime activity, the kitchen baseline
               - key: bedroom
-                kind: mmWave presence, LD2450 radar
+                kind: Presence (mmWave) or motion sensor
                 covers: bedtime detection, bed state, time in bed
               - key: bathroom
-                kind: PIR motion, Shelly BLU, battery
+                kind: Motion sensor (PIR), battery
                 battery: sensor.haiven_bathroom_battery
                 battery_low: 20
                 covers: overnight bathroom count, extended-visit and no-return alerts

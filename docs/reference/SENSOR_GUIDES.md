@@ -115,55 +115,54 @@ Do not factory-reset this device expecting to just reconnect it to WiFi afterwar
 
 ---
 
-## Shelly BLU Motion (Bathroom)
+## Bathroom PIR (battery)
 
-Battery-powered PIR motion sensor for bathroom activity tracking.
+Any battery motion (PIR) sensor that gives Home Assistant an on/off motion or occupancy reading. Battery power means no socket is needed, which suits a bathroom.
 
 ### Key Entities
 
 | Entity | Description |
 |--------|-------------|
-| `binary_sensor.haiven_bathroom_motion` | Motion detected (on/off) |
-| `sensor.haiven_bathroom_battery` | Battery percentage |
+| `binary_sensor.haiven_bathroom_motion` | Motion detected (on/off). Setup renames your sensor's entity to this |
+| Its battery sensor | Battery percentage, on the same device. Haiven finds it there and alerts at 15% or below |
 
-### Battery Management
+If the sensor gives several on/off entities (some Zigbee PIRs expose "motion" and "occupancy"), use the occupancy or motion one that turns on when someone walks in.
 
-- **Typical life:** 1-2 years (depends on motion frequency)
-- **Check monthly:** via Home Assistant entity
-- **Plan replacement:** when below 20%
-- **Device works** until battery fully depletes
+### Radio
 
-### Hard Reset Procedure
+A Home Assistant Green has no Zigbee or Bluetooth radio.
 
-1. **Factory reset:**
-   - Locate reset button (recessed hole on back)
-   - Press and hold with paperclip for 10 seconds
-   - LED flashes rapidly (red/amber)
-   - Release and wait 30 seconds
+- **Zigbee PIR:** add a USB Zigbee dongle on a short extension lead, away from the hub and USB 3 ports, then pair the sensor through ZHA (built in) or Zigbee2MQTT.
+- **Bluetooth PIR:** add a Bluetooth adapter on the hub, or an ESPHome Bluetooth proxy, or a mains-powered gateway from the same maker, within range of the bathroom. Many Bluetooth sensors appear through the BTHome integration; an encrypted one needs its bindkey from the maker's app.
 
-2. **Re-add it to Home Assistant.** The BLU Motion talks Bluetooth Low Energy only; it has no Wi-Fi. Home Assistant receives it through one of:
-   - a Bluetooth adapter on the hub. A Home Assistant Green has no Bluetooth radio, so it needs a USB Bluetooth adapter or one of the options below;
-   - an ESPHome Bluetooth proxy within range of the bathroom;
-   - a mains-powered Shelly Gen2 or later device nearby, acting as a BLU gateway over Wi-Fi.
+Check the exact model first: see "Choosing where each sensor goes" above and the device lists the setup prompt uses.
 
-   It then appears through the BTHome integration (Settings > Devices & services). The Shelly app, over your phone's Bluetooth, is only for setting it up. If you turn on encryption in the Shelly app, Home Assistant asks for the device's bindkey, shown in the app.
+### Placement
+
+Inside the door, pointing into the room and away from the door, so every entry registers and the landing or bedroom outside does not. Keep it out of shower spray.
 
 ### Range
 
-Bluetooth reaches roughly one room through walls. Put the adapter, proxy or gateway close enough that the sensor's readings arrive reliably, then do the walk test in docs/start.md.
+Zigbee routes through other mains-powered Zigbee devices; Bluetooth reaches roughly one room through walls. Put the dongle, adapter or proxy close enough that readings arrive reliably, then do the walk test in docs/start.md.
+
+### Battery
+
+- Typical life: one to two years, depending on how often it fires and the battery type.
+- Haiven's fault alert tells every carer at 15% or below; replace it then.
+- Some battery sensors are only marked unavailable by Home Assistant after hours without a report (ZHA waits six hours by default), so a dead sensor can take that long to show as a fault.
 
 ### Troubleshooting
 
-**Device not appearing after reset:**
-- Check the adapter, proxy or gateway is online and within range
-- Check the BTHome integration in Home Assistant lists it
-- If the Shelly app cannot see it over Bluetooth, repeat the reset
+**Not appearing in Home Assistant:**
+- Check the dongle, adapter or proxy is online and within range
+- Put the sensor in pairing mode again (see its manual) and retry from the integration
+- For Bluetooth, check the BTHome or maker's integration lists it
 
-**Motion not detecting:**
-- Check battery level
-- Verify entity shows on/off (not unavailable)
-- Test by walking past sensor
-- Check sensor angle covers toilet/sink area
+**Motion not detected:**
+- Check the battery level
+- Check the entity shows on/off, not unavailable
+- Walk past it and watch the entity in Home Assistant
+- Check the angle covers the toilet and the doorway inside the room
 
 ---
 
