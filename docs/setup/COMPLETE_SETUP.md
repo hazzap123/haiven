@@ -35,7 +35,7 @@ Haiven monitors daily activity patterns of an elderly person using motion and pr
 - Home Assistant server (2024.10 or later)
 - Motion or presence sensor (Kitchen or main living area)
 - A presence sensor with zone support for the bedroom, if you want in-bed detection (the reference build uses an Everything Presence Lite running a custom LD2450 ESPHome firmware — see [SENSOR_GUIDES.md](../reference/SENSOR_GUIDES.md))
-- Motion sensor for the bathroom (the reference build uses a Shelly BLU Motion)
+- Battery motion (PIR) sensor for the bathroom, Zigbee or Bluetooth
 - Mobile devices for notifications
 
 ### Software

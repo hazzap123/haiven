@@ -25,7 +25,7 @@
 **Hardware (3 sensors):** you can add more but will need to configure for that.
 - Main room: Motion or presence sensor (MMW radar, Zigbee PIR, etc.). I use a RingCamera with motion events. So can also parse snapshots through to check if needed (works okayish)
 - Bedroom: Motion or Presence sensor with zone support if want in bed detection
-- Bathroom: Motion sensor (Shelly BLU Motion, Zigbee PIR, etc.)
+- Bathroom: battery motion (PIR) sensor, Zigbee or Bluetooth
 
 **Software:**
 - Home Assistant 2024.10 or later
